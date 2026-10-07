@@ -159,33 +159,45 @@ Prices are per million tokens, input/output, **verified against each provider's 
 
 ### What a question costs after issue #868
 
-The figures below were measured against the prompt as it stands: the contract description is 6,690
-characters, the constrained schema about 2,300 serialised, and the framing about 150 tokens —
-roughly **2,550 input tokens** for a question carrying no history. The original "about 2,000"
-predates the issue #851 prompt additions.
+**These figures correct an earlier draft of this section, which understated them.** That draft
+assumed the issue's prompt additions came to about 120 tokens. They come to about 1,590: the contract
+description grew from 6,690 to 12,907 characters, a 93% increase, because the casual-wording map, the
+scorecard-name rules, the prior-context framing and the default-competition rules are all carried in
+it. The per-question cost is therefore about 40% higher than first recorded. The conclusion is
+unchanged; the mistake was in the estimate rather than in the design.
 
-| Request                                               | Input  | Output | Cost     |
-| ----------------------------------------------------- | ------ | ------ | -------- |
-| No conversation                                       | ~2,670 | ~155   | ~$0.0035 |
-| Two turns, ordinary questions                         | ~2,990 | ~165   | ~$0.0037 |
-| Five turns, 300-character questions, comparison turns | ~3,570 | ~170   | ~$0.0044 |
+Measured against the prompt as it stands: the contract description is 12,907 characters (~3,310
+tokens), the constrained schema about 2,300 serialised (~700), and the framing about 200 — roughly
+**4,210 input tokens** for a question carrying no history.
+
+| Request                                               | Input  | Output | Cost     | Earlier draft said |
+| ----------------------------------------------------- | ------ | ------ | -------- | ------------------ |
+| No conversation                                       | ~4,210 | ~160   | ~$0.0050 | ~$0.0035           |
+| Two turns, ordinary questions                         | ~4,570 | ~165   | ~$0.0054 | ~$0.0037           |
+| Five turns, 300-character questions, comparison turns | ~5,110 | ~170   | ~$0.0060 | ~$0.0044           |
 
 A turn is roughly 150 tokens at its worst — a 300-character question, a ~200-character definition and
-about 90 characters of delimiters — so five turns add about 900.
+about 90 characters of delimiters — so five turns add about 900. History is therefore the smaller part
+of the increase. The prompt is the larger one, and it is paid on every request whether or not a
+conversation is sent.
 
-`max_tokens` stays `512` and `LLM_TIMEOUT_MS` stays `15000`. History grows the input, not the output,
-and 900 extra input tokens is well under a second of prefill; the timeout exists for schema
-compilation and hung connections, neither of which this touches.
+`max_tokens` stays `512` and `LLM_TIMEOUT_MS` stays `15000`. History grows the input, not the output.
+A larger prefill does make a cold request slower, and issue #868's first evaluation run recorded one
+`LlmTimeoutError` against a case that had passed in both earlier runs; the bound exists for exactly
+that, one retry covers it, and it is configuration if it recurs.
 
-**The workspace limit remains the binding control, and this narrows the margin.** At $0.0044 the $10
-monthly limit is about 2,270 questions, down from about 3,000. `NL_QUERY_GLOBAL_DAILY_LIMIT` of 300 a
-day already permits 9,000 a month, which is roughly $40 — so the daily cap has never been what keeps
-spend inside $10, and this issue does not change that. It does mean the two are closer together than
-they were. No limit is changed here; the point of recording it is that lowering the global cap is the
-lever if the workspace limit is ever reached.
+**The workspace limit remains the binding control, and this narrows the margin further than first
+recorded.** At $0.0060 the $10 monthly limit is about 1,670 questions, down from about 3,000 before
+this issue and from the 2,270 the earlier draft claimed. `NL_QUERY_GLOBAL_DAILY_LIMIT` of 300 a day
+already permits 9,000 a month, which is roughly $54 — so the daily cap has never been what keeps spend
+inside $10, and this issue does not change that. No limit is changed here; the point of recording it
+is that lowering the global cap is the lever if the workspace limit is ever reached, and that the
+prompt is now the first thing to trim if cost matters.
 
 Prompt caching was considered and rejected: the stable prefix only just clears Haiku's minimum
 cacheable length, requests are sporadic against a five-minute TTL, and it is outside this issue.
+The prompt growth recorded above strengthens the case for revisiting it, because the cacheable
+prefix is now comfortably past that minimum; it remains out of scope here.
 
 ### Claude Haiku 4.5 — $1 / $5 (selected)
 
@@ -328,7 +340,11 @@ This record was drafted with the assistance of Claude-Code[Claude Opus 5 (1M con
 #814. The conversational-request section, the per-question cost figures and the data-handling
 consequence were added with the assistance of Claude-Code[Claude Opus 5 (1M context)] under issue
 #868; the token counts were measured from the prompt in the repository and priced at the Claude Haiku
-4.5 rates already recorded here, not re-verified against the provider's pricing page. The candidate prices, the supported-model list for structured outputs, the Claude Haiku 4.5
+4.5 rates already recorded here, not re-verified against the provider's pricing page. The cost
+figures were corrected under the same issue, with the assistance of Claude-Code[Claude Opus 5], after
+the first evaluation run: the prompt was measured rather than estimated, and the superseded figures
+are kept in the table so the correction is visible rather than silent. The candidate prices, the
+supported-model list for structured outputs, the Claude Haiku 4.5
 retirement commitment and the Claude Sonnet 5.5 fallback figures were each verified against the
 providers' own documentation pages on 30 September 2026, and the corrected Gemini 2.5 Flash
 statement replaces an unverifiable third-party claim.
