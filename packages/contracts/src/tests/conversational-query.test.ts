@@ -340,6 +340,18 @@ describe('the name-hint rule', () => {
   });
 });
 
+/**
+ * The prompt with every whitespace run collapsed to one space.
+ *
+ * The prompt wraps at 100 columns and indents its lists, so a phrase that reads
+ * as one sentence is split across lines with leading indentation. Matching
+ * against the flowed text keeps these assertions about the wording rather than
+ * about where the wrapping happens to fall.
+ */
+function flowedPrompt(): string {
+  return ANALYTICS_QUERY_PROMPT_DESCRIPTION.replace(/\s+/g, ' ');
+}
+
 describe('the prompt description', () => {
   it('teaches a casual wording for every published metric', () => {
     for (const metric of leaderboardMetricSchema.options) {
@@ -390,6 +402,54 @@ describe('the prompt description', () => {
   it('permits assuming a competition and forbids assuming a season', () => {
     expect(ANALYTICS_QUERY_PROMPT_DESCRIPTION).toContain('"assumptions": ["competition"]');
     expect(ANALYTICS_QUERY_PROMPT_DESCRIPTION).toContain('Never assume a season.');
+  });
+
+  // Run 1 of the issue #868 evaluation failed `participant-season` with a
+  // contract violation on a question naming a competition *and* a season. The
+  // default-competition rule said "use the default as the competition reference"
+  // without saying when, which reads as licence to add one beside a season.
+  it('says the default fills a reference in rather than adding one', () => {
+    // The prompt wraps, so each phrase is matched with its line break collapsed
+    // rather than reproduced; a test that hard-coded the wrapping would fail on
+    // any rewording that only moved a word to the next line.
+    const flowed = flowedPrompt();
+
+    for (const fragment of [
+      'The default fills in a reference; it never adds one.',
+      'It supplies "competition" only when "scope" is "competition".',
+      'never put a "competition" reference beside a "season" one',
+      'A "career" scope carries neither.',
+    ]) {
+      expect(flowed).toContain(fragment);
+    }
+  });
+
+  // Run 1 reported `assumptions: ["competition"]` on three refusals and on a
+  // question that named "the IPL" itself, because the model had used the default
+  // to word a suggestion or had expanded the reader's own short form.
+  it('narrows what counts as an assumption', () => {
+    const flowed = flowedPrompt();
+
+    for (const fragment of [
+      'Writing out a short form the reader used is not an assumption',
+      'leave it out when "definition" is the "unsupported" kind',
+      'report it at most once',
+      'Using the default to word such a suggestion is not an assumption',
+    ]) {
+      expect(flowed).toContain(fragment);
+    }
+  });
+
+  // "biggest hitter" names no published measure, so the subjective rule has to
+  // reach it. Listing it as a metric wording told the model two different things.
+  it('does not map a wording that names no published measure', () => {
+    const mappings = ANALYTICS_QUERY_PROMPT_DESCRIPTION.split('\n').filter((line) =>
+      line.includes('->'),
+    );
+
+    expect(mappings.some((line) => line.includes('"biggest hitter"'))).toBe(false);
+    // The metric it was wrongly mapped to still has wordings of its own.
+    expect(mappings.some((line) => line.includes('-> "most_sixes"'))).toBe(true);
   });
 
   // The description is built from the contract, so it names no competition of its

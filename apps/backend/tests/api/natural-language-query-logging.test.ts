@@ -169,6 +169,49 @@ describe('natural-language query logging', () => {
     expect(text()).not.toContain(MODEL_OUTPUT_MARKER);
   });
 
+  // Issue #868 gave `LlmInvalidOutputError` the failing contract paths, for the
+  // hand-run evaluation script to print. ADR-017 keeps the log and the HTTP
+  // response to fixed strings, so neither may start carrying them.
+  it('never writes the contract paths a failed translation carried', async () => {
+    const { logger, text } = capture();
+    const llmClient: LlmClient = {
+      translateQuestion: async () => {
+        throw new LlmInvalidOutputError(
+          'The language model returned a definition that does not satisfy the query contract.',
+          [
+            { path: 'definition.competition', code: 'custom' },
+            { path: 'definition.metric', code: 'invalid_enum_value' },
+          ],
+        );
+      },
+    };
+
+    const response = await request(appLogging(logger, llmClient))
+      .post(ASK)
+      .send({ question: QUESTION })
+      .expect(422);
+
+    const logged = text();
+    expect(logged).toContain('LlmInvalidOutputError');
+    for (const leaked of [
+      'definition.competition',
+      'definition.metric',
+      'invalid_enum_value',
+      'contractIssues',
+    ]) {
+      expect(logged).not.toContain(leaked);
+      expect(JSON.stringify(response.body)).not.toContain(leaked);
+    }
+
+    // The response stays the fixed pair ADR-017 records.
+    expect(response.body).toEqual({
+      error: {
+        code: 'QUERY_NOT_UNDERSTOOD',
+        message: 'The question could not be turned into a query over the published statistics.',
+      },
+    });
+  });
+
   it('logs nothing at info level for a request that failed', async () => {
     const { lines, logger } = capture();
     const llmClient: LlmClient = {

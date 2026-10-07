@@ -298,3 +298,159 @@ describe('an assumed competition', () => {
     ).rejects.toBeInstanceOf(LlmInvalidOutputError);
   });
 });
+
+/**
+ * Issue #868 run 1 reported `assumptions: ["competition"]` alongside three
+ * `unsupported` refusals, because the model had used the default competition to
+ * word a suggestion and counted that as an assumption.
+ *
+ * The prompt now says not to, but the prompt is guidance and this is a property
+ * of the answer: an `unsupported` definition has no competition, so there is
+ * nothing for an assumption to describe. The adapter therefore drops it rather
+ * than trusting the model to, which also makes the behaviour deterministic.
+ */
+describe('an assumption on a refusal', () => {
+  const UNSUPPORTED = { kind: 'unsupported', reason: 'ambiguous' } as const;
+
+  it('is dropped, because a refusal has no competition to have assumed', async () => {
+    const translation = await client(
+      translating({ definition: UNSUPPORTED, assumptions: ['competition'] }),
+    ).translateQuestion('Who scored the most runs last season?');
+
+    expect(translation.definition.kind).toBe('unsupported');
+    expect(translation.assumptions).toEqual([]);
+  });
+
+  it('does not disturb the suggestions offered with the refusal', async () => {
+    const suggestion = {
+      kind: 'leaderboard',
+      metric: 'most_runs',
+      scope: 'competition',
+      competition: { name: 'Indian Premier League' },
+      limit: 10,
+    };
+
+    const translation = await client(
+      translating({
+        definition: UNSUPPORTED,
+        suggestions: [suggestion],
+        assumptions: ['competition'],
+      }),
+    ).translateQuestion('Who scored the most runs last season?');
+
+    expect(translation.assumptions).toEqual([]);
+    expect(translation.suggestions).toHaveLength(1);
+  });
+
+  it('is still returned for an answerable definition', async () => {
+    const translation = await client(
+      translating({
+        definition: {
+          kind: 'leaderboard',
+          metric: 'most_sixes',
+          scope: 'competition',
+          competition: { name: 'Indian Premier League' },
+          limit: 10,
+        },
+        assumptions: ['competition'],
+      }),
+    ).translateQuestion('Who has the most sixes?');
+
+    expect(translation.assumptions).toEqual(['competition']);
+  });
+});
+
+/**
+ * Issue #868 run 1 recorded `participant-season` as
+ * "LlmInvalidOutputError: ... does not satisfy the query contract" and nothing
+ * else, which says a definition was rejected but not which rule rejected it.
+ * Diagnosing it would have meant paying for another run.
+ *
+ * The error now carries the failing paths and codes for the evaluation runner.
+ * What it must never carry is model output, so these tests pin both halves: the
+ * paths are present, and no value the model returned appears anywhere on it.
+ */
+describe('a definition that fails the contract', () => {
+  it('names the failing paths and codes', async () => {
+    // A season-scoped definition carrying a competition reference too, which is
+    // the shape run 1's failure is most likely to have been.
+    const error = await client(
+      translating({
+        definition: {
+          kind: 'leaderboard',
+          metric: 'most_runs',
+          scope: 'season',
+          season: { competitionName: 'Indian Premier League', seasonLabel: '2026' },
+          competition: { name: 'Indian Premier League' },
+        },
+      }),
+    )
+      .translateQuestion(QUESTION)
+      .catch((thrown: unknown) => thrown);
+
+    expect(error).toBeInstanceOf(LlmInvalidOutputError);
+    const issues = (error as LlmInvalidOutputError).contractIssues;
+    expect(issues.length).toBeGreaterThan(0);
+    // Paths are relative to the translation wrapper, not the definition, which
+    // is what distinguishes a bad definition from a bad suggestion.
+    expect(issues.map((issue) => issue.path)).toContain('definition.competition');
+    for (const issue of issues) {
+      expect(typeof issue.code).toBe('string');
+    }
+  });
+
+  it('names the path for a bad enum value without echoing the value', async () => {
+    const error = await client(
+      translating({
+        definition: {
+          kind: 'leaderboard',
+          metric: 'most_catches_in_the_deep',
+          scope: 'competition',
+          competition: { name: 'Indian Premier League' },
+        },
+      }),
+    )
+      .translateQuestion(QUESTION)
+      .catch((thrown: unknown) => thrown);
+
+    const invalid = error as LlmInvalidOutputError;
+    expect(invalid.contractIssues.map((issue) => issue.path)).toContain('definition.metric');
+
+    // Zod interpolates the received value into an enum message, so the message is
+    // deliberately not carried. Nothing on the error may echo what the model said.
+    const serialised = `${invalid.message} ${JSON.stringify(invalid.contractIssues)}`;
+    expect(serialised).not.toContain('most_catches_in_the_deep');
+  });
+
+  it('keeps its message a fixed string, as ADR-017 requires', async () => {
+    const error = await client(
+      translating({ definition: { kind: 'leaderboard', metric: 'most_runs', scope: 'season' } }),
+    )
+      .translateQuestion('Who scored the most runs for Rajasthan in 2026?')
+      .catch((thrown: unknown) => thrown);
+
+    const invalid = error as LlmInvalidOutputError;
+    expect(invalid.message).toBe(
+      'The language model returned a definition that does not satisfy the query contract.',
+    );
+    // Neither the reader's question nor any part of it reaches the error.
+    expect(invalid.message).not.toContain('Rajasthan');
+    expect(JSON.stringify(invalid.contractIssues)).not.toContain('Rajasthan');
+  });
+
+  it('carries no issues for the failures that are not contract failures', async () => {
+    for (const payload of [
+      { model: MODEL, stop_reason: 'refusal', content: [{ type: 'text', text: '{}' }] },
+      { model: MODEL, stop_reason: 'max_tokens', content: [{ type: 'text', text: '{}' }] },
+    ]) {
+      const error = await client(
+        vi.fn(async () => jsonResponse(payload)) as unknown as typeof fetch,
+      )
+        .translateQuestion(QUESTION)
+        .catch((thrown: unknown) => thrown);
+
+      expect(error).toBeInstanceOf(LlmInvalidOutputError);
+      expect((error as LlmInvalidOutputError).contractIssues).toEqual([]);
+    }
+  });
+});

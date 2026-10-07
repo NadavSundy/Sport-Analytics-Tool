@@ -98,9 +98,30 @@ export class LlmUpstreamError extends Error {
  * reports this as a question it could not translate rather than as a fault.
  */
 export class LlmInvalidOutputError extends Error {
-  constructor(message: string) {
+  /**
+   * Which parts of the contract the output failed, as `path` and `code` pairs
+   * read off the Zod issues — for example `competition` / `custom` for a
+   * season-scoped definition that also carried a competition reference.
+   *
+   * This exists because issue #868's first evaluation run reported one of these
+   * failures with nothing but the fixed message, which says a definition was
+   * rejected but not which rule rejected it; diagnosing it meant paying for
+   * another run.
+   *
+   * **It carries no model output and no reader text, and that is what makes it
+   * safe.** A `path` is a property name from this repository's own contract and a
+   * `code` is a Zod issue kind. The issue *messages* are deliberately excluded:
+   * Zod interpolates the received value into some of them, which would be model
+   * output. Nothing here reaches the HTTP response or the server log either —
+   * ADR-017 keeps both to fixed strings, and a test holds that — so the only
+   * consumer is the hand-run evaluation script.
+   */
+  readonly contractIssues: readonly { path: string; code: string }[];
+
+  constructor(message: string, contractIssues: readonly { path: string; code: string }[] = []) {
     super(message);
     this.name = 'LlmInvalidOutputError';
+    this.contractIssues = contractIssues;
   }
 }
 
@@ -460,13 +481,31 @@ export function createLlmClient(options: LlmClientOptions): LlmClient {
       if (!translation.success) {
         throw new LlmInvalidOutputError(
           'The language model returned a definition that does not satisfy the query contract.',
+          // Paths and codes only. A Zod message can interpolate the value it
+          // received, which would be model output; a path is one of our own
+          // property names.
+          translation.error.issues.map((issue) => ({
+            path: issue.path.join('.'),
+            code: issue.code,
+          })),
         );
       }
 
       return {
         definition: translation.data.definition,
         suggestions: validSuggestions(translation.data.suggestions),
-        assumptions: validAssumptions(translation.data.assumptions),
+        // An `unsupported` definition has no competition, so there is nothing for
+        // an assumption to describe and the field is dropped rather than
+        // forwarded. The prompt says the same, but this is a property of the
+        // answer rather than a matter of guidance: issue #868's first evaluation
+        // run had the model report an assumption on three refusals, because it
+        // had used the default competition to word a *suggestion* and counted
+        // that. A reader would have been told an answer was assumed when there
+        // was no answer.
+        assumptions:
+          translation.data.definition.kind === 'unsupported'
+            ? []
+            : validAssumptions(translation.data.assumptions),
         model: typeof payload.model === 'string' ? payload.model : options.model,
         usage: {
           inputTokens: tokenCount(payload.usage, 'input_tokens'),

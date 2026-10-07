@@ -354,7 +354,11 @@ const CASUAL_METRIC_WORDINGS: Record<LeaderboardMetric, readonly string[]> = {
   most_runs: ['scores the most', 'leading run scorer', 'top scorer', 'piles on the runs'],
   most_wickets: ['takes the most wickets', 'leading wicket taker', 'best wicket haul'],
   most_fours: ['hits the most fours', 'most boundaries along the ground'],
-  most_sixes: ['smashes the most sixes', 'biggest hitter', 'clears the ropes most often'],
+  // "biggest hitter" is deliberately absent. It names no published measure — it
+  // could mean sixes, strike rate or runs — so the subjective rule below has to
+  // reach it, and issue #868's first evaluation run confirmed the model refuses
+  // it with suggestions. Listing it here told the model two contradictory things.
+  most_sixes: ['smashes the most sixes', 'clears the ropes most often', 'hits the most maximums'],
   highest_batting_average: ['best batting average', 'most consistent with the bat'],
   highest_strike_rate: ['scores fastest', 'quickest scorer', 'best strike rate'],
   best_bowling_average: ['best bowling average', 'fewest runs per wicket'],
@@ -566,15 +570,32 @@ You are given one default competition by name at the end of these rules.
 
 When a question needs a competition and names none — "Who has the most sixes?", "Who is the leading
 run scorer?" — use the default competition as the competition reference, and say so by returning
-"assumptions": ["competition"] beside the definition. Leave "assumptions" out when the reader named
-the competition themselves, or when the question needs no competition at all.
+"assumptions": ["competition"] beside the definition.
+
+The default fills in a reference; it never adds one. It supplies "competition" only when "scope" is
+"competition". A "season"-scoped definition carries its "season" reference and nothing else: never
+put a "competition" reference beside a "season" one, even when the question names a competition, and
+even when that competition is the default. A "career" scope carries neither. The per-kind rules
+above already say this, and the default competition does not change them.
+
+Leave "assumptions" out unless the default actually supplied the definition's own competition. In
+particular:
+    - leave it out when the reader named the competition themselves, in any wording. Writing out a
+      short form the reader used is not an assumption: "the IPL" means "Indian Premier League"
+      because the reader said so, not because you assumed it;
+    - leave it out when the question needs no competition at all, such as a "career" question;
+    - leave it out when "definition" is the "unsupported" kind. There is no answer to label, and a
+      competition you used only to word a suggestion is not an assumption about the answer; and
+    - report it at most once: "assumptions" is ["competition"] or it is absent.
 
 Never assume a season. You are not told today's date, nor which seasons the platform holds, so a
 season you supplied would be a guess reported as an answer. A question that needs a season and names
 none — "last season", "this year", "the most recent season" — is "unsupported" with the reason
 "ambiguous". Suggest alongside it the same metric at "competition" scope on a competition that is
 already in play: the one the reader named, or the default. Suggest a "season" scope only when a
-season appears in the reader's own question or in an earlier turn, and then only that season.
+season appears in the reader's own question or in an earlier turn, and then only that season. Using
+the default to word such a suggestion is not an assumption and is not reported: the definition is
+"unsupported", so "assumptions" is left out.
 
 "assumptions" is the only place an assumption is reported. Never add a property to a definition to
 explain one, and never put an explanation in a name.`;
