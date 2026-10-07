@@ -207,3 +207,18 @@ test('issue 875 database and worker verification has a retained execution record
     assert.match(record, new RegExp(classification));
   }
 });
+
+test('issue 877 records every automated quality-gate outcome explicitly', () => {
+  for (const verificationId of [
+    'AUTO-TECH-01', 'AUTO-TECH-02', 'AUTO-TECH-03', 'AUTO-TECH-04',
+    'AUTO-TECH-05', 'AUTO-TECH-06', 'AUTO-TECH-07', 'AUTO-TECH-08',
+    'AUTO-TECH-09', 'AUTO-TECH-10', 'COV-TECH-01', 'COV-TECH-02',
+    'COV-TECH-03', 'CI-TECH-01', 'CI-TECH-02', 'DEP-TECH-01',
+    'DEP-TECH-02', 'DEP-TECH-03', 'DEP-TECH-04',
+  ]) {
+    assert.match(issue877Evidence, new RegExp(`\\|\\s+${verificationId}\\s+\\|\\s+(?:PASS|FAIL|BLOCKED|N\\/A)\\s+\\|`));
+    assert.match(bank, new RegExp(String.raw`### ${verificationId}(?:(?!### )[\\s\\S])*?\\*\\*Status:\\*\\* \\x60?(?:PASS|FAIL|BLOCKED|N\\/A)\\x60?`));
+  }
+  assert.match(issue877Evidence, /Untested \/ partial coverage/i);
+  assert.match(issue877Evidence, /no passwords, bearer tokens, OAuth credentials, API keys or service secrets/i);
+});
