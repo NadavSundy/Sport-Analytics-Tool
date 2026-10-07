@@ -5228,6 +5228,14 @@ h3 {
   margin-top: 0.5rem;
 }
 
+.statistics-warning__scope {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--colour-text-secondary);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
 .statistics-list,
 .event-trace-list {
   display: grid;
