@@ -98,6 +98,15 @@ afterEach(() => {
 });
 
 describe('ApiExplorerPage', () => {
+  it('keeps explorer content independent from the shell-owned route frame', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(okSpecification()));
+
+    renderPage();
+
+    expect(await screen.findByText('Supported API major version: v1')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1, name: 'API Explorer' })).not.toBeInTheDocument();
+  });
+
   it('renders the public /api route without requiring a signed-in user', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(okSpecification()));
 
