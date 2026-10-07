@@ -13,6 +13,10 @@ const issue873Evidence = readFileSync(
   'evidence/validation/final-system-verification/issue-873-statistics-data-releases.md',
   'utf8',
 );
+const issue877Evidence = readFileSync(
+  'evidence/validation/final-system-verification/issue-877-automated-quality-audit.md',
+  'utf8',
+);
 
 test('final verification bank is explicit non-user technical verification', () => {
   assert.match(bank, /authoritative \*\*final non-user technical verification bank\*\*/i);
@@ -216,8 +220,16 @@ test('issue 877 records every automated quality-gate outcome explicitly', () => 
     'COV-TECH-03', 'CI-TECH-01', 'CI-TECH-02', 'DEP-TECH-01',
     'DEP-TECH-02', 'DEP-TECH-03', 'DEP-TECH-04',
   ]) {
-    assert.match(issue877Evidence, new RegExp(`\\|\\s+${verificationId}\\s+\\|\\s+(?:PASS|FAIL|BLOCKED|N\\/A)\\s+\\|`));
-    assert.match(bank, new RegExp(String.raw`### ${verificationId}(?:(?!### )[\\s\\S])*?\\*\\*Status:\\*\\* \\x60?(?:PASS|FAIL|BLOCKED|N\\/A)\\x60?`));
+    assert.match(
+      issue877Evidence,
+      new RegExp(`\\|\\s+${verificationId}\\s+\\|\\s+(?:PASS|FAIL|BLOCKED|N\\/A)\\s+\\|`),
+    );
+    assert.match(
+      bank,
+      new RegExp(
+        String.raw`### ${verificationId}(?:(?!### )[\s\S])*?\*\*Status:\*\* \x60?(?:PASS|FAIL|BLOCKED|N\/A)\x60?`,
+      ),
+    );
   }
   assert.match(issue877Evidence, /Untested \/ partial coverage/i);
   assert.match(

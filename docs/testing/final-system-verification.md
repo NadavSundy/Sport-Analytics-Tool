@@ -1487,8 +1487,8 @@ Run automated contrast checks and review final project-owned text/control states
 **Repository command:** `npm run test:frontend`
 
 **Expected:** final frontend suite passes from the candidate.
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #877: the CI-equivalent two-worker run passed 45 files/460 tests; the default configuration now uses that established worker limit without retries.
 
 ### AUTO-TECH-02 — Backend unit/API suites
 
@@ -1604,8 +1604,8 @@ After #871–#877 execution, list final capabilities that remain untested or par
 - Register is non-empty only where gaps really exist.
 - Each gap has risk/mitigation/owner or reason for acceptance.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #877 execution record explicitly retains the failures, unrun gates and dependency findings.
 
 ### CI-TECH-01 — Local final CI plan
 
@@ -1626,8 +1626,8 @@ Record the hosted Gitea Actions run for the exact commit/tag proposed for submis
 - Intended required checks are green.
 - No final failing lane is hidden/disabled merely to obtain a green result.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `BLOCKED`
+**Evidence / defect / retest:** #877: hosted validation remains pending for the rebased exact candidate; no passing run is claimed before it completes.
 
 ### DEP-TECH-01 — Strict documentation build
 
@@ -1662,8 +1662,8 @@ Record reachability/health for final:
 - Submitted deployment endpoints are reachable and correspond to the intended final candidate.
 - Final deployment/release sign-off remains owned by #810.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `BLOCKED`
+**Evidence / defect / retest:** #877: no exact final deployed candidate; #810 owns release sign-off.
 
 ### DEP-TECH-04 — Dependency/security audit
 
@@ -1676,8 +1676,8 @@ Run the repository's final dependency/security audit commands/policy and review 
 - Unresolved findings are documented and dispositioned.
 - No known severe production-impacting dependency issue is silently ignored.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #877 applied reviewed non-breaking npm fixes; the post-fix production audit has no critical/high findings. Four moderate Swagger dependency-chain advisories require a breaking forced change and are explicitly retained in the execution record.
 
 ---
 
