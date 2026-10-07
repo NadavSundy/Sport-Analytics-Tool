@@ -186,7 +186,10 @@ test('issue 875 database and worker verification has a retained execution record
   }
 
   assert.match(record, /does not treat local automated evidence as deployed verification/i);
-  assert.match(record, /No passwords, bearer tokens, OAuth credentials, API keys or service secrets/i);
+  assert.match(
+    record,
+    /No passwords, bearer tokens, OAuth credentials, API keys or service secrets/i,
+  );
   assert.match(record, /#875 is COMPLETE \/ PASS/i);
   assert.match(record, /non-blocking observability limitation/i);
 

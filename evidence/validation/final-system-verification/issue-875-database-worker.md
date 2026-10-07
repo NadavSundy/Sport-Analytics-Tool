@@ -2,16 +2,16 @@
 
 ## Metadata
 
-| Field | Value |
-| --- | --- |
-| Execution issue | #875 |
-| Tester | Dean Feldman with Codex assistance |
-| Date/time | 2026-10-07 (Africa/Johannesburg) |
-| Candidate commit/tag | `ab216b987` local `main` base; local branch `test/875-final-db-worker-verification` |
-| Environment | Windows; Node.js v24.13.0; disposable PostgreSQL 16 test runtime |
-| API URL | `https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io/api/v1` |
-| Worker/release context | No public worker ingress by design; deployed worker probe and aggregate-only database checks executed through its managed identity |
-| Fixture/package/dataset | Repository deterministic database seed and worker test doubles; deployed database aggregate metadata only |
+| Field                   | Value                                                                                                                              |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Execution issue         | #875                                                                                                                               |
+| Tester                  | Dean Feldman with Codex assistance                                                                                                 |
+| Date/time               | 2026-10-07 (Africa/Johannesburg)                                                                                                   |
+| Candidate commit/tag    | `ab216b987` local `main` base; local branch `test/875-final-db-worker-verification`                                                |
+| Environment             | Windows; Node.js v24.13.0; disposable PostgreSQL 16 test runtime                                                                   |
+| API URL                 | `https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io/api/v1`                                   |
+| Worker/release context  | No public worker ingress by design; deployed worker probe and aggregate-only database checks executed through its managed identity |
+| Fixture/package/dataset | Repository deterministic database seed and worker test doubles; deployed database aggregate metadata only                          |
 
 > No passwords, bearer tokens, OAuth credentials, API keys or service secrets were used or retained.
 
@@ -23,19 +23,19 @@ implementation defect was identified and no further corrective code change is re
 
 ## Results
 
-| Verification ID | Result (`PASS` / `FAIL` / `BLOCKED` / `N/A`) | Evidence / observation | Linked bug / blocker | Retest |
-| --- | --- | --- | --- | --- |
-| DB-TECH-01 | PASS | Live `worker.probe` completed after its database dependency check; the public API health URL remains independently unavailable. | — | — |
-| DB-TECH-02 | PASS | Disposable PostgreSQL 16 reset, every committed migration, deterministic seed, and database integration suite completed: 38 files passed, 1 skipped; 278 tests passed, 2 skipped. | — | Completed after capturing the runner output to a temporary local log. |
-| DB-TECH-03 | PASS | The completed isolated database suite exercised representative constraints and relationships. | — | — |
-| DB-TECH-04 | PASS | The completed isolated database suite exercised transactional rollback/consistency coverage. | — | — |
-| DB-TECH-05 | PASS | The completed isolated database suite includes representative query-plan/index integration coverage. | — | — |
-| DB-TECH-06 | PASS | Aggregate-only deployed database check found 3,207,623 deliveries, 14,020 fixtures, and 4 releases. Release metadata classifies one release as `local` and three as `dev`; all declare `published-accepted-deliveries` scope with 3,207,110 events. | This verifies the deployed dev environment; it does not represent an assertion about a separately named production environment. | â€” |
-| WRK-TECH-01 | PASS | Internal status at 2026-10-07T11:34:38Z was `ready`: database up (169 ms); object storage up (5 ms); Service Bus up (59 ms). Earlier dependency-failure logs were transient/historical. | — | — |
-| WRK-TECH-02 | PASS | Live probe `109202de-70c9-4b3b-9328-7d704e1f7486` was received; verified worker dependencies; and completed at 2026-10-07T11:36:50Z. | — | — |
-| WRK-TECH-03 | PASS | Peek-only inspection classified all 19 historical DLQ messages without receiving, completing, replaying, resending, deleting, or purging any message. The 19 are 11 `BatchValidationRetryBudgetExhausted`; 3 `UnsupportedJobContract`; 2 `AttemptBudgetExhausted`; 2 `MaxDeliveryCountExceeded`; and 1 `JobNotRunnable`. | Retry/max-delivery mechanisms do not by themselves establish an infrastructure, RBAC, or network root cause. | â€” |
-| WRK-TECH-04 | PASS | The final-candidate worker suite (17 files; 125 tests) exercised transient redelivery, already-completed delivery replay, and duplicate dataset-release prevention in its supported integration paths. | â€” | â€” |
-| WRK-TECH-05 | PASS | The final-candidate worker suite (17 files; 125 tests) exercised interrupted object cleanup, lease release, and resumed publication on redelivery. No destructive deployed restart was needed. | â€” | â€” |
+| Verification ID | Result (`PASS` / `FAIL` / `BLOCKED` / `N/A`) | Evidence / observation                                                                                                                                                                                                                                                                                                   | Linked bug / blocker                                                                                                            | Retest                                                                |
+| --------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| DB-TECH-01      | PASS                                         | Live `worker.probe` completed after its database dependency check; the public API health URL remains independently unavailable.                                                                                                                                                                                          | —                                                                                                                               | —                                                                     |
+| DB-TECH-02      | PASS                                         | Disposable PostgreSQL 16 reset, every committed migration, deterministic seed, and database integration suite completed: 38 files passed, 1 skipped; 278 tests passed, 2 skipped.                                                                                                                                        | —                                                                                                                               | Completed after capturing the runner output to a temporary local log. |
+| DB-TECH-03      | PASS                                         | The completed isolated database suite exercised representative constraints and relationships.                                                                                                                                                                                                                            | —                                                                                                                               | —                                                                     |
+| DB-TECH-04      | PASS                                         | The completed isolated database suite exercised transactional rollback/consistency coverage.                                                                                                                                                                                                                             | —                                                                                                                               | —                                                                     |
+| DB-TECH-05      | PASS                                         | The completed isolated database suite includes representative query-plan/index integration coverage.                                                                                                                                                                                                                     | —                                                                                                                               | —                                                                     |
+| DB-TECH-06      | PASS                                         | Aggregate-only deployed database check found 3,207,623 deliveries, 14,020 fixtures, and 4 releases. Release metadata classifies one release as `local` and three as `dev`; all declare `published-accepted-deliveries` scope with 3,207,110 events.                                                                      | This verifies the deployed dev environment; it does not represent an assertion about a separately named production environment. | â€”                                                                   |
+| WRK-TECH-01     | PASS                                         | Internal status at 2026-10-07T11:34:38Z was `ready`: database up (169 ms); object storage up (5 ms); Service Bus up (59 ms). Earlier dependency-failure logs were transient/historical.                                                                                                                                  | —                                                                                                                               | —                                                                     |
+| WRK-TECH-02     | PASS                                         | Live probe `109202de-70c9-4b3b-9328-7d704e1f7486` was received; verified worker dependencies; and completed at 2026-10-07T11:36:50Z.                                                                                                                                                                                     | —                                                                                                                               | —                                                                     |
+| WRK-TECH-03     | PASS                                         | Peek-only inspection classified all 19 historical DLQ messages without receiving, completing, replaying, resending, deleting, or purging any message. The 19 are 11 `BatchValidationRetryBudgetExhausted`; 3 `UnsupportedJobContract`; 2 `AttemptBudgetExhausted`; 2 `MaxDeliveryCountExceeded`; and 1 `JobNotRunnable`. | Retry/max-delivery mechanisms do not by themselves establish an infrastructure, RBAC, or network root cause.                    | â€”                                                                   |
+| WRK-TECH-04     | PASS                                         | The final-candidate worker suite (17 files; 125 tests) exercised transient redelivery, already-completed delivery replay, and duplicate dataset-release prevention in its supported integration paths.                                                                                                                   | â€”                                                                                                                             | â€”                                                                   |
+| WRK-TECH-05     | PASS                                         | The final-candidate worker suite (17 files; 125 tests) exercised interrupted object cleanup, lease release, and resumed publication on redelivery. No destructive deployed restart was needed.                                                                                                                           | â€”                                                                                                                             | â€”                                                                   |
 
 ## Commands / deterministic steps
 
@@ -80,13 +80,13 @@ At 2026-10-07, the `batch-ingestion` dead-letter subqueue contained 19 messages.
 Explorer **Peek Mode** was used. The inspection was non-destructive: no historical message was
 received, completed, replayed, resent, deleted, or purged.
 
-| Classification | Count | Safe interpretation |
-| --- | ---: | --- |
-| `BatchValidationRetryBudgetExhausted` | 11 | Version-1 `batch.validate` jobs for batches 1, 2, 3, 4, 35, and 57â€“62 exhausted the validation retry budget and require operator attention. |
-| `UnsupportedJobContract` | 3 | Unsupported command/version contracts; includes one diagnostic command and two `dataset-release.generate` commands labelled `local`. |
-| `AttemptBudgetExhausted` | 2 | Both refer to the same dev dataset-release job `236a8529-9e11-4c00-a5ad-688dabf6e973`; do not treat them as separate incidents. |
-| `MaxDeliveryCountExceeded` | 2 | One is the same dataset-release job above; one is `batch.publish` for batch 27. The broker stopped delivery after five attempts. |
-| `JobNotRunnable` | 1 | The same dev dataset-release job above was not runnable. |
+| Classification                        | Count | Safe interpretation                                                                                                                           |
+| ------------------------------------- | ----: | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BatchValidationRetryBudgetExhausted` |    11 | Version-1 `batch.validate` jobs for batches 1, 2, 3, 4, 35, and 57â€“62 exhausted the validation retry budget and require operator attention. |
+| `UnsupportedJobContract`              |     3 | Unsupported command/version contracts; includes one diagnostic command and two `dataset-release.generate` commands labelled `local`.          |
+| `AttemptBudgetExhausted`              |     2 | Both refer to the same dev dataset-release job `236a8529-9e11-4c00-a5ad-688dabf6e973`; do not treat them as separate incidents.               |
+| `MaxDeliveryCountExceeded`            |     2 | One is the same dataset-release job above; one is `batch.publish` for batch 27. The broker stopped delivery after five attempts.              |
+| `JobNotRunnable`                      |     1 | The same dev dataset-release job above was not runnable.                                                                                      |
 
 The safe message metadata establishes the terminal routing mechanism, not the underlying cause. In
 particular, retained evidence does **not** establish an infrastructure, RBAC, or network cause for
