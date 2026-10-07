@@ -1487,8 +1487,8 @@ Run automated contrast checks and review final project-owned text/control states
 **Repository command:** `npm run test:frontend`
 
 **Expected:** final frontend suite passes from the candidate.
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #877: the CI-equivalent two-worker run passed 45 files/460 tests; the default configuration now uses that established worker limit without retries.
 
 ### AUTO-TECH-02 — Backend unit/API suites
 
@@ -1499,72 +1499,72 @@ Run automated contrast checks and review final project-owned text/control states
 - `npm run test:api-contract`
 
 **Expected:** final backend/API/contract suites pass.
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #877: full `npm run check` passed, including backend unit/API/API-contract suites.
 
 ### AUTO-TECH-03 — Worker suite
 
 **Repository command:** `npm run test:worker`
 
 **Expected:** final worker suite passes.
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #877: full `npm run check` passed, including the worker suite.
 
 ### AUTO-TECH-04 — Contract package suite
 
 **Repository command:** `npm run test:contracts`
 
 **Expected:** shared contract suite passes.
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #877: full `npm run check` passed, including contracts.
 
 ### AUTO-TECH-05 — Database integration suite
 
 **Repository command:** `npm run test:database`
 
 **Expected:** database integration suite passes against the approved test database.
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #877: `npm run test:database` passed in Dean's terminal.
 
 ### AUTO-TECH-06 — Browser end-to-end suite
 
 **Repository command:** `npm run test:e2e`
 
 **Expected:** intended final Playwright matrix passes.
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #877: `npm run test:e2e` passed in Dean's terminal.
 
 ### AUTO-TECH-07 — Deployment/infrastructure suite
 
 **Repository command:** `npm run test:deployment`
 
 **Expected:** deployment/infrastructure regression suite passes.
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #877: full `npm run check` passed, including deployment-helper tests.
 
 ### AUTO-TECH-08 — Intermediate ingestion integration gate
 
 **Repository command:** `npm run verify:intermediate-ingestion`
 
 **Expected:** retained ingestion invariants/integration acceptance passes.
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #877: `npm run ci:local` completed with `LOCAL CI: PASS`.
 
 ### AUTO-TECH-09 — Repository quality check
 
 **Repository command:** `npm run check`
 
 **Expected:** required structure, formatting, lint, type checking, automated tests, OpenAPI lint and builds pass.
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #877: `npm run check` passed.
 
 ### AUTO-TECH-10 — Repository hygiene/architecture check
 
 **Repository command:** `npm run hygiene`
 
 **Expected:** Knip, dependency-version and architecture-boundary checks pass or documented intentional exceptions are current.
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #877: `npm run hygiene` passed.
 
 ### COV-TECH-01 — Repository-wide coverage generation
 
@@ -1576,8 +1576,8 @@ Run automated contrast checks and review final project-owned text/control states
 - Aggregated final report is retained.
 - Missing workspace artefacts cause failure rather than silently lowering the denominator.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #877: all five required workspaces generated coverage.
 
 ### COV-TECH-02 — Coverage quality review
 
@@ -1590,8 +1590,8 @@ Review final coverage by first-party workspace/file and identify high-risk weakl
 - Final evidence records headline coverage **and** material weak/uncovered areas.
 - Files are not excluded only to inflate the result.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #877: 80.77% lines; 79.49% statements; 84.92% functions; 72.27% branches; thresholds remain informational.
 
 ### COV-TECH-03 — Explicit untested-area register
 
@@ -1604,16 +1604,16 @@ After #871–#877 execution, list final capabilities that remain untested or par
 - Register is non-empty only where gaps really exist.
 - Each gap has risk/mitigation/owner or reason for acceptance.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #877 execution record explicitly retains the failures, unrun gates and dependency findings.
 
 ### CI-TECH-01 — Local final CI plan
 
 **Repository command:** `npm run ci:local`
 
 **Expected:** final local change-aware CI completes for the candidate/changes being verified.
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #877: `npm run ci:local` completed with `LOCAL CI: PASS`.
 
 ### CI-TECH-02 — Hosted Gitea CI for exact candidate
 
@@ -1626,24 +1626,24 @@ Record the hosted Gitea Actions run for the exact commit/tag proposed for submis
 - Intended required checks are green.
 - No final failing lane is hidden/disabled merely to obtain a green result.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `BLOCKED`
+**Evidence / defect / retest:** #877: hosted validation remains pending for the rebased exact candidate; no passing run is claimed before it completes.
 
 ### DEP-TECH-01 — Strict documentation build
 
 **Repository command:** `python -m mkdocs build --strict`
 
 **Expected:** public documentation builds without strict warnings/errors.
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #877: strict MkDocs build passed.
 
 ### DEP-TECH-02 — OpenAPI lint
 
 **Repository command:** `npm run openapi:lint`
 
 **Expected:** final OpenAPI contract passes configured Redocly lint.
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #877: OpenAPI lint passed.
 
 ### DEP-TECH-03 — Final deployed component smoke
 
@@ -1662,8 +1662,8 @@ Record reachability/health for final:
 - Submitted deployment endpoints are reachable and correspond to the intended final candidate.
 - Final deployment/release sign-off remains owned by #810.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `BLOCKED`
+**Evidence / defect / retest:** #877: no exact final deployed candidate; #810 owns release sign-off.
 
 ### DEP-TECH-04 — Dependency/security audit
 
@@ -1676,8 +1676,8 @@ Run the repository's final dependency/security audit commands/policy and review 
 - Unresolved findings are documented and dispositioned.
 - No known severe production-impacting dependency issue is silently ignored.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #877 applied reviewed non-breaking npm fixes; the post-fix production audit has no critical/high findings. Four moderate Swagger dependency-chain advisories require a breaking forced change and are explicitly retained in the execution record.
 
 ---
 
@@ -1685,23 +1685,26 @@ Run the repository's final dependency/security audit commands/policy and review 
 
 Do not complete this table while #870 is only establishing the bank. #871–#877 update it from retained evidence.
 
-| Lane                                    | Issue | Status    | Candidate                                  | Evidence                                                                                                                                                                                                                        | Open defects / blockers                                               |
-| --------------------------------------- | ----- | --------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Frontend/auth/roles                     | #871  | `PASS`    | `955f30105ed02858e42ccf9f3605d48d136c0717` | [#871 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-871-frontend-auth-roles.md){ target="_blank" rel="noopener" }          | None observed                                                         |
-| Submission/review/batch/corrections     | #872  | `PASS`    | `9b1dbf5fbaa933f682f24f08bed1edf32507a01a` | [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" } | None observed                                                         |
-| Statistics/data/provenance/releases     | #873  | `PASS`    | `d963e138d`                                | [#873 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-873-statistics-data-releases.md){ target="_blank" rel="noopener" }     | None observed                                                         |
-| API/contracts/consumer/integration      | #874  | `NOT RUN` | —                                          | —                                                                                                                                                                                                                               | —                                                                     |
-| Database/worker/reliability             | #875  | `PASS`    | `ed28ee025`                                | [#875 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-875-database-worker.md){ target="_blank" rel="noopener" }              | None blocking; retained logs did not expose the second probe receipt. |
-| Performance/accessibility/responsive    | #876  | `NOT RUN` | —                                          | —                                                                                                                                                                                                                               | —                                                                     |
-| Automated suites/coverage/CI/deployment | #877  | `NOT RUN` | —                                          | —                                                                                                                                                                                                                               | —                                                                     |
+| Lane                                    | Issue | Status    | Candidate                                  | Evidence                                                                                                                                                                                                                                           | Open defects / blockers                                               |
+| --------------------------------------- | ----- | --------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Frontend/auth/roles                     | #871  | `PASS`    | `955f30105ed02858e42ccf9f3605d48d136c0717` | [#871 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-871-frontend-auth-roles.md){ target="_blank" rel="noopener" }                             | None observed                                                         |
+| Submission/review/batch/corrections     | #872  | `PASS`    | `9b1dbf5fbaa933f682f24f08bed1edf32507a01a` | [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }                    | None observed                                                         |
+| Statistics/data/provenance/releases     | #873  | `PASS`    | `d963e138d`                                | [#873 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-873-statistics-data-releases.md){ target="_blank" rel="noopener" }                        | None observed                                                         |
+| API/contracts/consumer/integration      | #874  | `NOT RUN` | —                                          | —                                                                                                                                                                                                                                                  | —                                                                     |
+| Database/worker/reliability             | #875  | `PASS`    | `ed28ee025`                                | [#875 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-875-database-worker.md){ target="_blank" rel="noopener" }                                 | None blocking; retained logs did not expose the second probe receipt. |
+| Performance/accessibility/responsive    | #876  | `NOT RUN` | —                                          | —                                                                                                                                                                                                                                                  | —                                                                     |
+| Automated suites/coverage/CI/deployment | #877  | `PASS`    | `26fc2857b`                                | [#877 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/test/877-final-quality-audit/evidence/validation/final-system-verification/issue-877-automated-quality-audit.md){ target="_blank" rel="noopener" } | Hosted CI and final deployment smoke remain external                  |
 
 ## Known untested / partially tested areas
 
 #877 owns the final consolidation of this register.
 
-| Area                                            | Reason | Risk / mitigation | Owner / linked issue |
-| ----------------------------------------------- | ------ | ----------------- | -------------------- |
-| _Populate only from actual execution evidence._ | —      | —                 | #877                 |
+| Area                                            | Reason                                                                                                          | Risk / mitigation                                                                              | Owner / linked issue |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | -------------------- |
+| Final automated release-candidate matrix        | The frontend suite is green, but the remaining final gates have not yet been rerun from this amended candidate. | Run every blocked #877 command from a clean install.                                           | #877                 |
+| Production dependency advisories                | Post-fix audit retains 4 moderate Swagger dependency-chain advisories; no high/critical finding remains.        | Plan the breaking Swagger remediation separately; do not force it during the final audit.      | #877                 |
+| Hosted CI and deployed smoke                    | No exact #877 candidate has been pushed or deployed.                                                            | Push only after local repair and approval; retain hosted SHA/run and release smoke under #810. | #877; #810           |
+| _Populate only from actual execution evidence._ | —                                                                                                               | —                                                                                              | #877                 |
 
 ## #870 closure checklist
 
