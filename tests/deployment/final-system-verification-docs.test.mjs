@@ -220,5 +220,8 @@ test('issue 877 records every automated quality-gate outcome explicitly', () => 
     assert.match(bank, new RegExp(String.raw`### ${verificationId}(?:(?!### )[\\s\\S])*?\\*\\*Status:\\*\\* \\x60?(?:PASS|FAIL|BLOCKED|N\\/A)\\x60?`));
   }
   assert.match(issue877Evidence, /Untested \/ partial coverage/i);
-  assert.match(issue877Evidence, /no passwords, bearer tokens, OAuth credentials, API keys or service secrets/i);
+  assert.match(
+    issue877Evidence,
+    /no passwords, bearer tokens, OAuth credentials, API keys or service secrets/i,
+  );
 });
