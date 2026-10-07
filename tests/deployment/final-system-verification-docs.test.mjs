@@ -79,7 +79,10 @@ test('bank uses actual repository verification commands', () => {
 });
 
 test('MkDocs and validation index expose final system verification', () => {
-  assert.match(nav, /Final System Verification Bank:\s+testing\/final-system-verification\.md/);
+  assert.match(
+    nav,
+    /Final System Verification(?: Bank)?:\s+testing\/final-system-verification\.md/,
+  );
   assert.match(
     evidenceIndex,
     /\[Final system verification bank\]\(\.\.\/testing\/final-system-verification\.md\)/i,
@@ -114,4 +117,45 @@ test('issue 873 records final statistics and reproducibility verification explic
   assert.match(issue873Evidence, /278 tests passed; 1 file skipped; 2 tests skipped/);
   assert.match(issue873Evidence, /269 tests passed/);
   assert.match(issue873Evidence, /No new correctness failure was observed/i);
+});
+
+test('issue 871 frontend and role verification has a complete retained execution record', () => {
+  const record = readFileSync(
+    'evidence/validation/final-system-verification/issue-871-frontend-auth-roles.md',
+    'utf8',
+  );
+
+  for (const verificationId of [
+    'AUTH-TECH-01',
+    'AUTH-TECH-02',
+    'AUTH-TECH-03',
+    'AUTH-TECH-04',
+    'AUTH-TECH-05',
+    'AUTH-TECH-06',
+    'AUTH-TECH-07',
+    'PUB-TECH-01',
+    'PUB-TECH-02',
+    'PUB-TECH-03',
+    'PUB-TECH-04',
+    'PUB-TECH-05',
+    'PUB-TECH-06',
+    'PUB-TECH-07',
+  ]) {
+    assert.match(
+      record,
+      new RegExp(`\\|\\s+${verificationId}\\s+\\|\\s+(?:PASS|FAIL|BLOCKED|N\\/A)\\s+\\|`),
+    );
+    assert.match(
+      bank,
+      new RegExp(
+        String.raw`### ${verificationId}(?:(?!### )[\s\S])*?\*\*Status:\*\* \x60?(?:PASS|FAIL|BLOCKED|N\/A)\x60?`,
+      ),
+    );
+  }
+
+  assert.match(
+    record,
+    /no passwords, bearer tokens, OAuth credentials, API keys or service secrets/i,
+  );
+  assert.match(record, /test:e2e --/);
 });

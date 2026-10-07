@@ -110,8 +110,8 @@ The formal user-testing task bank remains authoritative for participant-facing g
 - Private controls are not exposed as usable authenticated actions.
 - Public API reads used by these pages do not unexpectedly require an authenticated session.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #871 deterministic execution record; no product defect observed.
 
 ### AUTH-TECH-02 — Sign-in completion
 
@@ -135,8 +135,8 @@ The formal user-testing task bank remains authoritative for participant-facing g
 - Account/session state is consistent between frontend and protected backend requests.
 - Authentication cancellation/failure does not create a false signed-in state.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #871 deterministic execution record; no product defect observed.
 
 ### AUTH-TECH-03 — Sign-out clears private session state
 
@@ -155,8 +155,8 @@ The formal user-testing task bank remains authoritative for participant-facing g
 - Protected actions are rejected after sign-out.
 - Public browsing continues normally.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #871 deterministic execution record; no product defect observed.
 
 ### AUTH-TECH-04 — Session refresh/reopen behaviour
 
@@ -174,8 +174,8 @@ The formal user-testing task bank remains authoritative for participant-facing g
 - Valid supported sessions survive refresh/reopen without corrupting account state.
 - Expired/invalid state is handled safely rather than leaving stale privileged controls.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #871 deterministic execution record; no product defect observed.
 
 ### AUTH-TECH-05 — Role and permission boundary
 
@@ -198,8 +198,8 @@ For public/viewer, submitter, reviewer and administrator roles that exist in the
 - Each role can perform only its authorised actions.
 - Server-side authorisation rejects forbidden operations even if a route/request is attempted directly.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #871 deterministic execution record; no product defect observed.
 
 ### AUTH-TECH-06 — Account deletion boundary
 
@@ -221,8 +221,8 @@ For public/viewer, submitter, reviewer and administrator roles that exist in the
 - Completed deletion removes/invalidates the account according to documented provider/application ownership.
 - Evidence contains no credentials or tokens.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #871 deterministic execution record; no product defect observed.
 
 ### AUTH-TECH-07 — Password recovery ownership/path
 
@@ -239,8 +239,8 @@ For public/viewer, submitter, reviewer and administrator roles that exist in the
 - Recovery behaviour matches final security/authentication documentation.
 - No application secret is exposed.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #871 deterministic execution record; no product defect observed.
 
 ### PUB-TECH-01 — Public fixture discovery and detail
 
@@ -257,8 +257,8 @@ For public/viewer, submitter, reviewer and administrator roles that exist in the
 - Fixture discovery and detail routes return valid data.
 - No broken route, uncaught frontend error or incorrect empty state occurs.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #871 deterministic execution record; no product defect observed.
 
 ### PUB-TECH-02 — Public statistics discovery
 
@@ -275,8 +275,8 @@ For public/viewer, submitter, reviewer and administrator roles that exist in the
 - Statistics routes render successfully.
 - Displayed values correspond to the selected fixture/scope.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #871 deterministic execution record; no product defect observed.
 
 ### PUB-TECH-03 — Filter/narrowing behaviour
 
@@ -293,8 +293,8 @@ For public/viewer, submitter, reviewer and administrator roles that exist in the
 - Selected scope is reflected consistently in UI and API result.
 - Clearing/changing the filter does not retain stale data.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #871 deterministic execution record; no product defect observed.
 
 ### PUB-TECH-04 — Export behaviour
 
@@ -312,8 +312,8 @@ For public/viewer, submitter, reviewer and administrator roles that exist in the
 - File format/content matches the documented selected scope.
 - Export does not leak privileged fields.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #871 deterministic execution record; no product defect observed.
 
 ### PUB-TECH-05 — API Explorer discovery and deep link
 
@@ -330,8 +330,8 @@ For public/viewer, submitter, reviewer and administrator roles that exist in the
 - Explorer is publicly discoverable and deep-linkable.
 - Route refresh does not return an unrelated SPA/server error.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #871 deterministic execution record; no product defect observed.
 
 ### PUB-TECH-06 — Meaningful comparison flow
 
@@ -348,8 +348,8 @@ For public/viewer, submitter, reviewer and administrator roles that exist in the
 - Comparison uses compatible scope/units.
 - Values do not silently mix fixture/season/career scopes.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #871 deterministic execution record; no product defect observed.
 
 ### PUB-TECH-07 — Loading, empty and failure states
 
@@ -368,8 +368,8 @@ Exercise at least one deterministic case for:
 - The application shows an appropriate state/message.
 - No unhandled crash or misleading stale data is shown.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #871 deterministic execution record; no product defect observed.
 
 ---
 
