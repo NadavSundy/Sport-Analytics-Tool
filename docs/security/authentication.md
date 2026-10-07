@@ -603,9 +603,9 @@ that follow-up; its final dependency-audit result is recorded only after the upg
 full verification have been reviewed.
 
 The original finding remains in
-[the Issue #274 security/privacy audit evidence](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-274-security-privacy-dependency-audit.md),
+[the Issue #274 security/privacy audit evidence](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-274-security-privacy-dependency-audit.md){ target="_blank" rel="noopener" },
 and the migration record is retained in
-[the Issue #329 Vite/Vitest evidence](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-329-vite-vitest-toolchain-migration.md).
+[the Issue #329 Vite/Vitest evidence](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-329-vite-vitest-toolchain-migration.md){ target="_blank" rel="noopener" }.
 
 ## AI Declaration
 

@@ -1,4 +1,4 @@
-﻿site_name: Sport Analytics Tool
+site_name: Sport Analytics Tool
 site_description: Public documentation for the COMS3011A Sport Analytics Tool
 repo_name: Git Push Pray / Sport Analytics Tool
 repo_url: https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool
@@ -42,90 +42,37 @@ extra_javascript:
 
 nav:
   - Home: index.md
+
   - Getting Started:
       - Overview: getting-started.md
       - Local Setup: development/setup.md
       - Technology Stack: development/technology-stack.md
       - Environment Variables: environment.md
       - Repository Structure: architecture/repository-structure.md
+
   - Product & API:
       - Overview: product-and-api.md
-      - API:
-          - API Overview: api/overview.md
-          - Final API Audit: api/final-audit.md
-          - OpenAPI Specification: api/openapi.md
-          - OpenAPI Contract Testing: api/contract-testing.md
-          - Public Read API: api/public-read.md
-          - Direct Event Submissions: api/submissions.md
-          - Batch Ingestion & Review: api/batches.md
-          - Consumer API Keys & Limits: api/consumer-keys.md
-          - Weather API: api/weather.md
-          - Analytics Query: api/analytics-query.md
-          - Versioning & Deprecation: api/versioning.md
-      - Statistics & Exports:
-          - Fixture Statistics: statistics/fixture-statistics.md
-          - Participant Aggregates: statistics/participant-aggregates.md
-          - Dataset Exports & Releases: data/dataset-exports.md
-      - Contracts & Mapping:
-          - Shared Contracts: api/contracts.md
-          - Provenance & Audit: api/provenance.md
-          - Season-upload Contract: api/season-upload-contract.md
-          - Submission Field Mapping: api/submission-field-mapping.md
-          - Event-to-statistic Mapping: api/event-statistic-mapping.md
-          - Batch Submission Packages: data/batch-submission-packages.md
-      - Domain & Source Data:
-          - Sport Domain Definition: requirements/sport-domain-definition.md
-          - Cricsheet Data Source: data/cricsheet.md
-  - Architecture & Data:
+      - API Overview: api/overview.md
+      - OpenAPI & API Explorer: api/openapi.md
+      - Public Read API: api/public-read.md
+      - Event Submissions: api/submissions.md
+      - Batch Ingestion & Review: api/batches.md
+      - Fixture Statistics: statistics/fixture-statistics.md
+      - Participant Aggregates: statistics/participant-aggregates.md
+      - Dataset Exports & Releases: data/dataset-exports.md
+      - Consumer API Access: api/consumer-keys.md
+      - Analytics Query: api/analytics-query.md
+      - Weather Integration: api/weather.md
+
+  - Architecture, Data & Security:
       - Overview: architecture-and-data.md
-      - Architecture:
-          - Architecture Overview: architecture/overview.md
-          - System Architecture & Roadmap: architecture/system-architecture.md
-          - Batch Ingestion Pipeline: architecture/batch-ingestion-pipeline.md
-      - Database:
-          - Database Architecture Guide: database/guide.md
-          - Final Database Audit: database/final-audit.md
-          - Database Overview: database/overview.md
-          - Event Model: database/schema.md
-          - Entity Relationships: database/erd.md
-          - Access & Transactions: database/access.md
-          - Batch Persistence: database/batch-persistence.md
-      - Security:
-          - Security Overview: security/overview.md
-          - Authentication & Authorisation: security/authentication.md
-          - Roles & Permissions: security/roles-and-permissions.md
-          - Privacy & Retention: security/privacy-retention.md
-          - Password Recovery Ownership: security/password-recovery.md
-          - Authentication Provider Comparison: security/auth-provider-comparison.md
-  - Development:
-      - Overview: development/index.md
-      - Workflow & Tooling:
-          - Git Methodology: git-methodology.md
-          - Dependencies: development/dependencies.md
-          - Reference Fixtures: development/reference-fixtures.md
-          - Gitea Issue Export: development/gitea-issue-export.md
-      - Design & UX:
-          - Brand Guidelines: design/brand-guidelines.md
-          - Frontend Component Baseline: design/frontend-component-baseline.md
-          - Information Architecture & Wireframes: design/information-architecture-and-wireframes.md
-      - CI/CD:
-          - CI/CD & Quality Gates: development/ci-cd.md
-          - Local CI: development/local-ci.md
-  - Deployment & Operations:
-      - Overview: deployment/overview.md
-      - Hosting:
-          - Azure Application Hosting: deployment/azure.md
-          - Azure Hosting Decision Record: adr/0003-azure-hosting.md
-          - Backend Container Apps: deployment/azure-backend.md
-          - Frontend Cloudflare Pages: deployment/frontend-cloudflare-pages.md
-          - Asynchronous Worker: deployment/azure-worker.md
-          - Documentation Cloudflare Pages: deployment/cloudflare_pages.md
-      - Capacity, Acceptance & Recovery:
-          - Hosting Capacity & Recovery Strategy: deployment/hosting-capacity-and-recovery-strategy.md
-          - Production-scale Acceptance: deployment/production-scale-acceptance.md
-          - Azure Deployment Recovery: deployment/azure-app-service-recovery.md
-          - Private Object Storage Operations: deployment/object-storage-operations.md
-          - Dedicated CI Runner Operations: deployment/runner-operations.md
+      - Architecture Overview: architecture/overview.md
+      - Database Architecture Guide: database/guide.md
+      - Final Database Audit: database/final-audit.md
+      - Security Overview: security/overview.md
+      - Authentication & Authorisation: security/authentication.md
+      - Roles & Permissions: security/roles-and-permissions.md
+
   - Testing & Quality:
       - Overview: testing/index.md
       - Automated Testing Strategy: development/testing.md
@@ -133,28 +80,103 @@ nav:
       - Representative-scale Performance: development/performance-baseline.md
       - User Testing:
           - User Testing Overview: testing/user-testing-overview.md
-          - User Testing Protocol: testing/user-testing-protocol.md
-          - User Testing Task Bank: testing/user-testing-task-bank.md
-          - Sprint 2 User Feedback Summary: testing/user-testing-sprint-2-summary.md
-          - Sprint 3 User Feedback Summary: testing/user-testing-sprint-3-summary.md
-      - Intermediate Ingestion Acceptance: testing/intermediate-ingestion-acceptance.md
+          - Sprint 2 User Testing Summary: testing/user-testing-sprint-2-summary.md
+          - Sprint 3 User Testing Summary: testing/user-testing-sprint-3-summary.md
       - Bug Tracking: testing/bug-tracking.md
-  - Project Process & Evidence:
-      - Overview: process/index.md
+
+  - Deployment & CI/CD:
+      - Deployment Overview: deployment/overview.md
+      - CI/CD & Quality Gates: development/ci-cd.md
+      - Production-scale Acceptance: deployment/production-scale-acceptance.md
+      - Frontend Hosting: deployment/frontend-cloudflare-pages.md
+      - Backend Hosting: deployment/azure-backend.md
+      - Worker Hosting: deployment/azure-worker.md
+
+  - Methodology:
+      - Overview: process/methodology-overview.md
       - Project Methodology: project_methodology.md
-      - Project Backlog & Milestone Plan: planning/project-backlog.md
-      - Sprint Evidence: process/sprint-evidence.md
-      - Team Meeting Transcripts: process/team-meeting-transcripts.md
-      - Requirements Traceability:
-          - Sprint 1: planning/sprint-1-requirements-traceability.md
-          - Sprint 2: planning/sprint-2-requirements-traceability.md
-          - Sprint 3: planning/sprint-3-requirements-traceability.md
-          - Final / Milestone 4: planning/final-requirements-rubric-traceability.md
+      - Git Methodology: git-methodology.md
+      - Methodology in Practice: process/sprint-evidence.md
+
+  - Project Records & Evidence:
+      - Overview: process/index.md
       - Decisions Index: process/decisions.md
+      - Team Meeting Transcripts: process/team-meeting-transcripts.md
       - Testing & Validation Evidence: process/validation-and-user-testing.md
-      - AI Use:
-          - Process & Policy: ai/usage.md
-          - AI Use & Evidence: process/ai-use-evidence.md
+      - AI Process & Policy: ai/usage.md
+      - AI Use & Evidence: process/ai-use-evidence.md
+
+      - Historical & Reference:
+          - Overview: process/reference-and-history.md
+
+          - Architecture & Data Reference:
+              - System Architecture & Roadmap: architecture/system-architecture.md
+              - Batch Ingestion Pipeline: architecture/batch-ingestion-pipeline.md
+              - Batch Submission Packages: data/batch-submission-packages.md
+              - Cricsheet Data Source: data/cricsheet.md
+              - Sport Domain Definition: requirements/sport-domain-definition.md
+              - Database Overview: database/overview.md
+              - Database Schema: database/schema.md
+              - Entity Relationship Reference: database/erd.md
+              - Database Access: database/access.md
+              - Batch Persistence: database/batch-persistence.md
+
+          - API & Contract Reference:
+              - Contract Testing: api/contract-testing.md
+              - Shared API Contracts: api/contracts.md
+              - Provenance & Audit: api/provenance.md
+              - Season Upload Contract: api/season-upload-contract.md
+              - Submission Field Mapping: api/submission-field-mapping.md
+              - Event-to-Statistic Mapping: api/event-statistic-mapping.md
+              - API Versioning & Deprecation: api/versioning.md
+
+          - Security Reference:
+              - Authentication Provider Comparison: security/auth-provider-comparison.md
+              - Password Recovery: security/password-recovery.md
+              - Privacy & Retention: security/privacy-retention.md
+
+          - Testing Reference:
+              - User Testing Protocol: testing/user-testing-protocol.md
+              - User Testing Task Bank: testing/user-testing-task-bank.md
+              - Intermediate Ingestion Acceptance: testing/intermediate-ingestion-acceptance.md
+              - Local CI Reference: development/local-ci.md
+              - Reference Fixtures: development/reference-fixtures.md
+
+          - Design & UX Reference:
+              - Brand Guidelines: design/brand-guidelines.md
+              - Frontend Component Baseline: design/frontend-component-baseline.md
+              - Information Architecture & Wireframes: design/information-architecture-and-wireframes.md
+
+          - Deployment & Operations History:
+              - Azure Application Hosting: deployment/azure.md
+              - Azure Hosting Decision: adr/0003-azure-hosting.md
+              - Cloudflare Pages Reference: deployment/cloudflare_pages.md
+              - Hosting Capacity & Recovery: deployment/hosting-capacity-and-recovery-strategy.md
+              - Azure App Service Recovery History: deployment/azure-app-service-recovery.md
+              - Object Storage Operations: deployment/object-storage-operations.md
+              - Runner Operations: deployment/runner-operations.md
+
+          - Planning & Sprint History:
+              - Project Backlog & Milestone Plan: planning/project-backlog.md
+              - Sprint 1 Requirements Traceability: planning/sprint-1-requirements-traceability.md
+              - Sprint 2 Requirements Traceability: planning/sprint-2-requirements-traceability.md
+              - Sprint 3 Requirements Traceability: planning/sprint-3-requirements-traceability.md
+
+          - Development Reference:
+              - Development Guide Index: development/index.md
+              - Dependency Reference: development/dependencies.md
+              - Gitea Issue Export Reference: development/gitea-issue-export.md
+
+          - Final API Gap Analyses:
+              - API Deprecation Lifecycle: validation/issue-608-api-deprecation-lifecycle-gap-analysis.md
+              - API Usage Visibility: validation/issue-610-api-usage-gap-analysis.md
+              - Advanced Aggregate Query: validation/issue-611-advanced-aggregate-query-gap-analysis.md
+
+  - Final Submission:
+      - Final Submission Reference: final-submission.md
+      - Requirements & Rubric Traceability: planning/final-requirements-rubric-traceability.md
+      - Final API Audit: api/final-audit.md
+      - Final System Verification Bank: testing/final-system-verification.md
 
 markdown_extensions:
   - admonition

@@ -122,7 +122,7 @@ The established hosted baseline confirms:
 
 - [Architecture & Data](../architecture-and-data.md) — component authority, database and security boundaries.
 - [Testing & Quality](../testing/index.md) — automated, performance and acceptance verification.
-- [Project Process & Evidence](../process/index.md) — retained deployment/validation evidence and Sprint context.
+- [Project Records & Evidence](../process/index.md) — retained deployment/validation evidence and Sprint context.
 
 ## AI Declaration
 

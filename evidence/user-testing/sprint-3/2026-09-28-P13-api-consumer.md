@@ -39,7 +39,7 @@ This session covers `PUB-05`, `API-02`, `API-03`, and `API-04`.
 
 ---
 
-# Task â€” `PUB-05` â€” API Discovery
+# Task — `PUB-05` — API Discovery
 
 **Task goal**
 
@@ -73,7 +73,7 @@ This session covers `PUB-05`, `API-02`, `API-03`, and `API-04`.
 
 **Description:** A technically experienced prospective API consumer could discover the API documentation and available operations, but could not determine how to request consumer access or obtain an API key. The same problem was independently identified again in post-test feedback.
 
-**Severity:** **S2 â€” High**
+**Severity:** **S2 — High**
 
 **Severity rationale:** The API itself remains discoverable and understandable, but a new external consumer cannot independently complete the onboarding path needed to make authenticated consumer requests. This is a major obstacle in an important API workflow, although access can currently be supplied out-of-band.
 
@@ -85,7 +85,7 @@ This session covers `PUB-05`, `API-02`, `API-03`, and `API-04`.
 
 ---
 
-# Task â€” `API-02` â€” Retrieve and Understand Aggregate Data
+# Task — `API-02` — Retrieve and Understand Aggregate Data
 
 **Task goal**
 
@@ -117,7 +117,7 @@ This session covers `PUB-05`, `API-02`, `API-03`, and `API-04`.
 
 ---
 
-# Task â€” `API-03` â€” Follow a Deprecation Path
+# Task — `API-03` — Follow a Deprecation Path
 
 **Task goal**
 
@@ -149,7 +149,7 @@ This session covers `PUB-05`, `API-02`, `API-03`, and `API-04`.
 
 ---
 
-# Task â€” `API-04` â€” Find a Consumer's API Usage
+# Task — `API-04` — Find a Consumer's API Usage
 
 **Task goal**
 
@@ -234,7 +234,7 @@ No additional findings are recorded from this session.
 
 # Follow-Up Gitea Issue
 
-## P13-F01 â€” #783
+## P13-F01 — #783
 
 **Title:** Document how external API consumers request access and obtain an API key
 
@@ -242,7 +242,7 @@ No additional findings are recorded from this session.
 
 **Task ID:** `PUB-05`
 
-**Severity:** S2 â€” High
+**Severity:** S2 — High
 
 **Description:** During Sprint 3 formal user testing, a technically experienced API consumer could easily locate the API Explorer and understand the available operations, but could not find any documented path for requesting API access or obtaining a consumer key.
 

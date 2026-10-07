@@ -43,6 +43,7 @@ import {
   reviewBatch,
 } from '../submissions/batch-api';
 import { useBatchCollectionsRevision } from '../submissions/batch-collection-state';
+import { usePageTitle } from '../../components/usePageTitle';
 
 const statusLabels: Record<BatchStatus['status'], string> = {
   received: 'Received',
@@ -2367,9 +2368,7 @@ export function BatchReviewWorkspacePage() {
   const { isAuthenticated, isLoading } = useAuth();
   const { batchReference } = useParams();
   const location = useLocation();
-  useEffect(() => {
-    document.title = `${batchReference ? 'Review submission' : 'Review queue'} | Stat'sTheGame`;
-  }, [batchReference]);
+  usePageTitle(batchReference ? 'Review submission' : 'Review queue');
   if (!isLoading && !isAuthenticated)
     return <Navigate to={signInPathFor(`${location.pathname}${location.search}`)} replace />;
   return (

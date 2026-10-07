@@ -258,7 +258,7 @@ The shared-contract suite covers a readable-context fixture, a multi-fixture
 season payload with reversed arrival order, duplicate delivery/occurrence
 values, corrections, ambiguous participants, invalid source references, and a
 valid/invalid multi-file manifest. The schema is exported from
-`@sport-analytics/contracts` for the future receipt endpoint and parsers.
+`@sport-analytics/contracts` for the implemented receipt endpoint and parsers.
 
 ## Batch status and result reports
 
@@ -361,7 +361,7 @@ For acceptance evidence, exercise at least two seasons, multiple fixtures in
 each season, one invalid fixture among valid fixtures, and a replay of the same
 catalogue after the first publication.
 
-Related remediation: [#754](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/754)
+Related remediation: [#754](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/754){ target="_blank" rel="noopener" }
 restores `winner` propagation for completed v1.1 new-fixture proposals. A catalogue or new-fixture
 workflow with `outcome: "won"` must retain the winning team; this is required before rerunning the
 #598 deployed acceptance scenario.

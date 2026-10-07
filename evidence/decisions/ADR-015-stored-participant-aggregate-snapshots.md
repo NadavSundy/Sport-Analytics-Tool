@@ -1,6 +1,6 @@
 # ADR-015: Stored participant aggregates, served while current and refreshed on a read miss
 
-- **Status:** Accepted, pending PR review
+- **Status:** Accepted
 - **Date:** 2026-09-17
 - **Participants:** Ben Swartz (approved the Phase 1 strategy, the storage split and the refresh model
   for issue #592)

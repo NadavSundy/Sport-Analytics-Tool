@@ -80,7 +80,7 @@ See:
 
 The public navigation is organised by reader intent rather than by repository folder. The main
 entry points are Getting Started, Product & API, Architecture & Data, Development, Deployment &
-Operations, Testing & Quality, and Project Process & Evidence. Detailed reference pages remain
+Operations, Testing & Quality, and Project Records & Evidence. Detailed reference pages remain
 searchable and are linked from the relevant hub instead of all competing at the first navigation
 level.
 

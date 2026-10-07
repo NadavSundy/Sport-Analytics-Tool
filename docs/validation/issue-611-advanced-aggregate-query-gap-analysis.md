@@ -50,14 +50,14 @@ change.
 - #593 is closed in Gitea and the aggregate provenance surface is present;
   its stable contributor identifiers and source-submission trace are an
   available technical prerequisite.
-- #598 is still open. It is the deployed Basic/Intermediate acceptance gate,
-  and its issue explicitly says selected Advanced work must not start until it
-  passes. Consequently #611 is not release-ready under that project gate,
-  even though no additional aggregate API code is needed.
-- #612 is open and is a feature-level user-feedback closure gate. It must not
-  block implementation, but it must validate API-02 on a deployed build before
-  #611 can close. The expected task is to discover and use the leaderboard to
-  answer a meaningful aggregate question without coaching.
+- #598 subsequently completed with an authoritative **PASS**, satisfying the
+  deployed Basic/Intermediate acceptance prerequisite for selected Advanced
+  work. No additional aggregate API capability was required for #611.
+- The #612 user-feedback dependency subsequently completed. P13 successfully
+  completed `API-02` on the deployed build, independently locating and
+  interpreting aggregate cricket statistics after a neutral clarification of
+  the term `aggregate`. The final #612 gate closed as **Accepted with documented
+  limitations**.
 
 ## Verification record
 
@@ -74,3 +74,9 @@ no API test result is claimed as passing here.
 
 This record contains no credentials, tokens, cookies, production data, or
 personal user-testing observations.
+
+## AI Declaration
+
+The preceding document was generated and edited with the assistance of
+Codex[GPT-5], and later reviewed, reconciled and edited for final-state accuracy
+with the assistance of ChatGPT-Web[GPT-5.6 Sol].

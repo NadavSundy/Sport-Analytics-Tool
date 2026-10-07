@@ -21,6 +21,13 @@ N+1 query. A 31-day retention boundary is documented for scheduled cleanup.
 
 ## Gate status
 
-#594 is closed. #598 remains open; development proceeded only on the user's explicit direction.
-#612 remains an open user-feedback closure gate and must be completed by representative users on a
-deployed build; this implementation does not claim that testing or close #610.
+At implementation time #594 was closed while #598 and #612 were still outstanding gates.
+Those later completed: #598 recorded an authoritative **PASS**, and P13 successfully completed
+`API-04` on the deployed build under #612. The #612 final gate subsequently closed as
+**Accepted with documented limitations**.
+
+## AI Declaration
+
+The preceding document was generated and edited with the assistance of
+Codex[GPT-5], and later reviewed, reconciled and edited for final-state accuracy
+with the assistance of ChatGPT-Web[GPT-5.6 Sol].

@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { expectNoSkippedHeadingLevels } from '../../test/heading-outline';
 import { DatasetReleaseCataloguePage, DatasetReleaseDetailPage } from './DatasetReleasePages';
 
 const testApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1';
@@ -73,7 +74,12 @@ describe('dataset release pages', () => {
     first.unmount();
 
     renderRoute('/dataset-releases');
-    expect(await screen.findByText('No dataset releases are available')).toBeInTheDocument();
+    // Issue #800: catalogue states sit directly under the h1, so they are h2s.
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'No dataset releases are available' }),
+    ).toBeInTheDocument();
+    expectNoSkippedHeadingLevels();
+    await waitFor(() => expect(document.title).toBe("Dataset releases | Stat'sTheGame"));
   });
 
   it('shows schema, checksum, and the exact artefact download', async () => {
@@ -85,6 +91,7 @@ describe('dataset release pages', () => {
     expect(
       await screen.findByRole('heading', { name: 'Dataset 2026.09.14v1' }),
     ).toBeInTheDocument();
+    await waitFor(() => expect(document.title).toBe("Dataset 2026.09.14v1 | Stat'sTheGame"));
     expect(screen.getByText('Snapshot identity')).toBeInTheDocument();
     expect(screen.getByText(release.snapshotId)).toBeInTheDocument();
     expect(screen.getByText(release.checksum)).toBeInTheDocument();
