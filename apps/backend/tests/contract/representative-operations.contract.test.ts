@@ -295,6 +295,7 @@ describe('natural-language query operations', () => {
   function askingApp(
     definition: unknown,
     limiter?: Parameters<typeof contractApp>[0]['naturalLanguageQueryLimiter'],
+    assumptions: string[] = [],
   ) {
     return contractApp({
       participantAggregates: {
@@ -325,7 +326,7 @@ describe('natural-language query operations', () => {
           model: 'claude-haiku-4-5-20251001',
           usage: { inputTokens: 100, outputTokens: 30 },
           suggestions: [],
-          assumptions: [],
+          assumptions: assumptions as never,
         }),
       },
       ...(limiter ? { naturalLanguageQueryLimiter: limiter } : {}),
@@ -359,6 +360,70 @@ describe('natural-language query operations', () => {
         { requestBody: body },
       );
     }
+  });
+
+  // Issue #868. The request body a chat client sends and the response field it
+  // reads are both documented, so the schema and the implementation cannot drift.
+  test('POST /natural-language-queries documents a question carrying a conversation', async () => {
+    const body = {
+      question: 'What about his strike rate?',
+      conversation: [
+        {
+          question: 'What are BB McCullum career statistics?',
+          definition: {
+            kind: 'participant_statistics',
+            participant: { name: 'BB McCullum' },
+            scope: 'career',
+          },
+        },
+      ],
+    };
+
+    contract.expectResponse(
+      await request(
+        askingApp(
+          { kind: 'participant_statistics', participant: { name: 'BB McCullum' }, scope: 'career' },
+          admitting,
+        ),
+      )
+        .post(ASK)
+        .send(body)
+        .expect(200),
+      { requestBody: body },
+    );
+  });
+
+  test('POST /natural-language-queries documents an answer that assumed the competition', async () => {
+    const body = { question: 'Who has the most sixes?' };
+
+    contract.expectResponse(
+      await request(
+        askingApp(
+          { kind: 'participant_statistics', participant: { name: 'BB McCullum' }, scope: 'career' },
+          admitting,
+          ['competition'],
+        ),
+      )
+        .post(ASK)
+        .send(body)
+        .expect(200),
+      { requestBody: body },
+    );
+  });
+
+  test('POST /natural-language-queries documents its 422 for an invalid conversation', async () => {
+    const invalid = {
+      question: 'and his strike rate?',
+      conversation: [{ question: 'most runs?', definition: { kind: 'leaderboard' } }],
+    };
+
+    contract.expectResponse(
+      await request(askingApp({ kind: 'unsupported', reason: 'venue' }, admitting))
+        .post(ASK)
+        .send(invalid)
+        .expect(422),
+      { requestBody: invalid, requestIsInvalid: true },
+    );
   });
 
   test('POST /natural-language-queries documents its 422 for an invalid question', async () => {
@@ -415,6 +480,7 @@ describe('natural-language query operations', () => {
               limit: 10,
             },
           ] as never,
+          assumptions: [],
         }),
       },
       naturalLanguageQueryLimiter: admitting,

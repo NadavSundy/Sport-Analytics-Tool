@@ -107,6 +107,13 @@ test('backend Container Apps infrastructure configures the natural-language quer
     infrastructure,
     /\{ name: 'NL_QUERY_GLOBAL_DAILY_LIMIT', value: string\(nlQueryGlobalDailyLimit\) \}/,
   );
+  // Issue #868. A plain value with a template default, so no new required
+  // parameter reaches the deploy job.
+  assert.match(
+    infrastructure,
+    /\{ name: 'NL_QUERY_DEFAULT_COMPETITION', value: nlQueryDefaultCompetition \}/,
+  );
+  assert.match(infrastructure, /param nlQueryDefaultCompetition string = 'Indian Premier League'/);
 });
 
 // Issue #831: a required parameter added without a matching argument in the

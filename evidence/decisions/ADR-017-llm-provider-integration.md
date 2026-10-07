@@ -4,7 +4,8 @@
 - **Date:** 2026-09-30
 - **Participants:** Ben Swartz
 - **Related issues:** [#814](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/814),
-  [#811](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/811)
+  [#811](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/811),
+  [#868](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/868)
 
 ## Context
 
@@ -43,18 +44,48 @@ and building it now would double the surface under test.
 
 Exactly five request fields, asserted by a test that fails if a sixth appears:
 
-| Field           | Content                                                                                                              |
-| --------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `model`         | The configured identifier.                                                                                           |
-| `max_tokens`    | `512`, a module constant. A definition is well under a hundred tokens.                                               |
-| `system`        | `ANALYTICS_QUERY_PROMPT_DESCRIPTION` from the #811 contract, plus a fixed sentence framing the next message as data. |
-| `messages`      | One user turn: the reader's question between `<question>` and `</question>`.                                         |
-| `output_config` | The JSON Schema projection of the contract.                                                                          |
+| Field           | Content                                                                                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `model`         | The configured identifier.                                                                                                                                   |
+| `max_tokens`    | `512`, a module constant. A definition is well under a hundred tokens.                                                                                       |
+| `system`        | `ANALYTICS_QUERY_PROMPT_DESCRIPTION` from the #811 contract, plus a fixed sentence framing the next message as data.                                         |
+| `messages`      | One user turn: the reader's question between `<question>` and `</question>`, preceded since #868 by the caller's earlier turns in a `<prior-context>` block. |
+| `output_config` | The JSON Schema projection of the contract.                                                                                                                  |
 
-No cricket data is sent. No identifier, column, table name or statement is sent. The schema
-description does use domain vocabulary, because it has to explain what a season or a metric is, and
-a test distinguishes that from database content by rejecting column- and statement-shaped tokens
-rather than domain words.
+No identifier, column, table name or statement is sent. The schema description does use domain
+vocabulary, because it has to explain what a season or a metric is, and a test distinguishes that
+from database content by rejecting column- and statement-shaped tokens rather than domain words.
+
+### What issue #868 added to that
+
+**Earlier turns.** A caller may send up to five previous turns, each an earlier question and the
+definition it was read as. They are rendered as one `<prior-context>` block inside the _same_ single
+user turn, oldest first, with the current question last. Three choices there are load-bearing:
+
+- quoting them in the reader's own turn rather than replaying them as `assistant` messages means
+  nothing in the history can read as the model's own prior commitment;
+- putting the current question last means a forged closing tag inside an earlier question can only
+  end its own block, never make earlier content read as the current question; and
+- serialising the _parsed_ definition means the caller's bytes never reach the prompt, so no stray
+  key, comment, duplicate key or alternative encoding survives the round trip.
+
+The turns are the same class of input as the question — reader-authored text, already bounded at 300
+characters — and the system prompt's existing framing was extended to cover them rather than a
+second, weaker framing being invented. A definition in a turn is not reader text at all: it has
+already passed `analyticsQueryDefinitionSchema`, so every value is an enum member, a bounded integer,
+or a name hint with control and formatting code points rejected.
+
+**No new field and no new output bound.** The request still carries exactly the five fields above,
+because the history is part of the user turn, and `max_tokens` stays `512`: history grows the input
+and never the output. A test asserts both with a full five-turn conversation.
+
+**One configured value.** The default competition name reaches the system prompt. It is the only
+thing the adapter adds that is neither the contract nor fixed text, and a test strips it alongside
+the contract description when asserting that the adapter contributes no data of its own.
+
+**Still no cricket data, the turns included.** The turns come from the request body, never from an
+evaluation, so the adapter never sees a result or a resolved identifier to send. A test runs the
+forbidden-token list over a request built with a maximum-length conversation.
 
 ### Two validation steps, both required
 
@@ -85,11 +116,12 @@ A dedicated Anthropic Console **workspace for this project, with a $10 monthly s
 API key scoped to that workspace. The limit is the control: it caps the blast radius of a loop, a
 leaked key or a load test at $10 rather than at the account balance.
 
-| Variable         | Default                     | Notes                                                                        |
-| ---------------- | --------------------------- | ---------------------------------------------------------------------------- |
-| `LLM_API_KEY`    | none                        | Server-only. Optional in every environment. Format deliberately unvalidated. |
-| `LLM_MODEL`      | `claude-haiku-4-5-20251001` | Character-set bounded, because it reaches the request body.                  |
-| `LLM_TIMEOUT_MS` | `15000`                     | 2000 to 60000.                                                               |
+| Variable                       | Default                     | Notes                                                                                                                                                                                                     |
+| ------------------------------ | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LLM_API_KEY`                  | none                        | Server-only. Optional in every environment. Format deliberately unvalidated.                                                                                                                              |
+| `LLM_MODEL`                    | `claude-haiku-4-5-20251001` | Character-set bounded, because it reaches the request body.                                                                                                                                               |
+| `LLM_TIMEOUT_MS`               | `15000`                     | 2000 to 60000.                                                                                                                                                                                            |
+| `NL_QUERY_DEFAULT_COMPETITION` | `Indian Premier League`     | Issue #868. Validated by the contract's own name rule, so a configured default cannot be one a definition would reject. A Bicep parameter with this default, so no required template parameter was added. |
 
 The key is held in Key Vault as `backend-llm-api-key`, following the vault's convention of naming a
 secret for the service that owns it, and reaches the runtime through `secretRef` exactly as
@@ -124,6 +156,36 @@ retry, while a content problem is the model failing the contract and would fail 
 
 Prices are per million tokens, input/output, **verified against each provider's own pricing page on
 30 September 2026**.
+
+### What a question costs after issue #868
+
+The figures below were measured against the prompt as it stands: the contract description is 6,690
+characters, the constrained schema about 2,300 serialised, and the framing about 150 tokens —
+roughly **2,550 input tokens** for a question carrying no history. The original "about 2,000"
+predates the issue #851 prompt additions.
+
+| Request                                               | Input  | Output | Cost     |
+| ----------------------------------------------------- | ------ | ------ | -------- |
+| No conversation                                       | ~2,670 | ~155   | ~$0.0035 |
+| Two turns, ordinary questions                         | ~2,990 | ~165   | ~$0.0037 |
+| Five turns, 300-character questions, comparison turns | ~3,570 | ~170   | ~$0.0044 |
+
+A turn is roughly 150 tokens at its worst — a 300-character question, a ~200-character definition and
+about 90 characters of delimiters — so five turns add about 900.
+
+`max_tokens` stays `512` and `LLM_TIMEOUT_MS` stays `15000`. History grows the input, not the output,
+and 900 extra input tokens is well under a second of prefill; the timeout exists for schema
+compilation and hung connections, neither of which this touches.
+
+**The workspace limit remains the binding control, and this narrows the margin.** At $0.0044 the $10
+monthly limit is about 2,270 questions, down from about 3,000. `NL_QUERY_GLOBAL_DAILY_LIMIT` of 300 a
+day already permits 9,000 a month, which is roughly $40 — so the daily cap has never been what keeps
+spend inside $10, and this issue does not change that. It does mean the two are closer together than
+they were. No limit is changed here; the point of recording it is that lowering the global cap is the
+lever if the workspace limit is ever reached.
+
+Prompt caching was considered and rejected: the stable prefix only just clears Haiku's minimum
+cacheable length, requests are sporadic against a five-minute TTL, and it is outside this issue.
 
 ### Claude Haiku 4.5 — $1 / $5 (selected)
 
@@ -196,8 +258,12 @@ repository's dependency-hygiene gates.
 
 ## Consequences
 
-- **Data handling.** The question a reader types is sent to Anthropic. No cricket data, credential,
-  identifier or account detail accompanies it, and nothing is sent about who asked. Any user-facing
+- **Data handling.** The question a reader types is sent to Anthropic, and **since issue #868 so are
+  the earlier questions and definitions a caller sends with it**: a follow-up re-sends up to five
+  previous turns on every request. A definition is a structure this backend validated rather than
+  text the reader wrote, but an earlier question is the reader's own words exactly as the current one
+  is, so the same disclosure covers both and the privacy notice says so. No cricket data, credential,
+  identifier or account detail accompanies any of it, and nothing is sent about who asked. Any user-facing
   surface built on this in issue #816 must say that a question is processed by a third party before
   a reader submits one, and the privacy notice must be updated to match. That is a prerequisite of
   the user-facing work, not of this adapter.
@@ -259,7 +325,10 @@ if it is not, to set `LLM_MODEL` to the named fallback.
 ## AI Declaration
 
 This record was drafted with the assistance of Claude-Code[Claude Opus 5 (1M context)] under issue
-#814. The candidate prices, the supported-model list for structured outputs, the Claude Haiku 4.5
+#814. The conversational-request section, the per-question cost figures and the data-handling
+consequence were added with the assistance of Claude-Code[Claude Opus 5 (1M context)] under issue
+#868; the token counts were measured from the prompt in the repository and priced at the Claude Haiku
+4.5 rates already recorded here, not re-verified against the provider's pricing page. The candidate prices, the supported-model list for structured outputs, the Claude Haiku 4.5
 retirement commitment and the Claude Sonnet 5.5 fallback figures were each verified against the
 providers' own documentation pages on 30 September 2026, and the corrected Gemini 2.5 Flash
 statement replaces an unverifiable third-party claim.
