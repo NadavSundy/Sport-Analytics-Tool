@@ -390,8 +390,8 @@ Exercise at least one deterministic case for:
 - Authorised scope is accepted.
 - Out-of-scope operation is rejected server-side.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }; accepted final verification outcome; no new product defect recorded.
 
 ### SUB-TECH-02 — Valid guided single-fixture package
 
@@ -413,8 +413,8 @@ Exercise at least one deterministic case for:
 - Receipt/status identifies the submission.
 - Processing may continue independently after upload.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }; accepted final verification outcome; no new product defect recorded.
 
 ### SUB-TECH-03 — Invalid guided package validation
 
@@ -436,8 +436,8 @@ Exercise at least one deterministic case for:
 - Error identifies actionable source context.
 - Corrected replacement can proceed.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }; accepted final verification outcome; no new product defect recorded.
 
 ### SUB-TECH-04 — Advanced canonical JSON valid path
 
@@ -454,8 +454,8 @@ Exercise at least one deterministic case for:
 - Valid schema is accepted according to documented direct-submission semantics.
 - No unrelated competition/fixture data is changed.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }; accepted final verification outcome; no new product defect recorded.
 
 ### SUB-TECH-05 — Advanced JSON validation errors
 
@@ -470,8 +470,8 @@ Submit a canonical event array containing known cricket/business-rule errors.
 - Rejection identifies the correct event/field/problem.
 - Multiple independent errors remain distinguishable where supplied.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }; accepted final verification outcome; no new product defect recorded.
 
 ### SUB-TECH-06 — Genuinely new fixture proposal
 
@@ -492,8 +492,8 @@ Submit a canonical event array containing known cricket/business-rule errors.
 - New fixture is not rejected merely because it lacks a pre-existing fixture ID.
 - Duplicate protection and review boundary remain active.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }; accepted final verification outcome; no new product defect recorded.
 
 ### REV-TECH-01 — Review queue exposes eligible staged work
 
@@ -508,8 +508,8 @@ Create/use a staged batch expected to require review and inspect the reviewer qu
 - Eligible work appears with correct lifecycle/status information.
 - Unauthorised roles cannot make the review decision.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }; accepted final verification outcome; no new product defect recorded.
 
 ### REV-TECH-02 — Reviewer can inspect validation/reference detail
 
@@ -524,8 +524,8 @@ Open representative staged work containing accepted/rejected/unresolved content.
 - Validation, source/provenance and reference information required for a decision is available.
 - Blocking state prevents unsafe publication.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }; accepted final verification outcome; no new product defect recorded.
 
 ### REV-TECH-03 — Resolve an ambiguous reference
 
@@ -541,8 +541,8 @@ Use a staged item with a controlled ambiguous/unresolved reference and save an a
 - Eligibility/revalidation state updates consistently.
 - Mapping does not alter unrelated references.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }; accepted final verification outcome; no new product defect recorded.
 
 ### REV-TECH-04 — Approve and publish
 
@@ -558,8 +558,8 @@ Approve known-valid staged work and follow the durable publication path.
 - Publication proceeds through the documented backend/worker path.
 - Public/canonical state eventually reflects the approved data.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }; accepted final verification outcome; no new product defect recorded.
 
 ### REV-TECH-05 — Return/reject unsafe work
 
@@ -575,8 +575,8 @@ Use a scenario that must not publish as-is and exercise the appropriate return/r
 - Rejected/returned data does not publish.
 - Resulting state is distinguishable from approval.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }; accepted final verification outcome; no new product defect recorded.
 
 ### REV-TECH-06 — Review/onboard a new fixture
 
@@ -592,8 +592,8 @@ Review a staged genuinely-new-fixture proposal and perform the correct create/li
 - Existing duplicate fixture is not silently duplicated.
 - Approved new fixture becomes safely canonical/linked before publication proceeds.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }; accepted final verification outcome; no new product defect recorded.
 
 ### BAT-TECH-01 — Whole-season package
 
@@ -608,8 +608,8 @@ Upload a representative season package using approved test/acceptance data and f
 - Durable batch reference is returned.
 - Package progresses through validation/staging/review states without silent loss.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }; accepted final verification outcome; no new product defect recorded.
 
 ### BAT-TECH-02 — Multi-season/back-catalogue package
 
@@ -625,8 +625,8 @@ Upload a representative package spanning more than one season using readable ext
 - Package does not require internal database IDs from the submitter.
 - Distinct seasons remain distinguishable.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }; accepted final verification outcome; no new product defect recorded.
 
 ### BAT-TECH-03 — Batch status and item results
 
@@ -641,8 +641,8 @@ Open a batch in at least one in-progress and one terminal state.
 - State, counts and accepted/rejected item information agree with backend/report data.
 - Terminal/in-progress state is unambiguous.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }; accepted final verification outcome; no new product defect recorded.
 
 ### BAT-TECH-04 — Failed/correction-required recovery
 
@@ -657,8 +657,8 @@ Use a controlled batch with rejected data or correction requirement and follow t
 - Affected source item/error is identifiable.
 - Corrected replacement/retry behaviour does not duplicate prior accepted work.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }; accepted final verification outcome; no new product defect recorded.
 
 ### BAT-TECH-05 — Complete batch report download
 
@@ -673,8 +673,8 @@ Download the complete report for a processed batch and compare it with the on-sc
 - Report is retrievable.
 - Counts/items/status match authoritative batch state.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }; accepted final verification outcome; no new product defect recorded.
 
 ### BAT-TECH-06 — Idempotent retry/resubmission
 
@@ -689,8 +689,8 @@ Retry/redeliver the same durable work according to the supported retry path.
 - Already accepted/published authoritative data is not double-counted.
 - Duplicate/conflict result is explicit where applicable.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }; accepted final verification outcome; no new product defect recorded.
 
 ### COR-TECH-01 — Correct published event and preserve history
 
@@ -710,8 +710,8 @@ Using approved disposable/correction data:
 - Prior state/history remains traceable.
 - Stable logical identity/provenance remains coherent.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }; accepted final verification outcome; no new product defect recorded.
 
 ### COR-TECH-02 — Correction recomputes dependent statistics
 
@@ -726,8 +726,8 @@ Record a known dependent statistic before correction, apply correction, then que
 - Affected statistic changes correctly.
 - Unrelated representative statistics remain stable.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }; accepted final verification outcome; no new product defect recorded.
 
 ### ADM-TECH-01 — Submitter-access administration
 
@@ -742,8 +742,8 @@ Where the final feature is available, approve/reject a controlled submitter-acce
 - Decision is persisted correctly.
 - Resulting submitter permissions match the selected competition scope.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }; accepted final verification outcome; no new product defect recorded.
 
 ---
 
@@ -1685,15 +1685,15 @@ Run the repository's final dependency/security audit commands/policy and review 
 
 Do not complete this table while #870 is only establishing the bank. #871–#877 update it from retained evidence.
 
-| Lane                                    | Issue | Status    | Candidate | Evidence | Open defects / blockers |
-| --------------------------------------- | ----- | --------- | --------- | -------- | ----------------------- |
-| Frontend/auth/roles                     | #871  | `NOT RUN` | —         | —        | —                       |
-| Submission/review/batch/corrections     | #872  | `NOT RUN` | —         | —        | —                       |
-| Statistics/data/provenance/releases     | #873  | `NOT RUN` | —         | —        | —                       |
-| API/contracts/consumer/integration      | #874  | `NOT RUN` | —         | —        | —                       |
-| Database/worker/reliability             | #875  | `NOT RUN` | —         | —        | —                       |
-| Performance/accessibility/responsive    | #876  | `NOT RUN` | —         | —        | —                       |
-| Automated suites/coverage/CI/deployment | #877  | `NOT RUN` | —         | —        | —                       |
+| Lane                                    | Issue | Status    | Candidate                                  | Evidence                                                                                                                                                                                                                        | Open defects / blockers |
+| --------------------------------------- | ----- | --------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| Frontend/auth/roles                     | #871  | `PASS`    | `955f30105ed02858e42ccf9f3605d48d136c0717` | [#871 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-871-frontend-auth-roles.md){ target="_blank" rel="noopener" }          | None observed           |
+| Submission/review/batch/corrections     | #872  | `PASS`    | `9b1dbf5fbaa933f682f24f08bed1edf32507a01a` | [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" } | None observed           |
+| Statistics/data/provenance/releases     | #873  | `PASS`    | `d963e138d`                                | [#873 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-873-statistics-data-releases.md){ target="_blank" rel="noopener" }     | None observed           |
+| API/contracts/consumer/integration      | #874  | `NOT RUN` | —                                          | —                                                                                                                                                                                                                               | —                       |
+| Database/worker/reliability             | #875  | `NOT RUN` | —                                          | —                                                                                                                                                                                                                               | —                       |
+| Performance/accessibility/responsive    | #876  | `NOT RUN` | —                                          | —                                                                                                                                                                                                                               | —                       |
+| Automated suites/coverage/CI/deployment | #877  | `NOT RUN` | —                                          | —                                                                                                                                                                                                                               | —                       |
 
 ## Known untested / partially tested areas
 
@@ -1723,4 +1723,4 @@ After #870 merges, #871–#877 may execute in parallel.
 
 ## AI Declaration
 
-The preceding document was planned and generated with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol] and Codex[GPT-5].
