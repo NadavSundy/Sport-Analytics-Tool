@@ -1186,8 +1186,8 @@ Run the documented deployed backend/database health/smoke path.
 - Intended services can connect.
 - Public response does not reveal credentials.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #875 execution record; live `worker.probe` completed after its database dependency check.
 
 ### DB-TECH-02 — Clean migration/integration setup
 
@@ -1202,8 +1202,8 @@ Run the repository database integration setup against the approved test database
 - Committed migrations/schema initialise successfully in the test environment.
 - Database integration suite passes.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #875 execution record; clean disposable PostgreSQL migration, seed and integration run passed: 38 files passed, 1 skipped; 278 tests passed, 2 skipped.
 
 ### DB-TECH-03 — Relational integrity constraints
 
@@ -1216,8 +1216,8 @@ Use database integration tests to exercise representative invalid foreign-key/un
 - Invalid relational state is rejected.
 - Valid authoritative relationships remain queryable.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #875 execution record; covered by the completed isolated database integration suite.
 
 ### DB-TECH-04 — Transactional consistency
 
@@ -1229,8 +1229,8 @@ Exercise at least one multi-write workflow with an induced/controlled failure at
 
 - Workflow does not leave a falsely-complete partial authoritative state.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #875 execution record; covered by the completed isolated database integration suite.
 
 ### DB-TECH-05 — Representative query/index behaviour
 
@@ -1242,8 +1242,8 @@ For important final read/aggregate paths, inspect representative-scale timing/qu
 
 - No obvious final high-volume query depends on an unintended full-table/per-item N+1 path without documented acceptance.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #875 execution record; completed database suite includes the representative query-plan/index integration coverage.
 
 ### DB-TECH-06 — Production/test data distinction
 
@@ -1255,8 +1255,8 @@ Record final production dataset source/scale and the policy used to distinguish 
 
 - Final documentation can answer what production data is present and what data was introduced only for testing.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #875 execution record; aggregate-only deployed inventory found 3,207,623 deliveries, 14,020 fixtures and four immutable releases, classified as one `local` and three `dev` releases.
 
 ### WRK-TECH-01 — Worker liveness/readiness
 
@@ -1269,8 +1269,8 @@ Use deployed worker health/readiness endpoints/runbook.
 - Liveness reports running process.
 - Readiness reflects required dependencies accurately.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #875 execution record; current internal status is `ready` with database, object storage, and Service Bus all `up`. Earlier failure logs were transient/historical.
 
 ### WRK-TECH-02 — Representative queued job completes
 
@@ -1283,8 +1283,8 @@ Enqueue an approved representative ingestion/background job and follow the durab
 - Message is received and work reaches the correct terminal state.
 - API/request process is not required to remain open for the full job.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #875 execution record; live `worker.probe` was received, verified dependencies, and completed. The 19 historical dead-letter messages require separate review.
 
 ### WRK-TECH-03 — Failure diagnostics and retry
 
@@ -1297,8 +1297,8 @@ Exercise a controlled failing job or approved failure fixture.
 - Failure is durable/observable with useful diagnostics.
 - Supported retry changes state predictably.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #875 execution record; Peek-only inspection classified all 19 historical dead-letter messages without changing them. The retained reasons establish the terminal routing mechanism, not an unproven infrastructure/RBAC/network root cause.
 
 ### WRK-TECH-04 — Duplicate delivery/idempotency
 
@@ -1310,8 +1310,8 @@ Exercise retry/redelivery of the same durable command in the supported integrati
 
 - Canonical publication/release side effects are not duplicated.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #875 execution record; final-candidate worker suite passed its transient-redelivery, completed-delivery idempotency and duplicate-release prevention paths.
 
 ### WRK-TECH-05 — Interruption/restart recovery
 
@@ -1324,8 +1324,8 @@ Use the documented safe worker recovery exercise or existing automated recovery 
 - In-progress durable work can resume/retry according to lease/checkpoint semantics.
 - Work does not silently disappear or duplicate authoritative results.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #875 execution record; final-candidate worker suite passed interrupted-object cleanup, lease release and resumed-publication recovery paths.
 
 ---
 
@@ -1685,15 +1685,15 @@ Run the repository's final dependency/security audit commands/policy and review 
 
 Do not complete this table while #870 is only establishing the bank. #871–#877 update it from retained evidence.
 
-| Lane                                    | Issue | Status    | Candidate                                  | Evidence                                                                                                                                                                                                                        | Open defects / blockers |
-| --------------------------------------- | ----- | --------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| Frontend/auth/roles                     | #871  | `PASS`    | `955f30105ed02858e42ccf9f3605d48d136c0717` | [#871 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-871-frontend-auth-roles.md){ target="_blank" rel="noopener" }          | None observed           |
-| Submission/review/batch/corrections     | #872  | `PASS`    | `9b1dbf5fbaa933f682f24f08bed1edf32507a01a` | [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" } | None observed           |
-| Statistics/data/provenance/releases     | #873  | `PASS`    | `d963e138d`                                | [#873 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-873-statistics-data-releases.md){ target="_blank" rel="noopener" }     | None observed           |
-| API/contracts/consumer/integration      | #874  | `NOT RUN` | —                                          | —                                                                                                                                                                                                                               | —                       |
-| Database/worker/reliability             | #875  | `NOT RUN` | —                                          | —                                                                                                                                                                                                                               | —                       |
-| Performance/accessibility/responsive    | #876  | `NOT RUN` | —                                          | —                                                                                                                                                                                                                               | —                       |
-| Automated suites/coverage/CI/deployment | #877  | `NOT RUN` | —                                          | —                                                                                                                                                                                                                               | —                       |
+| Lane                                    | Issue | Status    | Candidate                                  | Evidence                                                                                                                                                                                                                        | Open defects / blockers                                               |
+| --------------------------------------- | ----- | --------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Frontend/auth/roles                     | #871  | `PASS`    | `955f30105ed02858e42ccf9f3605d48d136c0717` | [#871 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-871-frontend-auth-roles.md){ target="_blank" rel="noopener" }          | None observed                                                         |
+| Submission/review/batch/corrections     | #872  | `PASS`    | `9b1dbf5fbaa933f682f24f08bed1edf32507a01a` | [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" } | None observed                                                         |
+| Statistics/data/provenance/releases     | #873  | `PASS`    | `d963e138d`                                | [#873 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-873-statistics-data-releases.md){ target="_blank" rel="noopener" }     | None observed                                                         |
+| API/contracts/consumer/integration      | #874  | `NOT RUN` | —                                          | —                                                                                                                                                                                                                               | —                                                                     |
+| Database/worker/reliability             | #875  | `PASS`    | `ed28ee025`                                | [#875 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-875-database-worker.md){ target="_blank" rel="noopener" }              | None blocking; retained logs did not expose the second probe receipt. |
+| Performance/accessibility/responsive    | #876  | `NOT RUN` | —                                          | —                                                                                                                                                                                                                               | —                                                                     |
+| Automated suites/coverage/CI/deployment | #877  | `NOT RUN` | —                                          | —                                                                                                                                                                                                                               | —                                                                     |
 
 ## Known untested / partially tested areas
 
