@@ -15,6 +15,12 @@
 
 > No passwords, bearer tokens, OAuth credentials, API keys or service secrets were used or retained.
 
+## Completion status
+
+**#875 is COMPLETE / PASS.** The remaining inability to independently observe the second runtime
+delivery from retained Azure logs is documented as a non-blocking observability limitation. No
+implementation defect was identified and no further corrective code change is required.
+
 ## Results
 
 | Verification ID | Result (`PASS` / `FAIL` / `BLOCKED` / `N/A`) | Evidence / observation | Linked bug / blocker | Retest |
@@ -94,7 +100,9 @@ The Azure log stream did not retain an observable post-restart delivery entry fo
 so this record does not claim an independently observed higher live delivery count or duplicate-free
 completion for that individual probe. The final-candidate worker suite remains the evidence for the
 supported redelivery, idempotency, and interruption-recovery contracts. This is a verification-record
-limitation, not evidence of current worker or queue performance degradation.
+limitation, not evidence of current worker or queue performance degradation. The controlled
+interruption/restart exercise was executed; increased delivery count is not claimed because retained
+Azure logs did not expose a second receipt.
 
 ## Untested / partial coverage
 
