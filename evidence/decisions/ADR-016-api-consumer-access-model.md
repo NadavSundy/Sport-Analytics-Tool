@@ -1,6 +1,6 @@
 # ADR-016: One canonical read API with optional consumer identification
 
-- **Status:** Accepted, pending PR review
+- **Status:** Accepted
 - **Date:** 2026-09-30
 - **Participants:** Nadav Sundy
 - **Related issues:** [#820](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/820),

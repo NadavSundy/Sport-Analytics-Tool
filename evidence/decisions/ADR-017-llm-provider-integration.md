@@ -1,6 +1,6 @@
 # ADR-017: Anthropic Claude Haiku 4.5 behind a server-side adapter for natural-language queries
 
-- **Status:** Accepted, pending PR review
+- **Status:** Accepted
 - **Date:** 2026-09-30
 - **Participants:** Ben Swartz
 - **Related issues:** [#814](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/814),

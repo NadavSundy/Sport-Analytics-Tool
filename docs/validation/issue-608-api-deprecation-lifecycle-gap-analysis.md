@@ -47,16 +47,22 @@ a date is later approved.
 
 ## Acceptance-criteria traceability
 
-| Issue #608 criterion                          | Evidence                                                                                                                                                             |
-| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| One policy and a concrete lifecycle example   | `docs/api/versioning.md` remains the policy and now contains the complete response example.                                                                          |
-| OpenAPI marks the deprecated surface          | `deprecated: true`, successor guidance and documented response headers on the public JSON export.                                                                    |
-| Response metadata and replacement information | Middleware emits `Deprecation` and a concrete `successor-version` Link. No `Sunset` is applicable without an approved retirement date.                               |
-| Compatibility and no fake removal             | The existing public route/controller remains unchanged; health and other v1 routes receive no lifecycle metadata.                                                    |
-| Automated verification                        | `deprecation-lifecycle.contract.test.ts` covers compatibility, headers, query preservation, unaffected v1 behaviour, OpenAPI, and invalid replacement configuration. |
-| Advanced API user-feedback                    | Pending deployed API-03 testing in #612. Issue #608 must remain open/In Review until that feedback is complete.                                                      |
+| Issue #608 criterion                          | Evidence                                                                                                                                                                      |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| One policy and a concrete lifecycle example   | `docs/api/versioning.md` remains the policy and now contains the complete response example.                                                                                   |
+| OpenAPI marks the deprecated surface          | `deprecated: true`, successor guidance and documented response headers on the public JSON export.                                                                             |
+| Response metadata and replacement information | Middleware emits `Deprecation` and a concrete `successor-version` Link. No `Sunset` is applicable without an approved retirement date.                                        |
+| Compatibility and no fake removal             | The existing public route/controller remains unchanged; health and other v1 routes receive no lifecycle metadata.                                                             |
+| Automated verification                        | `deprecation-lifecycle.contract.test.ts` covers compatibility, headers, query preservation, unaffected v1 behaviour, OpenAPI, and invalid replacement configuration.          |
+| Advanced API user-feedback                    | Completed. P13 successfully completed `API-03` on the deployed build under #612. #612 subsequently closed with an **Accepted with documented limitations** final gate result. |
 
 ## Scope and privacy review
 
 The change is HTTP middleware and documentation only. It adds no database
 behaviour, credentials, secrets, internal data, new route, or retirement date.
+
+## AI Declaration
+
+The preceding document was generated and edited with the assistance of
+Codex[GPT-5], and later reviewed, reconciled and edited for final-state accuracy
+with the assistance of ChatGPT-Web[GPT-5.6 Sol].

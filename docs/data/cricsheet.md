@@ -97,7 +97,7 @@ These counts describe the dataset at the time of the download and will change wh
 
 Cricsheet may publish corrected versions of match data. The generated manifest stores each file's revision and SHA-256 checksum so that future import logic can identify changed source files.
 
-Refreshing the files does not itself import anything into PostgreSQL. Database ingestion will be implemented separately.
+Refreshing the source files does not itself import anything into PostgreSQL. Database ingestion is handled by the implemented submission and batch-ingestion pipeline; refreshing Cricsheet files only updates the source files and manifest until they are processed through the supported ingestion workflow.
 
 Cricsheet-derived package events retain explicit zero-based `overNumber` and
 `positionInOver` canonical coordinates. The source ball label may also be

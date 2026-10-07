@@ -182,7 +182,7 @@ legal-delivery count, will be wrong by one here. The existing query at
 | Run out excluded from bowler credit     | Awaiting automated comparison               |
 | Seven-ball over reflected in ball count | Confirmed: source records 114               |
 
-No automated comparison exists for this fixture yet. It is added under issue #287.
+Automated comparison now exists in `apps/backend/tests/database/reference-figures.database.test.ts`. The published figures remain the independent reference evidence for that verification.
 
 ## AI Declaration
 

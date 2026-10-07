@@ -1,6 +1,6 @@
 # ADR-014: Byes and leg byes recorded on a wide are wide runs charged to the bowler
 
-- **Status:** Accepted, pending PR review
+- **Status:** Accepted
 - **Date:** 2026-09-16
 - **Participants:** Ben Swartz (team notified in group chat)
 - **Related issues:** #623, #590

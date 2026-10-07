@@ -195,7 +195,7 @@ consistent with a tie and independent of the eliminator figures.
 | Super-over innings excluded from aggregates | Awaiting automated comparison               |
 | Eliminator ball count                       | Disputed; see above                         |
 
-No automated comparison exists for this fixture yet. It is added under issue #287.
+Automated comparison now exists in `apps/backend/tests/database/fixture-statistics.database.test.ts`. The published figures remain the independent reference evidence for that verification.
 
 ## AI Declaration
 

@@ -7,11 +7,10 @@ require a continuously running application server, so it is no longer coupled to
 compute. See `docs/adr/0003-azure-hosting.md` for the original hosting decision and this document for
 the frontend's subsequent migration off it.
 
-> **Migration status:** the existing Azure App Service frontend (`statsthegame-web-dev`) is kept running
-> in parallel until Cloudflare Pages passes acceptance (see "Cutover and Azure retirement" below). Do not
-> remove the Azure frontend deployment path until that has happened. The backend already migrated from
-> Azure App Service to Azure Container Apps (issue #563; see `docs/deployment/azure-backend.md`), which
-> is what this issue was originally blocked on — that dependency is now resolved.
+> **Current hosting:** Cloudflare Pages is the supported frontend deployment target and the normal
+> repository deployment path no longer uses Azure App Service. The former `statsthegame-web-dev`
+> resource may still exist in Azure as historical infrastructure; this document does not claim that
+> account-level resource retirement has occurred. The backend runs separately on Azure Container Apps.
 
 ## Runtime
 
@@ -192,11 +191,12 @@ Before retiring the Azure frontend, verify against the Cloudflare Pages deployme
 - [ ] No server-only secret is present in the deployed bundle
       (`node scripts/check-frontend-bundle-secrets.mjs apps/frontend/dist` passes).
 
-## Cutover and Azure retirement
+## Historical cutover and Azure resource retirement
 
-The Azure App Service frontend (`statsthegame-web-dev`) is kept live during acceptance so there is a
-known-good fallback while Cloudflare Pages is verified. Once every item in the acceptance checklist
-passes against the Cloudflare Pages URL:
+The repository cutover to Cloudflare Pages is complete. The steps below record the resource-retirement
+work that accompanied or may follow that migration. If the historical `statsthegame-web-dev` Azure
+resource still exists, verify Azure dependencies before deleting it; repository documentation alone is
+not evidence that the Azure resource has already been decommissioned:
 
 1. remove the Azure frontend origin from `AZURE_BACKEND_CORS_ORIGINS` (after confirming nothing else
    depends on it);
@@ -215,4 +215,4 @@ plan itself.
 ## AI Declaration
 
 This document was drafted with the assistance of Claude (Anthropic) migrating the previous
-Azure App Service frontend deployment documentation to Cloudflare Pages.
+Azure App Service frontend deployment documentation to Cloudflare Pages. The final current-versus-historical hosting boundary was later reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
