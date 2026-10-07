@@ -90,7 +90,7 @@ The decision to use task-based, repository-retained evidence and retire the Micr
 
 ## Sprint 4 final testing
 
-[Sprint 4 preparation and final summary](user-testing-sprint-4-summary.md) tracks Issue #803. At least three genuine final sessions are required. The current pack is preparation only; human outcomes remain pending.
+[Sprint 4 preparation and final summary](user-testing-sprint-4-summary.md) tracks Issue #803. At least three genuine final sessions are required. One public human session and one assisted local submitter/reviewer session are recorded; a separately labelled AI simulation is supplemental evidence. Final acceptance remains pending.
 
 ## AI Declaration
 

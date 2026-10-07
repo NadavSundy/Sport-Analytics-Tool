@@ -1,6 +1,6 @@
 # Sprint 4 final structured user testing - Issue #803
 
-**Status: one real public session reviewed by Gabriel; all four tasks Success, feedback decisions evaluated. Submitter/reviewer sessions and final acceptance remain outstanding. Issue #803 remains open.**
+**Status: one reviewed public human session and one user-confirmed assisted local submitter/reviewer session, plus a separately labelled AI simulation. Issue #803 remains open; see the [completion audit](2026-10-07-completion-audit.md).**
 
 The [public session record](2026-10-05-P15-public.md) and [source excerpts](raw/2026-10-05-P15-public-notes.md) retain four reported task attempts and all six post-test answers. P15 allocation, reported date/time and independence are confirmed by Gabriel; all four outcomes and finding decisions are approved. Exact deployed build/browser version and original export remain unavailable.
 
@@ -18,18 +18,18 @@ Use the existing [protocol](../../../docs/testing/user-testing-protocol.md), [ta
 
 ## Planned coverage
 
-| Session         | Role               | Required tasks                                   | Completed sessions |
-| --------------- | ------------------ | ------------------------------------------------ | ------------------ |
-| 1               | Public / analyst   | PUB-01; PUB-02; PUB-03; PUB-06                   | 0                  |
-| 2               | Approved submitter | AUTH-01; AUTH-02; SUB-01; SUB-02; SUB-03; SUB-04 | 0                  |
-| 3               | Reviewer           | AUTH-01; REV-01; REV-02; REV-04                  | 0                  |
-| 4 (recommended) | API consumer       | PUB-05; API-01; API-02                           | 0                  |
+| Session         | Role               | Required tasks                                   | Completed sessions                             |
+| --------------- | ------------------ | ------------------------------------------------ | ---------------------------------------------- |
+| 1               | Public / analyst   | PUB-01; PUB-02; PUB-03; PUB-06                   | 1 reviewed human session                       |
+| 2               | Approved submitter | AUTH-01; AUTH-02; SUB-01; SUB-02; SUB-03; SUB-04 | 1 assisted combined session                    |
+| 3               | Reviewer           | AUTH-01; REV-01; REV-02; REV-04                  | Same combined session; not an additional count |
+| 4 (recommended) | API consumer       | PUB-05; API-01; API-02                           | 0                                              |
 
 Minimum: three real completed sessions representing more than one relevant workflow where practical. Automated checks and Codex walkthroughs are technical preparation only. Unattempted tasks and environmental blockers are recorded, never scored as success.
 
 ## Identifiers, naming and retention
 
-Latest fetched main contains P01-P14 across Sprint 2/3. P15 is the next candidate, **not an allocated participant**. Facilitator checks concurrent/uncommitted allocations before reserving it. Reuse an existing ID only for the same anonymous person; never identify a new person with a historical ID. No date is allocated in these templates.
+P15 is allocated to the reviewed public session. The local session's participant mapping remains pending; LOCAL-01 is only an evidence key. Facilitator checks concurrent allocations before assigning another anonymous participant ID. Reuse an existing ID only for the same anonymous person; never identify a new person with a historical ID. No date is allocated in blank templates.
 
 Completed records: `YYYY-MM-DD-PXX-ROLE.md`. Supporting files: matching prefix plus Task ID, e.g. `YYYY-MM-DD-PXX-public-PUB-02-01.png`. Retests use the same participant/date/role prefix plus Task ID and `retest`; distinguish them from original attempts. Do not overwrite earlier evidence.
 

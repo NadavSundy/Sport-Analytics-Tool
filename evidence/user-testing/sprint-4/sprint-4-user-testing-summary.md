@@ -1,6 +1,8 @@
 # Sprint 4 final user-testing summary - INCOMPLETE SKELETON
 
-**One real public session reviewed by Gabriel: four Success outcomes and evaluated feedback decisions. Overall Sprint 4 remains incomplete: submitter/reviewer sessions, accepted improvements and final validation are outstanding.**
+Current close-out status, assisted local task outcomes, AI-only observations and remaining acceptance gaps are consolidated in the [7 October completion audit](2026-10-07-completion-audit.md) and [local participant record](2026-10-07-local-submitter-reviewer.md). This summary remains provisional until the required human evidence is complete.
+
+**One reviewed public session plus a user-confirmed assisted local participant session covering submitter/reviewer workflows. Overall Sprint 4 remains incomplete: the local session's participant details, task mapping and feedback, remaining session coverage and final validation are outstanding.**
 
 ## Objective and tested environment/build
 
@@ -12,7 +14,7 @@ Final representative workflows under #803 using the existing protocol and task b
 | ----------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | P15, allocated by facilitator | Corrected by user to 2026-10-05 15:38 Africa/Johannesburg; exact task start/end not measured | Public / novice; no cricket/project familiarity reported | Public browsing/statistics/comparison | [Reviewed record](2026-10-05-P15-public.md); [source](raw/2026-10-05-P15-public-notes.md) | PUB-01; PUB-02; PUB-03; PUB-06 self-reported | Four attempts reported; Chrome desktop and signed-out confirmed by self-report; exact build/version unavailable; outcomes and decisions approved; separate score counts clarified |
 
-Minimum three real completed sessions; public, submitter and reviewer baseline, API consumer recommended. Public session with facilitator-reviewed outcomes/decisions: 1. Submitter, reviewer and recommended API session not yet conducted in this chat.
+Minimum three real completed sessions; public, submitter and reviewer baseline, API consumer recommended. Public session with facilitator-reviewed outcomes/decisions: 1. On 2026-10-07 the user confirmed that the local upload/recovery/publication exercise was a real participant session. This is one additional assisted session spanning submitter and reviewer workflows, not two sessions. Participant identity/familiarity, exact task mapping and feedback remain to be confirmed; do not yet infer a distinct participant count. Functional results and seven original screenshots are recorded in `testing/user-testing/local-803/evidence/2026-10-07-rehearsal/README.md` in the primary checkout. The protocol requires Partial for tasks requiring facilitator intervention. The linked kit is currently in the primary checkout and must be included when assembling the final PR; it is not yet present in this worktree.
 
 ## Per-task outcomes
 
@@ -78,4 +80,4 @@ Pending sessions, account/data readiness, exact tested build evidence, facilitat
 
 This preparation document was planned and generated with the assistance of Codex[GPT-6]. P15 outcomes and decisions were approved by Gabriel. Further sessions and overall acceptance remain pending.
 
-Additional follow-up: F04 missing Previous page in fixture 8937 Players list, supported by two participant-supplied screenshots and separate technical reproduction. Proposed S3, decision pending; no original task outcomes changed or additional session counted.
+Additional follow-up: F04 missing Previous page in fixture 8937 Players list, supported by two participant-supplied screenshots and separate technical reproduction. S3; accepted for follow-up at Gabriel's request on 2026-10-06 and tracked in [#869](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/869), explicitly non-blocking for #803/project submission, with medium severity and low priority. Implementation and retest remain pending; no original task outcomes changed or additional session counted.
