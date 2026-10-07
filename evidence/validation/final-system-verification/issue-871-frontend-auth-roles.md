@@ -59,12 +59,13 @@ cmd.exe /d /s /c "npm.cmd exec --workspace=@sport-analytics/backend -- vitest ru
 - Playwright `test-results/.last-run.json` records `passed` with no failed tests.
 - Frontend JSON result artifacts record 147 passed and 0 failed tests across the account/role and public-state sets; the backend artifact records 30 passed and 0 failed tests.
 - Deployed viewer check on 2026-10-07 against `955f30105ed02858e42ccf9f3605d48d136c0717`: the signed-in account reported only the `viewer` role; public `/api` loaded after direct entry and refresh; public `/dataset-releases` listed three immutable snapshots after direct entry and refresh; and direct `/admin/users` entry displayed `Administrator access required` without user-management controls. No account email, credentials, tokens or personal details are retained.
+- Deployed submitter check on 2026-10-07 against the same SHA: the signed-in account reported `submitter` with approved persisted competition scope; `/submissions/new` exposed the real guided and advanced submission workspace with its authorised-competition selector; and direct `/admin/users` entry displayed `Administrator access required` without user-management controls. No upload, submission, mutation or account detail was retained.
 - The local deterministic checks prove the source candidate's production bundle and mocked frontend/API contracts. The deployed viewer check above proves the stated public and viewer boundary only; it does not substitute for the remaining credentialed submitter/reviewer/administrator checks.
 - No product defect was observed in this execution, so there is no defect link or retest to record. The final verification documentation test had a pre-existing stale navigation-label expectation; it was corrected to accept the current `Final System Verification Bank` label and is retested below.
 
 ## Untested / partial coverage
 
-The deployed candidate and one viewer identity are now verified. Credentialed deployed submitter/reviewer/administrator exercises, sign-out/expired-session observation, and any resulting defect retests remain pending; they will be recorded only when actually observed.
+The deployed candidate plus viewer and submitter identities are now verified. Credentialed deployed reviewer/administrator exercises, a submitter out-of-scope server rejection, sign-out/expired-session observation, and any resulting defect retests remain pending; they will be recorded only when actually observed.
 
 ## AI Declaration
 
