@@ -258,7 +258,7 @@ The shared-contract suite covers a readable-context fixture, a multi-fixture
 season payload with reversed arrival order, duplicate delivery/occurrence
 values, corrections, ambiguous participants, invalid source references, and a
 valid/invalid multi-file manifest. The schema is exported from
-`@sport-analytics/contracts` for the future receipt endpoint and parsers.
+`@sport-analytics/contracts` for the implemented receipt endpoint and parsers.
 
 ## Batch status and result reports
 

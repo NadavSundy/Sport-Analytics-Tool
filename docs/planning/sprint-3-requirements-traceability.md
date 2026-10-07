@@ -43,16 +43,16 @@ user-feedback outcome is recorded.
 The consolidated source of truth is
 [`evidence/user-testing/sprint-3/sprint-3-user-testing-summary.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-3/sprint-3-user-testing-summary.md){ target="_blank" rel="noopener" }.
 
-| Gate | User goal                                            | Current close-out treatment                                                                                                                                                                                                                |
-| ---- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| #601 | Navigation, authentication and overall frontend flow | Accepted with documented limitations in retained summary                                                                                                                                                                                   |
-| #602 | Public statistics and fixture analytics              | Closed after #716 implementation; original PUB-06 participant result remains Partial because no retained participant rerun was found                                                                                                       |
-| #603 | New fixture submission and reviewer onboarding       | Accepted with documented limitations; original REV-06 Partial/deferred #770 finding remains part of the Sprint 3 evidence                                                                                                                  |
-| #604 | Season and multi-season back-catalogue ingestion     | Accepted with documented limitations in the retained Sprint 3 summary                                                                                                                                                                      |
-| #605 | Corrections, stable identity and provenance          | Closed **Not accepted**; retained Sprint 3 evidence records the deferred findings and two unresolved S1 findings at close-out                                                                                                              |
-| #606 | Versioned dataset release and reproducibility        | Accepted in retained summary                                                                                                                                                                                                               |
-| #607 | API consumer keys, quotas and rate limits            | Accepted with documented limitations in retained summary                                                                                                                                                                                   |
-| #612 | Selected Advanced API consumer capabilities          | **Accepted with documented limitations** - `API-02`, `API-03` and `API-04` succeeded; accepted `P13-F01` was implemented through #783 and the deployed `PUB-05` retest passed. The exact retest deployment SHA was not separately retained |
+| Gate | User goal                                            | Current close-out treatment                                                                                                          |
+| ---- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| #601 | Navigation, authentication and overall frontend flow | Accepted with documented limitations in retained summary                                                                             |
+| #602 | Public statistics and fixture analytics              | Closed after #716 implementation; original PUB-06 participant result remains Partial because no retained participant rerun was found |
+| #603 | New fixture submission and reviewer onboarding       | Accepted with documented limitations; original REV-06 Partial/deferred #770 finding remains part of the Sprint 3 evidence            |
+| #604 | Season and multi-season back-catalogue ingestion     | Accepted with documented limitations in the retained Sprint 3 summary                                                                |
+| #605 | Corrections, stable identity and provenance          | Closed **Not accepted**; retained Sprint 3 evidence records the deferred findings and two unresolved S1 findings at close-out        |
+| #606 | Versioned dataset release and reproducibility        | Accepted in retained summary                                                                                                         |
+| #607 | API consumer keys, quotas and rate limits            | Accepted with documented limitations in retained summary                                                                             |
+| #612 | Representative user validation                       | **Closed ? Accepted with documented limitations after the retained final user-feedback gate and deployed PUB-05 retest.**            |
 
 Closing an issue is not treated as a synonym for a passing user result.
 
@@ -133,7 +133,7 @@ The sprint intentionally selected only four Advanced API issues rather than the 
 | #609  | OpenAPI / API contract enforcement | Closed; contract/deployment tests provide supporting evidence                                                               |
 | #610  | Per-consumer API usage             | Core issue and administrator-visibility follow-up #776 closed in Sprint 3; final evidence is retained in the linked records |
 | #611  | Advanced aggregate-query support   | Closed in Sprint 3; final evidence is retained in the linked validation/API records                                         |
-| #612  | Representative user validation     | **Open — selected Advanced group is not yet fully user-validated**                                                          |
+| #612  | Representative user validation     | **Closed — Accepted with documented limitations after the retained final user-feedback gate and deployed PUB-05 retest.**   |
 
 No claim is made that unselected Advanced project-brief requirements were completed.
 
@@ -153,15 +153,15 @@ summarised in `evidence/sprints/sprint-3/2026-09-28-stakeholder-review.md`.
 
 ## Known Open Work / Limitations
 
-| Item                             | Current close-out treatment                                                                        |
-| -------------------------------- | -------------------------------------------------------------------------------------------------- |
-| #612                             | **Open.** Selected Advanced user-feedback gate is the only non-close-out Sprint 3 issue still open |
-| #604                             | Closed; retained Sprint 3 result is **Accepted with documented limitations**                       |
-| #776                             | Now closed; final implementation/verification evidence should be linked                            |
-| #779                             | Now closed; final defect-fix/retest evidence should be linked                                      |
-| #605/#778                        | Closed but **not accepted**; findings are deferred, so closure is not presented as a pass          |
-| #599 release-generation variance | Performance evidence remains variable for this workload                                            |
-| #598 final result                | **PASS** ? authoritative acceptance record retained in the repository                              |
+| Item                             | Current close-out treatment                                                                                                                                 |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #612                             | **Closed ? Accepted with documented limitations.** Carried forward at Sprint 3 close-out, then completed through the retained P13/#612 final-gate evidence. |
+| #604                             | Closed; retained Sprint 3 result is **Accepted with documented limitations**                                                                                |
+| #776                             | Now closed; final implementation/verification evidence should be linked                                                                                     |
+| #779                             | Now closed; final defect-fix/retest evidence should be linked                                                                                               |
+| #605/#778                        | Closed but **not accepted**; findings are deferred, so closure is not presented as a pass                                                                   |
+| #599 release-generation variance | Performance evidence remains variable for this workload                                                                                                     |
+| #598 final result                | **PASS** ? authoritative acceptance record retained in the repository                                                                                       |
 
 ## Milestone / Tag Evidence
 

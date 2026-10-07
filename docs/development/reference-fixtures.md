@@ -107,10 +107,10 @@ upstream project accepts reports, reported upstream. It is not patched locally.
 
 ### 5.2 Recorded divergences
 
-| Fixture | Divergence                                                                                                                                                                | Status                                                                                                  |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| 1462921 | The source omits one scoreless delivery from Uganda's innings: 107 legal deliveries against the 108 implied by a completed 18 overs. No run or wicket figure is affected. | Cause established. Assertions on Uganda's legal-delivery count suspended; all other figures assertable. |
-| 423788  | The scorecard reports New Zealand's eliminator as four balls; the source records five deliveries of which three were legal. The runs agree.                               | Unexplained. Assertions on the eliminator ball count suspended.                                         |
+| Fixture | Divergence                                                                                                                                  | Status                                                           |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| 1462921 | `evidence/validation/1462921-published-figures.md`                                                                                          | `apps/backend/tests/database/reference-figures.database.test.ts` | `evidence/validation/final-system-verification/issue-873-statistics-data-releases.md` |
+| 423788  | The scorecard reports New Zealand's eliminator as four balls; the source records five deliveries of which three were legal. The runs agree. | Unexplained. Assertions on the eliminator ball count suspended.  |
 
 ## 6. When a reference document may change
 
@@ -166,12 +166,12 @@ Coverage for a reference fixture is spread across several files and is not
 discoverable from an issue description. This table is the index, and it must be
 updated whenever a fixture gains or loses coverage.
 
-| Fixture | Published figures                                  | Automated comparisons                                | Other records                                            |
-| ------- | -------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------- |
-| 729307  | `evidence/validation/729307-published-figures.md`  | `tests/database/reference-fixture.database.test.ts`  | `scripts/validate-match.ts`                              |
-| 423788  | `evidence/validation/423788-published-figures.md`  | `tests/database/fixture-statistics.database.test.ts` | `evidence/validation/issue-104-super-over-aggregates.md` |
-| 1399114 | `evidence/validation/1399114-published-figures.md` | _pending, issue #287_                                | —                                                        |
-| 1462921 | `evidence/validation/1462921-published-figures.md` | _pending, issue #287_                                | —                                                        |
+| Fixture | Published figures                                  | Automated comparisons                                            | Other records                                                                         |
+| ------- | -------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| 729307  | `evidence/validation/729307-published-figures.md`  | `tests/database/reference-fixture.database.test.ts`              | `scripts/validate-match.ts`                                                           |
+| 423788  | `evidence/validation/423788-published-figures.md`  | `tests/database/fixture-statistics.database.test.ts`             | `evidence/validation/issue-104-super-over-aggregates.md`                              |
+| 1399114 | `evidence/validation/1399114-published-figures.md` | `apps/backend/tests/database/reference-figures.database.test.ts` | `evidence/validation/final-system-verification/issue-873-statistics-data-releases.md` |
+| 1462921 | `evidence/validation/1462921-published-figures.md` | `apps/backend/tests/database/reference-figures.database.test.ts` | `evidence/validation/final-system-verification/issue-873-statistics-data-releases.md` |
 
 Test paths are relative to `apps/backend/`.
 
