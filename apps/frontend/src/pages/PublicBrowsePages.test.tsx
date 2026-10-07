@@ -963,6 +963,79 @@ describe('public browsing pages', () => {
     expect(screen.queryByText('Fixture ID')).not.toBeInTheDocument();
   });
 
+  it('pages the fixture players list forward and back within the fixture scope (#869)', async () => {
+    const requestedUrls: string[] = [];
+    const fixture = {
+      fixtureId: 'fixture-8937',
+      competitionId: 'competition-1',
+      competitionName: 'Chappell-Hadlee Trophy',
+      seasonId: 'season-1',
+      season: '2005',
+      seasonLabel: '2005',
+      competitors: [
+        { competitorId: 'team-nz', name: 'New Zealand' },
+        { competitorId: 'team-aus', name: 'Australia' },
+      ],
+      matchType: 'ODI',
+      teamType: 'international',
+      gender: 'male',
+      ballsPerOver: 6,
+      scheduledOvers: 50,
+      venue: null,
+      toss: null,
+      startDate: '2005-12-03',
+      endDate: '2005-12-03',
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: string) => {
+        requestedUrls.push(input);
+        const url = new URL(input);
+        if (url.pathname.endsWith('/fixtures/fixture-8937')) {
+          return Promise.resolve(response(200, { data: fixture }));
+        }
+        if (url.pathname.endsWith('/participants')) {
+          return Promise.resolve(
+            url.searchParams.get('cursor') === 'next-players'
+              ? collection([{ participantId: 'player-2', displayName: 'HJH Marshall' }])
+              : collection(
+                  [{ participantId: 'player-1', displayName: 'A Symonds' }],
+                  'next-players',
+                ),
+          );
+        }
+        return Promise.resolve(collection([]));
+      }),
+    );
+
+    renderRoute('/fixtures/fixture-8937/players');
+
+    expect(await screen.findByRole('link', { name: 'A Symonds' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Previous players page' })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next players page' }));
+    expect(await screen.findByRole('link', { name: 'HJH Marshall' })).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'A Symonds' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Next players page' })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Previous players page' }));
+    expect(await screen.findByRole('link', { name: 'A Symonds' })).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'HJH Marshall' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Previous players page' })).toBeDisabled();
+
+    const playerRequests = requestedUrls
+      .map((requested) => new URL(requested))
+      .filter((url) => url.pathname.endsWith('/participants'));
+    expect(playerRequests.map((url) => url.searchParams.get('cursor'))).toEqual([
+      null,
+      'next-players',
+      null,
+    ]);
+    expect(
+      playerRequests.every((url) => url.searchParams.get('fixtureId') === 'fixture-8937'),
+    ).toBe(true);
+  });
+
   it.each([
     {
       name: 'unavailable weather',
