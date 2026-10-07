@@ -2,17 +2,17 @@
 
 ## Metadata
 
-| Field                   | Value                                                                                   |
-| ----------------------- | --------------------------------------------------------------------------------------- |
-| Execution issue         | #871                                                                                    |
-| Tester                  | Dean Feldman using Codex-assisted deterministic local verification                      |
-| Date/time               | 2026-10-07 SAST                                                                         |
-| Candidate commit/tag    | `d963e138d` (`origin/main`)                                                             |
-| Environment             | Windows local workspace; Node.js 24.13.0; fresh Vite production build and local preview |
-| Frontend URL            | Ephemeral `http://127.0.0.1:<Playwright-selected-port>` production preview              |
-| API URL                 | Deterministic Playwright route mocks; no deployed API write was made                    |
-| Test role(s)            | Anonymous/public; mocked authenticated viewer; submitter; administrator                 |
-| Fixture/package/dataset | Deterministic fixture, statistics and account-response fixtures within the named tests  |
+| Field                   | Value                                                                                                |
+| ----------------------- | ---------------------------------------------------------------------------------------------------- |
+| Execution issue         | #871                                                                                                 |
+| Tester                  | Dean Feldman using Codex-assisted deterministic local verification                                   |
+| Date/time               | 2026-10-07 SAST                                                                                      |
+| Candidate commit/tag    | `955f30105ed02858e42ccf9f3605d48d136c0717` deployed `main`; local deterministic baseline `d963e138d` |
+| Environment             | Windows local workspace; Node.js 24.13.0; fresh Vite production build and local preview              |
+| Frontend URL            | Ephemeral `http://127.0.0.1:<Playwright-selected-port>` production preview                           |
+| API URL                 | Deterministic Playwright route mocks; no deployed API write was made                                 |
+| Test role(s)            | Anonymous/public; mocked authenticated viewer; submitter; administrator                              |
+| Fixture/package/dataset | Deterministic fixture, statistics and account-response fixtures within the named tests               |
 
 > No passwords, bearer tokens, OAuth credentials, API keys or service secrets were recorded. Test-only token strings remain inside existing deterministic tests and were not retained as evidence.
 
@@ -58,12 +58,13 @@ cmd.exe /d /s /c "npm.cmd exec --workspace=@sport-analytics/backend -- vitest ru
 
 - Playwright `test-results/.last-run.json` records `passed` with no failed tests.
 - Frontend JSON result artifacts record 147 passed and 0 failed tests across the account/role and public-state sets; the backend artifact records 30 passed and 0 failed tests.
-- The #871 execution record is intentionally deterministic and local: it proves the current source candidate's production bundle and mocked frontend/API contracts. It does not identify a deployed revision or claim a credentialed production role exercise.
+- Deployed viewer check on 2026-10-07 against `955f30105ed02858e42ccf9f3605d48d136c0717`: the signed-in account reported only the `viewer` role; public `/api` loaded after direct entry and refresh; public `/dataset-releases` listed three immutable snapshots after direct entry and refresh; and direct `/admin/users` entry displayed `Administrator access required` without user-management controls. No account email, credentials, tokens or personal details are retained.
+- The local deterministic checks prove the source candidate's production bundle and mocked frontend/API contracts. The deployed viewer check above proves the stated public and viewer boundary only; it does not substitute for the remaining credentialed submitter/reviewer/administrator checks.
 - No product defect was observed in this execution, so there is no defect link or retest to record. The final verification documentation test had a pre-existing stale navigation-label expectation; it was corrected to accept the current `Final System Verification Bank` label and is retested below.
 
 ## Untested / partial coverage
 
-The live hosted frontend/backend candidate revision and real test identities were not available in this local execution. A credentialed deployed-role exercise and direct live provider session-refresh observation remain deployment/release evidence, not evidence fabricated here.
+The deployed candidate and one viewer identity are now verified. Credentialed deployed submitter/reviewer/administrator exercises, sign-out/expired-session observation, and any resulting defect retests remain pending; they will be recorded only when actually observed.
 
 ## AI Declaration
 
