@@ -348,6 +348,67 @@ function validAssumptions(assumptions: unknown[] | undefined): QueryAssumption[]
   return [...valid];
 }
 
+/**
+ * The acronym a multi-word competition name is commonly shortened to, taken from
+ * its word initials: "Indian Premier League" gives "IPL".
+ *
+ * Derived rather than configured, so there is no alias list to maintain and a
+ * deployment that sets a different default gets the same behaviour.
+ *
+ * Null for a name that yields fewer than two initials. A one-word name's
+ * "acronym" is a single letter, and matching a bare letter anywhere in a question
+ * would discard the assumption on questions that never named the competition.
+ */
+function acronymOf(name: string): string | null {
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.replace(/[^\p{L}\p{N}]/gu, '').charAt(0))
+    .filter((initial) => initial !== '')
+    .join('');
+
+  return initials.length >= 2 ? initials : null;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Whether the reader's own words name the configured default competition.
+ *
+ * Issue #868's second evaluation run still reported an assumed competition for
+ * "Who took the most wickets in the IPL?" — a question that names the
+ * competition itself, in the short form everyone uses. The prompt already says
+ * that writing out a reader's short form is not an assumption, and saying it
+ * again did not change the outcome, so the adapter decides it here instead.
+ *
+ * This is a property of the request rather than a matter of guidance: if the
+ * question, or any question in the prior context, names the default, then
+ * nothing about the answer was assumed and the label would be untrue. Left to
+ * the model it would have mislabelled the home-page widget's own IPL examples.
+ *
+ * The acronym must match as a whole word. "triple" contains "ipl", so a plain
+ * substring test would silently discard the assumption on a question that never
+ * named the competition at all. The boundaries are Unicode letter-or-number
+ * lookarounds rather than `\b`, which is ASCII-only.
+ */
+function namesCompetition(texts: readonly string[], competition: string): boolean {
+  const fullName = competition.trim().toLowerCase();
+  const acronym = acronymOf(competition);
+  const wholeWordAcronym = acronym
+    ? new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(acronym)}(?![\\p{L}\\p{N}])`, 'iu')
+    : null;
+
+  return texts.some((text) => {
+    if (fullName !== '' && text.toLowerCase().includes(fullName)) {
+      return true;
+    }
+
+    return wholeWordAcronym?.test(text) ?? false;
+  });
+}
+
 export function createLlmClient(options: LlmClientOptions): LlmClient {
   const fetchImplementation = options.fetchImplementation ?? globalThis.fetch;
 
@@ -442,6 +503,13 @@ export function createLlmClient(options: LlmClientOptions): LlmClient {
         throw new LlmNotConfiguredError();
       }
 
+      // Computed from the reader's own words, before anything the model says is
+      // looked at, so the two cannot disagree about what the question contained.
+      const readerNamedDefault = namesCompetition(
+        [question, ...conversation.map((turn) => turn.question)],
+        options.defaultCompetition,
+      );
+
       const response = await fetchWithRetry(requestBody(question, conversation), apiKey);
 
       if (!response.ok) {
@@ -502,10 +570,17 @@ export function createLlmClient(options: LlmClientOptions): LlmClient {
         // had used the default competition to word a *suggestion* and counted
         // that. A reader would have been told an answer was assumed when there
         // was no answer.
+        //
+        // A competition the reader named themselves is likewise not an
+        // assumption, however the model reports it, so `namesCompetition`
+        // removes that label when the question or any earlier one named the
+        // configured default.
         assumptions:
           translation.data.definition.kind === 'unsupported'
             ? []
-            : validAssumptions(translation.data.assumptions),
+            : validAssumptions(translation.data.assumptions).filter(
+                (assumption) => !(assumption === 'competition' && readerNamedDefault),
+              ),
         model: typeof payload.model === 'string' ? payload.model : options.model,
         usage: {
           inputTokens: tokenCount(payload.usage, 'input_tokens'),

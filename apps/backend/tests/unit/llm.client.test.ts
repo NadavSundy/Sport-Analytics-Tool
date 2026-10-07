@@ -109,6 +109,7 @@ describe('analytics query LLM adapter', () => {
         model: MODEL,
         // Far below the configured floor, so the test does not wait on a real bound.
         timeoutMs: 20,
+        defaultCompetition: DEFAULT_COMPETITION,
         fetchImplementation: fetchStub,
       }).translateQuestion(QUESTION),
     ).rejects.toBeInstanceOf(LlmTimeoutError);

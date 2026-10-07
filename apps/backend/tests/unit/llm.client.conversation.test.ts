@@ -276,13 +276,16 @@ describe('an assumed competition', () => {
     expect(translation.definition.kind).toBe('participant_statistics');
   });
 
+  // The question deliberately names no competition. `QUESTION` names the Indian
+  // Premier League, and since the adapter now discards the label when the reader
+  // named the default themselves, it would make this assert the wrong thing.
   it('is de-duplicated and capped', async () => {
     const translation = await client(
       translating({
         definition: CAREER,
         assumptions: ['competition', 'competition', 'competition'],
       }),
-    ).translateQuestion(QUESTION);
+    ).translateQuestion('Who has the most sixes?');
 
     expect(translation.assumptions).toEqual(['competition']);
   });
@@ -452,5 +455,125 @@ describe('a definition that fails the contract', () => {
       expect(error).toBeInstanceOf(LlmInvalidOutputError);
       expect((error as LlmInvalidOutputError).contractIssues).toEqual([]);
     }
+  });
+});
+
+/**
+ * Run 2 of the issue #868 evaluation still reported `assumptions:
+ * ["competition"]` for "Who took the most wickets in the IPL?" — a question that
+ * names the competition itself, in the short form everyone uses.
+ *
+ * The prompt already says that writing out a reader's own short form is not an
+ * assumption, and saying it more loudly did not fix it. This is a property of
+ * the request rather than a matter of guidance: if the reader's own words name
+ * the configured default, nothing was assumed, and the adapter can decide that
+ * without asking the model. Left unfixed it would mislabel the widget's own
+ * IPL example questions as assumed.
+ *
+ * The acronym is derived from the configured name's word initials, so there is
+ * no alias list to maintain and a deployment that configures a different
+ * competition gets the same behaviour.
+ */
+describe('a default competition the reader named themselves', () => {
+  const SIXES = {
+    kind: 'leaderboard',
+    metric: 'most_sixes',
+    scope: 'competition',
+    competition: { name: 'Indian Premier League' },
+    limit: 10,
+  } as const;
+
+  /** Asks a question the model answers with an assumed competition. */
+  async function assumptionsFor(
+    question: string,
+    conversation?: Conversation,
+    defaultCompetition = DEFAULT_COMPETITION,
+  ) {
+    const translation = await client(
+      translating({ definition: SIXES, assumptions: ['competition'] }),
+      defaultCompetition,
+    ).translateQuestion(question, conversation);
+
+    return translation.assumptions;
+  }
+
+  it('is not reported when the question names it in full', async () => {
+    expect(await assumptionsFor('Who took the most wickets in the Indian Premier League?')).toEqual(
+      [],
+    );
+  });
+
+  it('is not reported when the question names it in full in a different case', async () => {
+    expect(await assumptionsFor('most wickets in the INDIAN PREMIER LEAGUE?')).toEqual([]);
+  });
+
+  it('is not reported when the question uses the acronym', async () => {
+    expect(await assumptionsFor('Who took the most wickets in the IPL?')).toEqual([]);
+    expect(await assumptionsFor('who took the most wickets in the ipl?')).toEqual([]);
+  });
+
+  // The acronym has to match as a whole word. "triple" contains "ipl", and a
+  // substring test would therefore have silently swallowed the assumption on a
+  // question that never named the competition at all.
+  it('is still reported when the acronym only appears inside another word', async () => {
+    for (const question of [
+      'Who scored the most triples?',
+      'Who has the most IPLs-adjacent records?',
+      'Who leads the WIPL?',
+    ]) {
+      expect(await assumptionsFor(question)).toEqual(['competition']);
+    }
+  });
+
+  it('is not reported when an earlier turn named it', async () => {
+    const assumptions = await assumptionsFor('And for sixes?', [
+      {
+        question: 'Who took the most wickets in the IPL?',
+        definition: SIXES,
+      },
+    ]);
+
+    expect(assumptions).toEqual([]);
+  });
+
+  it('is still reported when neither the question nor any turn names it', async () => {
+    const assumptions = await assumptionsFor('Who has the most sixes?', [
+      { question: 'What are V Kohli career statistics?', definition: CAREER },
+    ]);
+
+    expect(assumptions).toEqual(['competition']);
+  });
+
+  // Derived from whatever is configured, so there is no alias list to maintain.
+  it('derives the acronym from the configured name, not a fixed list', async () => {
+    expect(
+      await assumptionsFor('Who has the most sixes in the BBL?', undefined, 'Big Bash League'),
+    ).toEqual([]);
+    // The Indian Premier League acronym means nothing to a Big Bash deployment.
+    expect(
+      await assumptionsFor('Who has the most sixes in the IPL?', undefined, 'Big Bash League'),
+    ).toEqual(['competition']);
+  });
+
+  // A single-word name has no acronym worth matching: one initial would match a
+  // bare letter anywhere in the question.
+  it('does not match a single letter for a one-word competition name', async () => {
+    expect(
+      await assumptionsFor('Who scored the most runs in H grade?', undefined, 'Hundred'),
+    ).toEqual(['competition']);
+    expect(
+      await assumptionsFor('Who scored the most runs in the Hundred?', undefined, 'Hundred'),
+    ).toEqual([]);
+  });
+
+  it('still drops the assumption on a refusal, named or not', async () => {
+    const translation = await client(
+      translating({
+        definition: { kind: 'unsupported', reason: 'ambiguous' },
+        assumptions: ['competition'],
+      }),
+    ).translateQuestion('Who scored the most runs last season?');
+
+    expect(translation.assumptions).toEqual([]);
   });
 });

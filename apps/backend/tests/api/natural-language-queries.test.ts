@@ -335,6 +335,7 @@ describe('natural-language query endpoint', () => {
           apiKey: 'test-key-never-used',
           model: 'claude-haiku-4-5-20251001',
           timeoutMs: 1_000,
+          defaultCompetition: 'Indian Premier League',
           fetchImplementation: async () =>
             new Response(
               JSON.stringify({
