@@ -1,3 +1,4 @@
+import { analyticsNameHintSchema } from '@sport-analytics/contracts';
 import { z } from 'zod';
 
 const optionalNonEmptyString = z.preprocess(
@@ -122,6 +123,14 @@ const environmentSchema = z
     NL_QUERY_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(120).default(10),
     NL_QUERY_DAILY_QUOTA_PER_CLIENT: z.coerce.number().int().min(1).max(10_000).default(100),
     NL_QUERY_GLOBAL_DAILY_LIMIT: z.coerce.number().int().min(1).max(100_000).default(300),
+    // The competition a question that names none is read against (issue #868).
+    //
+    // Configuration, never database content: it is a name an operator sets, and
+    // nothing reads it from the corpus. It is validated by the contract's own
+    // name-hint rule rather than a looser one, because a value that rule rejects
+    // could not appear in a definition and would make every question that relied
+    // on the default fail the contract instead of being answered.
+    NL_QUERY_DEFAULT_COMPETITION: analyticsNameHintSchema.default('Indian Premier League'),
   })
   .superRefine((environment, context) => {
     if (environment.NODE_ENV === 'production') {

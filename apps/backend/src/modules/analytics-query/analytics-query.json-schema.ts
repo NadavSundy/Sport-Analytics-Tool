@@ -2,6 +2,7 @@ import {
   leaderboardQueryDefinitionSchema,
   participantComparisonQueryDefinitionSchema,
   participantStatisticsQueryDefinitionSchema,
+  queryAssumptionSchema,
   unsupportedQueryDefinitionSchema,
 } from '@sport-analytics/contracts';
 
@@ -131,6 +132,14 @@ export const ANALYTICS_QUERY_TRANSLATION_JSON_SCHEMA = {
     suggestions: {
       type: 'array',
       items: { anyOf: ANALYTICS_QUERY_JSON_SCHEMA.anyOf.slice(0, -1) },
+    },
+    // What the translation filled in for the reader (issue #868). The members are
+    // read off the contract's own enum rather than restated, and the
+    // one-entry cap is applied by the adapter, because `maxItems` is one of the
+    // keywords a constrained schema rejects.
+    assumptions: {
+      type: 'array',
+      items: { enum: [...queryAssumptionSchema.options] },
     },
   },
   required: ['definition'],

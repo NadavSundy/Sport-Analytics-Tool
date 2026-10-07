@@ -325,6 +325,7 @@ describe('natural-language query operations', () => {
           model: 'claude-haiku-4-5-20251001',
           usage: { inputTokens: 100, outputTokens: 30 },
           suggestions: [],
+          assumptions: [],
         }),
       },
       ...(limiter ? { naturalLanguageQueryLimiter: limiter } : {}),
