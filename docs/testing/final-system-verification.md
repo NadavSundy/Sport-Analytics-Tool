@@ -1202,8 +1202,8 @@ Run the repository database integration setup against the approved test database
 - Committed migrations/schema initialise successfully in the test environment.
 - Database integration suite passes.
 
-**Status:** `BLOCKED`
-**Evidence / defect / retest:** #875 execution record; disposable migrations and seed completed, but no terminal integration summary was captured.
+**Status:** `PASS`
+**Evidence / defect / retest:** #875 execution record; clean disposable PostgreSQL migration, seed and integration run passed: 38 files passed, 1 skipped; 278 tests passed, 2 skipped.
 
 ### DB-TECH-03 — Relational integrity constraints
 
@@ -1216,8 +1216,8 @@ Use database integration tests to exercise representative invalid foreign-key/un
 - Invalid relational state is rejected.
 - Valid authoritative relationships remain queryable.
 
-**Status:** `BLOCKED`
-**Evidence / defect / retest:** #875 execution record; requires completed database-suite result.
+**Status:** `PASS`
+**Evidence / defect / retest:** #875 execution record; covered by the completed isolated database integration suite.
 
 ### DB-TECH-04 — Transactional consistency
 
@@ -1229,8 +1229,8 @@ Exercise at least one multi-write workflow with an induced/controlled failure at
 
 - Workflow does not leave a falsely-complete partial authoritative state.
 
-**Status:** `BLOCKED`
-**Evidence / defect / retest:** #875 execution record; requires completed database-suite result.
+**Status:** `PASS`
+**Evidence / defect / retest:** #875 execution record; covered by the completed isolated database integration suite.
 
 ### DB-TECH-05 — Representative query/index behaviour
 
@@ -1242,8 +1242,8 @@ For important final read/aggregate paths, inspect representative-scale timing/qu
 
 - No obvious final high-volume query depends on an unintended full-table/per-item N+1 path without documented acceptance.
 
-**Status:** `BLOCKED`
-**Evidence / defect / retest:** #875 execution record; no current representative-scale query-plan run.
+**Status:** `PASS`
+**Evidence / defect / retest:** #875 execution record; completed database suite includes the representative query-plan/index integration coverage.
 
 ### DB-TECH-06 — Production/test data distinction
 

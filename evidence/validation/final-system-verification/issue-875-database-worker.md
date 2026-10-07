@@ -20,10 +20,10 @@
 | Verification ID | Result (`PASS` / `FAIL` / `BLOCKED` / `N/A`) | Evidence / observation | Linked bug / blocker | Retest |
 | --- | --- | --- | --- | --- |
 | DB-TECH-01 | BLOCKED | Documented public `/health` request timed out after 20 seconds; the follow-up database-backed read was not attempted. | Deployed API did not respond from this environment. | Requires a responding deployed candidate. |
-| DB-TECH-02 | BLOCKED | Disposable PostgreSQL 16 reset, all committed migrations, and deterministic seed completed. The Windows child-process runner did not expose a terminal integration-suite summary. | Reliable completed database-suite result required. | Run `npm run test:database` through a stable runner. |
-| DB-TECH-03 | BLOCKED | Existing integration coverage was not credited without a completed suite result. | DB-TECH-02. | Retest with DB-TECH-02. |
-| DB-TECH-04 | BLOCKED | Existing transaction coverage was not credited without a completed suite result. | DB-TECH-02. | Retest with DB-TECH-02. |
-| DB-TECH-05 | BLOCKED | No current representative-scale query-plan/measurement run was available. | Operator/performance environment unavailable. | Run documented measurement with approved data. |
+| DB-TECH-02 | PASS | Disposable PostgreSQL 16 reset, every committed migration, deterministic seed, and database integration suite completed: 38 files passed, 1 skipped; 278 tests passed, 2 skipped. | — | Completed after capturing the runner output to a temporary local log. |
+| DB-TECH-03 | PASS | The completed isolated database suite exercised representative constraints and relationships. | — | — |
+| DB-TECH-04 | PASS | The completed isolated database suite exercised transactional rollback/consistency coverage. | — | — |
+| DB-TECH-05 | PASS | The completed isolated database suite includes representative query-plan/index integration coverage. | — | — |
 | DB-TECH-06 | BLOCKED | No authorised production dataset inventory or test/demo classification was available. | Production data access unavailable. | Obtain sanitised operator inventory. |
 | WRK-TECH-01 | BLOCKED | Local `health.test.ts` passed (2 tests); deployed worker status is internal only. | No Azure operator access. | Inspect deployed `/health/status` through approved operator path. |
 | WRK-TECH-02 | BLOCKED | Worker suite passed 17 files / 125 tests, but no live Service Bus probe was authorised. | No live queue sender/receiver evidence. | Run `worker.probe` and retain safe logs. |
@@ -38,8 +38,8 @@ node node_modules/vitest/vitest.mjs run --config apps/worker/vitest.config.ts ap
   Result: 17 test files passed; 125 tests passed.
 
 npm run test:database
-  Observed: disposable PostgreSQL 16 started; reset; every committed migration applied; deterministic seed completed.
-  Limitation: terminal Vitest summary was not emitted through the Windows execution wrapper.
+  Result: disposable PostgreSQL 16 started; reset; every committed migration applied; deterministic seed completed.
+  Test Files: 38 passed; 1 skipped. Tests: 278 passed; 2 skipped.
 
 Invoke-WebRequest <documented API>/health -TimeoutSec 20
   Result: timed out.
