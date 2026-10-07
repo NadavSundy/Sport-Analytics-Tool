@@ -6,7 +6,7 @@ The detailed participant records and consolidated evidence remain the authoritat
 provides a privacy-safe view of the coverage, findings, decisions, integrated changes and remaining
 limitations.
 
-[View the canonical Sprint 3 user-testing evidence](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-3/sprint-3-user-testing-summary.md).
+[View the canonical Sprint 3 user-testing evidence](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-3/sprint-3-user-testing-summary.md){ target="_blank" rel="noopener" }.
 
 ## Coverage
 
@@ -126,10 +126,10 @@ related implementation issues or Sprint ended.
 ## Evidence
 
 The complete Sprint 3 evidence is retained under
-[`evidence/user-testing/sprint-3/`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-3).
+[`evidence/user-testing/sprint-3/`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-3){ target="_blank" rel="noopener" }.
 
 The canonical consolidated record is
-[`sprint-3-user-testing-summary.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-3/sprint-3-user-testing-summary.md).
+[`sprint-3-user-testing-summary.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-3/sprint-3-user-testing-summary.md){ target="_blank" rel="noopener" }.
 
 ## AI Declaration
 

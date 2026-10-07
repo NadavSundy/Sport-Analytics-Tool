@@ -89,9 +89,9 @@ However, all reviewer actions are disabled because the batch lifecycle is `Faile
 
 **Ownership check:** #695 and #729 describe earlier terminal-before-review failures but are closed. Neither owns this deployed `Failed` state with visible, disabled reviewer actions; no duplicate issue was created.
 
-### Scenario A â€” authoritative rerun after #754, #757 and #763
+### Scenario A — authoritative rerun after #754, #757 and #763
 
-**Authoritative package:** `1552923-season-upload-schema-extras-fixed.json` â€” SHA-256
+**Authoritative package:** `1552923-season-upload-schema-extras-fixed.json` — SHA-256
 `766f7799d71b049eb1726121c0188ef868ea1510f2857553fe2a5e11e9e23c1b`.
 The raw Cricsheet source SHA-256 is
 `db4ae07fc60df288ac66d4510212930813df495d0c012aa7533cb3d086614559`.
@@ -102,7 +102,7 @@ The package remains unchanged and contains 251 physical delivery events (Kenya
 #757 reviewer-actionable state preservation is deployed and smoke-verified by receipt
 `771ff2d4-7518-4c3b-a0af-7bf8af86047b`; #763 established and fixed deterministic
 physical-delivery-position persistence collisions. The #763 diagnostic receipt
-`9915bc4b-a24f-4685-b177-3fa7dab0e51b` failed attempts 1â€“5 with
+`9915bc4b-a24f-4685-b177-3fa7dab0e51b` failed attempts 1–5 with
 `batch_item_batch_natural_key`; the subsequent rerun did not reproduce it.
 
 **Active receipt:** `ed797e8a-9645-4a39-b1b1-228250e00e43`.

@@ -2,7 +2,7 @@
 
 `GET /api/v1/weather` returns observed daily weather for a location and date. It backs the
 project's course-required external API integration; see
-[ADR-008](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-008-external-weather-api-integration.md)
+[ADR-008](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-008-external-weather-api-integration.md){ target="_blank" rel="noopener" }
 for the decision and its context.
 
 No sign-in or bearer token is required for this endpoint.
