@@ -73,7 +73,7 @@ misleading.
 ## Why a second password method is not introduced
 
 Adding Supabase email/password authentication solely to satisfy
-[issue #65](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/65) would expand the
+[issue #65](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/65){ target="_blank" rel="noopener" } would expand the
 authentication architecture rather than complete the existing Google OAuth flow. It would require:
 
 - an approved product and architecture decision for a second sign-in method;

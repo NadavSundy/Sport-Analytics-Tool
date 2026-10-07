@@ -10,9 +10,9 @@ award a mark or infer completion from an issue being closed. Where the current e
 that limitation is stated explicitly.
 
 The historical planned mapping remains in
-[`evidence/sprints/sprint-3/2026-09-15-planning.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-3/2026-09-15-planning.md).
+[`evidence/sprints/sprint-3/2026-09-15-planning.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-3/2026-09-15-planning.md){ target="_blank" rel="noopener" }.
 The Sprint 3 close-out record is
-[`evidence/sprints/sprint-3/2026-09-28-sprint-3-close-out.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-3/2026-09-28-sprint-3-close-out.md).
+[`evidence/sprints/sprint-3/2026-09-28-sprint-3-close-out.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-3/2026-09-28-sprint-3-close-out.md){ target="_blank" rel="noopener" }.
 
 ## Current Milestone State
 
@@ -44,7 +44,7 @@ user-feedback outcome is recorded.
 ## User-Feedback Gate Traceability
 
 The consolidated source of truth is
-[`evidence/user-testing/sprint-3/sprint-3-user-testing-summary.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-3/sprint-3-user-testing-summary.md).
+[`evidence/user-testing/sprint-3/sprint-3-user-testing-summary.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-3/sprint-3-user-testing-summary.md){ target="_blank" rel="noopener" }.
 
 | Gate | User goal                                            | Current close-out treatment                                                                                            |
 | ---- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
@@ -75,7 +75,7 @@ batch-processing; unimported production source remains in the denominator. Tempo
 thresholds were used to prove enforcement and were not adopted as an invented course threshold.
 
 Evidence:
-[`evidence/validation/issue-578-repository-code-coverage.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-578-repository-code-coverage.md).
+[`evidence/validation/issue-578-repository-code-coverage.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-578-repository-code-coverage.md){ target="_blank" rel="noopener" }.
 
 ## Intermediate Acceptance Traceability — #598
 

@@ -1,6 +1,6 @@
 ﻿# User Testing Overview
 
-Formal user testing uses the task-based process established through Issue #264 / PR #317 and retained in ADR-013. Sprint 3 continues that process through dedicated feature-level user-feedback tasks (#601â€“#607 and #612). These testing issues collect validation evidence independently; they are not automatic Gitea or CI closure gates for implementation work.
+Formal user testing uses the task-based process established through Issue #264 / PR #317 and retained in ADR-013. Sprint 3 continues that process through dedicated feature-level user-feedback tasks (#601–#607 and #612). These testing issues collect validation evidence independently; they are not automatic Gitea or CI closure gates for implementation work.
 
 The process is designed to preserve evidence at individual task level so that separate product workflows can be tested, evaluated, fixed and retested independently.
 
@@ -42,13 +42,13 @@ The evidence chain should remain:
 
 Formal sessions are tracked separately so that different user journeys can be targeted independently:
 
-- **#416** â€” public and analyst workflows
-- **#417** â€” submission, batch ingestion and correction workflows
-- **#418** â€” review and administration workflows
+- **#416** — public and analyst workflows
+- **#417** — submission, batch ingestion and correction workflows
+- **#418** — review and administration workflows
 
 ## Sprint 3 feature-level user-feedback tasks
 
-Sprint 3 does not introduce a new survey or evidence pipeline. Each user goal has a dedicated user-feedback issue (#601â€“#607 and #612). These issues are separate validation/evidence activities: an implementation issue may close when its own Definition of Done and genuine technical/process dependencies are satisfied, even if the related user-feedback issue is still open.
+Sprint 3 does not introduce a new survey or evidence pipeline. Each user goal has a dedicated user-feedback issue (#601–#607 and #612). These issues are separate validation/evidence activities: an implementation issue may close when its own Definition of Done and genuine technical/process dependencies are satisfied, even if the related user-feedback issue is still open.
 
 The `Cannot Begin Until` lists retained on user-feedback issues are **testing-readiness checklists**, not Gitea dependency or implementation-closure rules. They identify the functionality that must be deployed and usable before a representative-user session can produce meaningful evidence.
 

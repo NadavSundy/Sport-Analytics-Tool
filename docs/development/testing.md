@@ -705,7 +705,7 @@ The audit combines:
 - manual browser-zoom and responsive-layout inspection.
 
 The Sprint 2 Basic audit for Issue #273 is retained in
-[the Issue #273 accessibility and responsive-design evidence](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-273-accessibility-responsive-audit.md).
+[the Issue #273 accessibility and responsive-design evidence](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-273-accessibility-responsive-audit.md){ target="_blank" rel="noopener" }.
 
 Serious or critical product findings discovered during an audit must be fixed within scope or tracked
 as separate issues with an explicit rationale.

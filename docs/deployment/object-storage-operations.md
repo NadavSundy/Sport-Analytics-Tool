@@ -164,7 +164,7 @@ failure and keep file-dependent operations failed closed.
 
 ## Related records
 
-- [ADR-011: Private Azure Blob Storage with PostgreSQL provenance](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-011-file-and-object-storage.md)
+- [ADR-011: Private Azure Blob Storage with PostgreSQL provenance](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-011-file-and-object-storage.md){ target="_blank" rel="noopener" }
 - [Batch staging, file storage and processing pipeline](../architecture/batch-ingestion-pipeline.md)
 - [Privacy and retention](../security/privacy-retention.md)
 

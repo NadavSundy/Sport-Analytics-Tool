@@ -6,7 +6,7 @@ The detailed session records and consolidated evidence remain the authoritative 
 publishes the main outcomes, decisions, improvements and remaining risks without reproducing
 unnecessary participant information.
 
-[View the canonical Sprint 2 user-testing evidence](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-2/sprint-2-user-testing-summary.md).
+[View the canonical Sprint 2 user-testing evidence](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-2/sprint-2-user-testing-summary.md){ target="_blank" rel="noopener" }.
 
 ## Coverage
 
@@ -120,10 +120,10 @@ outstanding for later work.
 
 The complete evidence, including task-level outcomes, finding IDs, decisions, issue links and retest
 records, is retained under
-[`evidence/user-testing/sprint-2/`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-2).
+[`evidence/user-testing/sprint-2/`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-2){ target="_blank" rel="noopener" }.
 
 The canonical consolidated record is
-[`sprint-2-user-testing-summary.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-2/sprint-2-user-testing-summary.md).
+[`sprint-2-user-testing-summary.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-2/sprint-2-user-testing-summary.md){ target="_blank" rel="noopener" }.
 
 ## AI Declaration
 

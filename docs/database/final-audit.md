@@ -2,7 +2,7 @@
 
 - **Issue:** #807
 - **Audit date:** 2026-10-01
-- **Schema authority:** ordered SQL in [`database/migrations/`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/database/migrations/)
+- **Schema authority:** ordered SQL in [`database/migrations/`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/database/migrations/){ target="_blank" rel="noopener" }
 
 This is the final evidence-led audit of the Sport Analytics Tool PostgreSQL design. It indexes the
 executable schema and retained checks rather than becoming a second schema definition. When this
@@ -32,7 +32,7 @@ The local rebuild check is `npm run test:database`. On the audit date it started
 PostgreSQL 16 instance, reset the isolated schema, applied the full migration history, seeded it,
 and completed with **37 passed test files, 268 passed tests, 1 skipped file and 2 skipped tests**.
 The two skipped tests are retained suite state, not passed tests. Reproduction and safety safeguards
-are in [Testing](../development/testing.md) and [Database migrations](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/database/migrations/README.md).
+are in [Testing](../development/testing.md) and [Database migrations](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/database/migrations/README.md){ target="_blank" rel="noopener" }.
 
 ## Schema and relationship audit
 

@@ -2,7 +2,7 @@
 
 !!! note "Canonical access model"
 
-    [ADR-016](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-016-api-consumer-access-model.md)
+    [ADR-016](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-016-api-consumer-access-model.md){ target="_blank" rel="noopener" }
     defines one canonical cricket-read hierarchy. Those reads accept anonymous requests or an
     optional valid consumer key. This page documents the requester-owned access lifecycle.
 

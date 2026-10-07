@@ -174,7 +174,7 @@ The job retains `summary.md`, `summary.json` and individual JSON reports in the
 `lighthouse-public-baseline-<commit>` artifact. Upload uses `if: always()` so reports remain
 available after a regression failure. The gate covers public routes only; it does not bypass or
 claim automated coverage for authenticated routes. See
-[Issue #797 Lighthouse evidence](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-797-lighthouse-performance.md)
+[Issue #797 Lighthouse evidence](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-797-lighthouse-performance.md){ target="_blank" rel="noopener" }
 for the approved baseline source and final hosted-run evidence.
 
 ## Intermediate ingestion merge gate
