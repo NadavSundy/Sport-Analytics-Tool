@@ -214,11 +214,25 @@ test('issue 875 database and worker verification has a retained execution record
 
 test('issue 877 records every automated quality-gate outcome explicitly', () => {
   for (const verificationId of [
-    'AUTO-TECH-01', 'AUTO-TECH-02', 'AUTO-TECH-03', 'AUTO-TECH-04',
-    'AUTO-TECH-05', 'AUTO-TECH-06', 'AUTO-TECH-07', 'AUTO-TECH-08',
-    'AUTO-TECH-09', 'AUTO-TECH-10', 'COV-TECH-01', 'COV-TECH-02',
-    'COV-TECH-03', 'CI-TECH-01', 'CI-TECH-02', 'DEP-TECH-01',
-    'DEP-TECH-02', 'DEP-TECH-03', 'DEP-TECH-04',
+    'AUTO-TECH-01',
+    'AUTO-TECH-02',
+    'AUTO-TECH-03',
+    'AUTO-TECH-04',
+    'AUTO-TECH-05',
+    'AUTO-TECH-06',
+    'AUTO-TECH-07',
+    'AUTO-TECH-08',
+    'AUTO-TECH-09',
+    'AUTO-TECH-10',
+    'COV-TECH-01',
+    'COV-TECH-02',
+    'COV-TECH-03',
+    'CI-TECH-01',
+    'CI-TECH-02',
+    'DEP-TECH-01',
+    'DEP-TECH-02',
+    'DEP-TECH-03',
+    'DEP-TECH-04',
   ]) {
     assert.match(
       issue877Evidence,
