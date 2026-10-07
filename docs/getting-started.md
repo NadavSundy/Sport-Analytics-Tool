@@ -22,18 +22,18 @@ Follow this order for the shortest reliable path into the project:
 The component READMEs are the closest guide to each repository area. They remain in the repository
 rather than being duplicated into MkDocs.
 
-| Component           | Guide                                                                                                                                     |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Frontend            | [apps/frontend/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/apps/frontend/README.md)           |
-| Backend API         | [apps/backend/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/apps/backend/README.md)             |
-| Asynchronous worker | [apps/worker/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/apps/worker/README.md)               |
-| Database            | [database/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/database/README.md)                     |
-| Shared contracts    | [packages/contracts/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/packages/contracts/README.md) |
-| Documentation       | [docs/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/docs/README.md)                             |
-| Testing             | [tests/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/tests/README.md)                           |
-| Infrastructure      | [infra/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/infra/README.md)                           |
-| Repository scripts  | [scripts/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/scripts/README.md)                       |
-| Project evidence    | [evidence/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/README.md)                     |
+| Component           | Guide                                                                                                                                                                       |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Frontend            | [apps/frontend/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/apps/frontend/README.md){ target="_blank" rel="noopener" }           |
+| Backend API         | [apps/backend/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/apps/backend/README.md){ target="_blank" rel="noopener" }             |
+| Asynchronous worker | [apps/worker/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/apps/worker/README.md){ target="_blank" rel="noopener" }               |
+| Database            | [database/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/database/README.md){ target="_blank" rel="noopener" }                     |
+| Shared contracts    | [packages/contracts/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/packages/contracts/README.md){ target="_blank" rel="noopener" } |
+| Documentation       | [docs/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/docs/README.md){ target="_blank" rel="noopener" }                             |
+| Testing             | [tests/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/tests/README.md){ target="_blank" rel="noopener" }                           |
+| Infrastructure      | [infra/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/infra/README.md){ target="_blank" rel="noopener" }                           |
+| Repository scripts  | [scripts/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/scripts/README.md){ target="_blank" rel="noopener" }                       |
+| Project evidence    | [evidence/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/README.md){ target="_blank" rel="noopener" }                     |
 
 ## Where to go next
 
@@ -45,7 +45,7 @@ rather than being duplicated into MkDocs.
 - To review quality gates, coverage, performance or user testing, continue to
   [Testing & Quality](testing/index.md).
 - To inspect Sprint, stakeholder, decision and AI-use evidence, continue to
-  [Project Process & Evidence](process/index.md).
+  [Project Records & Evidence](process/index.md).
 
 ## AI Declaration
 

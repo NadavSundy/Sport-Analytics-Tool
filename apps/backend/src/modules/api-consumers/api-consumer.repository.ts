@@ -38,6 +38,7 @@ export interface ApiConsumerRepository {
   issue(ownerAccountId: string, issue: ApiConsumerIssue, key: GeneratedKey): Promise<ApiConsumer>;
   list(ownerAccountId: string): Promise<ApiConsumer[]>;
   findOwned(ownerAccountId: string, consumerId: string): Promise<ApiConsumer | null>;
+  findAny?(consumerId: string): Promise<ApiConsumer | null>;
   rotate(ownerAccountId: string, consumerId: string, key: GeneratedKey): Promise<ApiConsumer>;
   revoke(ownerAccountId: string, consumerId: string, keyId: string): Promise<void>;
   findActiveConsumer(keyHash: string): Promise<ActiveConsumer | null>;
@@ -124,6 +125,15 @@ export function createApiConsumerRepository(pool: Pool = getDatabasePool()): Api
         const consumer = inserted.rows[0]!;
         await executeQuery(
           client,
+          `INSERT INTO api_consumer_access_request
+            (requester_app_user_id, api_consumer_id, consumer_name, intended_use, request_state,
+             reviewed_by_app_user_id, reviewed_at, review_reason)
+           VALUES ($1, $2, $3, 'Legacy repository-issued API consumer.', 'approved', $1, now(),
+             'Created through the legacy repository compatibility path.')`,
+          [ownerAccountId, consumer.id, issue.name],
+        );
+        await executeQuery(
+          client,
           `INSERT INTO api_consumer_key (api_consumer_id, key_prefix, key_hash) VALUES ($1, $2, $3)`,
           [consumer.id, key.prefix, key.hash],
         );
@@ -149,6 +159,9 @@ export function createApiConsumerRepository(pool: Pool = getDatabasePool()): Api
         [consumerId, ownerAccountId],
       );
       return owned.rows[0] ? readConsumer(pool, owned.rows[0].id) : null;
+    },
+    async findAny(consumerId) {
+      return readConsumer(pool, consumerId);
     },
     async rotate(ownerAccountId, consumerId, key) {
       return withTransaction(pool, async (client) => {
@@ -194,7 +207,12 @@ export function createApiConsumerRepository(pool: Pool = getDatabasePool()): Api
           consumer.rate_limit_per_minute AS "rateLimitPerMinute", consumer.daily_quota AS "dailyQuota"
          FROM api_consumer_key key
          JOIN api_consumer consumer ON consumer.api_consumer_id = key.api_consumer_id
-         WHERE key.key_hash = $1 AND key.revoked_at IS NULL`,
+         JOIN app_user owner ON owner.app_user_id = consumer.owner_app_user_id
+         JOIN api_consumer_access_request access_request
+           ON access_request.api_consumer_id = consumer.api_consumer_id
+          AND access_request.request_state = 'approved'
+         WHERE key.key_hash = $1 AND key.revoked_at IS NULL
+           AND owner.disabled_at IS NULL AND owner.auth_deleted_at IS NULL AND owner.deleted_at IS NULL`,
         [keyHash],
       );
       return result.rows[0] ?? null;
@@ -286,6 +304,7 @@ export function createLazyApiConsumerRepository(): ApiConsumerRepository {
     issue: (...args) => resolved().issue(...args),
     list: (...args) => resolved().list(...args),
     findOwned: (...args) => resolved().findOwned(...args),
+    findAny: (...args) => resolved().findAny!(...args),
     rotate: (...args) => resolved().rotate(...args),
     revoke: (...args) => resolved().revoke(...args),
     findActiveConsumer: (...args) => resolved().findActiveConsumer(...args),

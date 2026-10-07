@@ -284,16 +284,17 @@ npx wrangler pages deploy site --project-name=sports-analytics-tool
 
 ## AI usage
 
-This repository makes use of AI code generation using the following tools recorded in the AI registers: ChatGPT-Web[GPT-5.6 Sol], Codex[GPT-5], Codex[GPT-5.6 Sol] and Claude-Web[Claude Opus 5]. Earlier planning/documentation sessions also record ChatGPT-Web[GPT-5.5], ChatGPT-Web[GPT-5.6 Thinking] and Claude.ai[Claude Sonnet 5].
+This repository makes use of AI code generation. Reconciliation against the task-level registers records the following tool/model pairs for code-generation or implementation work: ChatGPT-Web[GPT-5.5], ChatGPT-Web[GPT-5.6 Luna], ChatGPT-Web[GPT-5.6 Thinking], ChatGPT-Web[GPT-5.6 Sol], Codex[GPT-5], Codex[GPT-5.6 Sol], Codex[GPT-5.6 Terra], Codex[GPT-6], Claude-Web[Claude Sonnet 5], Claude-Web[Claude Opus 5], Claude-Web[Claude Opus 5.5], Claude-Code[Claude Opus 5], Claude-Code[Claude Opus 5.5] and Claude.ai[Claude Sonnet 5]. Historical register rows use a few spelling variants for the same web/code tools; the task-level CSVs remain authoritative for the exact label recorded for each task.
 
-Sprint 4 user-testing preparation for #803 also uses Codex[GPT-6] for documentation generation, repository review and browser technical verification. Its member-register entry distinguishes automated preparation from pending human sessions, review and retests.
+Sprint 4 user testing for #803 also uses Codex[GPT-6] for local test preparation, evidence documentation and browser technical verification. Its member-register entry distinguishes real assisted participant evidence from AI simulation and pending acceptance/review.
 
-This repository does not currently use AI in-line editing/autocomplete tools as a repository workflow.
+This repository does not use AI in-line editing/autocomplete tools as a repository workflow. No such usage is recorded in the current per-member registers.
 
-This repository makes use of AI-assisted code review using tools recorded in the task-level registers, including Codex[GPT-5], Codex[GPT-5.6 Sol] and Claude-Web[Claude Opus 5]. Human review, testing and responsibility remain required.
+This repository makes use of AI-assisted code review. The task-level registers record code-review assistance from ChatGPT-Web[GPT-5.6 Thinking], ChatGPT-Web[GPT-5.6 Sol], Codex[GPT-5], Codex[GPT-5.6 Sol], Claude-Web[Claude Opus 4.5], Claude-Web[Claude Opus 5], Claude-Web[Claude Opus 5.5], Claude-Code[Claude Opus 5] and Claude-Code[Claude Opus 5.5]. Human review, testing and responsibility remain required.
 
-See [`evidence/ai/registers/`](evidence/ai/registers/) for current task-level records. The earlier
-shared register remains available while its entries are migrated.
+See [`evidence/ai/registers/`](evidence/ai/registers/) for current task-level records and
+[`evidence/ai/transcripts/`](evidence/ai/transcripts/) for the supporting transcript evidence. The
+earlier shared register remains available while its entries are migrated.
 
 The preceding README was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The documentation information architecture was reorganised and cross-linked with the assistance of ChatGPT-Web[GPT-5.6 Sol].

@@ -7,12 +7,78 @@ import type {
   ParticipantCompetitionAggregate,
   ParticipantSeasonAggregate,
 } from '@sport-analytics/contracts';
-import { useId, useState } from 'react';
+import { memo, useId, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { DataTable } from '../../components/DataTable';
+import {
+  consolidateParticipantWarnings,
+  type ParticipantDataNotice,
+} from './participantDataNotices';
 import { StatisticsDefinitions } from './StatisticsDefinitions';
 
 type ParticipantScope = 'career' | 'competition' | 'season';
+
+const SCOPES: readonly { id: ParticipantScope; label: string }[] = [
+  { id: 'career', label: 'Career' },
+  { id: 'competition', label: 'By competition' },
+  { id: 'season', label: 'By season' },
+];
+
+interface PartitionedStatistics {
+  career: ParticipantCareerAggregate | undefined;
+  competitions: ParticipantCompetitionAggregate[];
+  seasons: ParticipantSeasonAggregate[];
+}
+
+/** Splits the published rows by scope in one pass, keeping their published order. */
+function partitionStatistics(statistics: readonly ParticipantAggregate[]): PartitionedStatistics {
+  const partitioned: PartitionedStatistics = { career: undefined, competitions: [], seasons: [] };
+  for (const statistic of statistics) {
+    if (statistic.scope === 'career') {
+      partitioned.career ??= statistic;
+    } else if (statistic.scope === 'competition') {
+      partitioned.competitions.push(statistic);
+    } else {
+      partitioned.seasons.push(statistic);
+    }
+  }
+  return partitioned;
+}
+
+function listScope(label: string, values: readonly string[]): string {
+  return `${label} affected (${values.length}): ${values.join(', ')}`;
+}
+
+function DataNotices({ notices }: { notices: readonly ParticipantDataNotice[] }) {
+  if (notices.length === 0) return null;
+  return (
+    <section className="statistics-warnings" aria-label="Data notices" role="status">
+      <h3>Data notices</h3>
+      <ul>
+        {notices.map((notice) => (
+          <li key={notice.key} data-warning-code={notice.code}>
+            {notice.message}
+            {notice.competitions.length > 0 ? (
+              <span className="statistics-warning__scope">
+                {listScope(
+                  notice.competitions.length === 1 ? 'Competition' : 'Competitions',
+                  notice.competitions.map(
+                    (competition) => competition.competitionName ?? competition.competitionId,
+                  ),
+                )}
+              </span>
+            ) : null}
+            {notice.seasons.length > 0 ? (
+              <span className="statistics-warning__scope">
+                {listScope(notice.seasons.length === 1 ? 'Season' : 'Seasons', notice.seasons)}
+              </span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 function formatRate(value: number | null): string | number {
   return value ?? '—';
@@ -37,7 +103,11 @@ function Metric({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-function CareerOverview({ career }: { career: ParticipantCareerAggregate }) {
+const CareerOverview = memo(function CareerOverview({
+  career,
+}: {
+  career: ParticipantCareerAggregate;
+}) {
   const headlineMetrics = [
     { label: 'Appearances', value: career.appearances },
     ...(career.batting
@@ -77,7 +147,7 @@ function CareerOverview({ career }: { career: ParticipantCareerAggregate }) {
       </p>
     </section>
   );
-}
+});
 
 function RecordGroup({
   children,
@@ -298,20 +368,14 @@ function CompetitionTable({ competitions }: { competitions: ParticipantCompetiti
 export function ParticipantAggregateView({ aggregates }: { aggregates: ParticipantAggregates }) {
   const [scope, setScope] = useState<ParticipantScope>('career');
   const tabsId = useId();
-  const career = aggregates.statistics.find(
-    (statistic): statistic is ParticipantCareerAggregate => statistic.scope === 'career',
+  const { career, competitions, seasons } = useMemo(
+    () => partitionStatistics(aggregates.statistics),
+    [aggregates.statistics],
   );
-  const competitions = aggregates.statistics.filter(
-    (statistic): statistic is ParticipantCompetitionAggregate => statistic.scope === 'competition',
+  const notices = useMemo(
+    () => consolidateParticipantWarnings(aggregates.warnings, aggregates.statistics),
+    [aggregates.warnings, aggregates.statistics],
   );
-  const seasons = aggregates.statistics.filter(
-    (statistic): statistic is ParticipantSeasonAggregate => statistic.scope === 'season',
-  );
-  const scopes: { id: ParticipantScope; label: string }[] = [
-    { id: 'career', label: 'Career' },
-    { id: 'competition', label: 'By competition' },
-    { id: 'season', label: 'By season' },
-  ];
 
   return (
     <>
@@ -324,16 +388,7 @@ export function ParticipantAggregateView({ aggregates }: { aggregates: Participa
           {aggregates.status === 'complete' ? 'Complete data' : 'Partial data'}
         </p>
       </div>
-      {aggregates.warnings.length > 0 ? (
-        <section className="statistics-warnings" aria-label="Data notices" role="status">
-          <h3>Data notices</h3>
-          <ul>
-            {aggregates.warnings.map((warning, index) => (
-              <li key={`${warning.code}-${index}`}>{warning.message}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      <DataNotices notices={notices} />
       {career ? (
         <CareerOverview career={career} />
       ) : (
@@ -350,7 +405,7 @@ export function ParticipantAggregateView({ aggregates }: { aggregates: Participa
           </div>
         </div>
         <div className="statistics-tabs" role="tablist" aria-label="Player statistics scope">
-          {scopes.map((item, index) => (
+          {SCOPES.map((item, index) => (
             <button
               aria-controls={`${tabsId}-${item.id}-panel`}
               aria-selected={scope === item.id}
@@ -361,17 +416,17 @@ export function ParticipantAggregateView({ aggregates }: { aggregates: Participa
               onKeyDown={(event) => {
                 let nextIndex: number | null = null;
                 if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-                  nextIndex = (index + 1) % scopes.length;
+                  nextIndex = (index + 1) % SCOPES.length;
                 } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-                  nextIndex = (index - 1 + scopes.length) % scopes.length;
+                  nextIndex = (index - 1 + SCOPES.length) % SCOPES.length;
                 } else if (event.key === 'Home') {
                   nextIndex = 0;
                 } else if (event.key === 'End') {
-                  nextIndex = scopes.length - 1;
+                  nextIndex = SCOPES.length - 1;
                 }
                 if (nextIndex === null) return;
                 event.preventDefault();
-                const nextScope = scopes[nextIndex];
+                const nextScope = SCOPES[nextIndex];
                 if (!nextScope) return;
                 setScope(nextScope.id);
                 document.getElementById(`${tabsId}-${nextScope.id}-tab`)?.focus();

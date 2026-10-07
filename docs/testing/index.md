@@ -2,7 +2,7 @@
 
 This section groups the project's testing strategy, automated checks, coverage, performance evidence,
 formal user testing and defect workflow. The detailed evidence itself remains under `evidence/` and is
-linked through [Project Process & Evidence](../process/index.md).
+linked through [Project Records & Evidence](../process/index.md).
 
 ## What do you need to verify?
 

@@ -30,6 +30,11 @@ test(
     await expect(
       page.getByRole('heading', { level: 1, name: 'The game, measured ball by ball.' }),
     ).toBeVisible();
+    await expect(page.getByRole('img', { name: 'Cricket match in progress' })).toHaveAttribute(
+      'src',
+      '/images/cricket-match-john-oswald-unsplash.jpg',
+    );
+    await expect(page.getByRole('link', { name: 'Photo: John Oswald / Unsplash' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Browse fixtures' }).first()).toHaveAttribute(
       'href',
       '/fixtures',
@@ -37,6 +42,12 @@ test(
     await expect(page.getByRole('link', { name: 'Explore competitions' }).first()).toHaveAttribute(
       'href',
       '/competitions',
+    );
+    await expect(page.getByText('No account required')).toBeVisible();
+    const publicViews = page.getByRole('navigation', { name: 'Open a public view' });
+    await expect(publicViews.getByRole('link', { name: 'Browse teams' })).toHaveAttribute(
+      'href',
+      '/competitors',
     );
     await expect(page.getByRole('heading', { name: 'Explosive', exact: true })).toBeVisible();
     await expect(

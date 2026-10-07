@@ -99,6 +99,9 @@ test('every required workspace explicitly covers production source and emits mac
       `${workspace.name} must explicitly include production source so untested files count as zero`,
     );
     assert.match(config, /\{test,spec\}/, `${workspace.name} must exclude tests/specs`);
+    if (workspace.name === 'batch-processing') {
+      assert.match(config, /dist\//, 'batch-processing must exclude compiled test artifacts');
+    }
     assert.match(config, /\{fixtures,mocks\}/, `${workspace.name} must exclude fixtures/mocks`);
     assert.match(config, /generated/, `${workspace.name} must exclude generated source`);
     assert.match(config, /\.d\.ts/, `${workspace.name} must exclude declarations`);

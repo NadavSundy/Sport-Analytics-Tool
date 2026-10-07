@@ -1,6 +1,6 @@
 # Azure App Service Deployment Recovery and End-to-End Integration
 
-**Status:** Working with a temporary backend startup workaround
+**Status:** Historical incident record ? temporary backend startup workaround at the time
 **Incident period:** 10–13 August 2026
 **Environment:** Development
 **Resource group:** `rg-statsthegame-dev`

@@ -9,20 +9,20 @@ the application.
 - The development deployment uses storage account `statsthegameblobdev`, private staged-ingestion
   container `staged-ingestion`, and private immutable-release container `dataset-releases`.
   Anonymous container access and account-wide public Blob access must remain disabled.
-- The backend App Service identity is `statsthegame-api-dev`. Azure must enable/assign that managed
-  identity and grant it **Storage Blob Data Contributor** on the account or the narrower container
-  scope. Do not grant browser identities, public users, or the frontend access to the container.
-- Azure resources and RBAC assignments already exist outside this repository. The repository
-  configures application startup and documents the required settings; its publish-profile workflow
-  deploys code and does not create the account, container, identity, or role assignment.
-- Production App Service configuration supplies only
+- The backend Container App `statsthegame-dev-api` uses a dedicated user-assigned runtime managed
+  identity. The current Bicep grants that identity **Storage Blob Data Contributor** for the Blob
+  resources it requires. Do not grant browser identities, public users, or the frontend access to the containers.
+- The Blob storage account and containers are existing Azure resources. The supported Container Apps
+  deployment is defined by `infra/azure/backend/main.bicep`, which creates/wires the backend identities
+  and scoped role assignments used by the application runtime.
+- Production Container Apps configuration supplies
   `OBJECT_STORAGE_PROVIDER=azure`,
   `AZURE_STORAGE_ACCOUNT_NAME=statsthegameblobdev` and
   `AZURE_STORAGE_INGESTION_CONTAINER_NAME=staged-ingestion` (with
   `AZURE_STORAGE_CONTAINER_NAME` retained as its compatibility alias), plus
   `AZURE_STORAGE_RELEASE_CONTAINER_NAME=dataset-releases`. These identifiers are non-secret App Settings.
 - Enable secure transfer. Apply network restrictions, soft delete, versioning, and abandoned-block
-  cleanup according to ADR-011 before enabling the batch receipt endpoint.
+  cleanup according to ADR-011 for the implemented batch receipt and dataset-release workflows.
 - Keep Azure SDK HTTP logging disabled for payload bodies and authorisation headers. Application logs
   may contain only the application object ID and safe lifecycle state, never source content,
   submitted paths, provider URLs, connection strings, account keys, or SAS tokens.
@@ -36,7 +36,7 @@ the backend, both before the metadata is marked retained and again on download.
 
 When `NODE_ENV=production`, environment validation requires `OBJECT_STORAGE_PROVIDER=azure` plus the
 account and container identifiers. A missing provider or filesystem selection fails startup and
-cannot silently write deployed artifacts to local App Service storage.
+cannot silently write deployed artifacts to the Container App's local filesystem.
 Startup derives the HTTPS endpoint
 `https://statsthegameblobdev.blob.core.windows.net`, constructs `DefaultAzureCredential`, creates a
 `BlobServiceClient`, resolves the configured `ContainerClient`, wraps it in
@@ -44,8 +44,8 @@ Startup derives the HTTPS endpoint
 dependency path performs no storage request; the adapter checks that the container is private before
 its first read, write, or delete.
 
-On Azure App Service, `DefaultAzureCredential` obtains a Microsoft Entra token from the assigned
-managed identity. Blob account keys, Azure Storage connection strings, SAS tokens,
+On Azure Container Apps, `DefaultAzureCredential` obtains a Microsoft Entra token through the
+dedicated user-assigned runtime identity selected by `AZURE_CLIENT_ID`. Blob account keys, Azure Storage connection strings, SAS tokens,
 `SharedKeyCredential`, and public or pre-signed Blob URLs are intentionally unsupported. Do not add
 any of them to Gitea secrets, App Settings, source, tests, examples, or operational recovery steps.
 Unit tests may inject `FakeObjectStore` or constructor fakes and do not require an Azure account.
@@ -101,11 +101,11 @@ After deploying, verify through an authorised backend-only operational path that
 3. delete it and confirm a subsequent read is unavailable.
 
 Do not verify by making the container public, exposing a Blob URL, or placing credentials in a
-client. Until issue #277 introduces the authorised batch receipt boundary, this is an Azure-side or
-temporary backend diagnostic performed by an operator, not a public HTTP workflow.
+client. The authorised batch receipt boundary introduced under issue #277 is implemented. Direct Blob
+probes remain backend/operator diagnostics and must not be exposed as a public storage workflow.
 
-For `401` authentication failures, confirm the `statsthegame-api-dev` identity is enabled on the
-running App Service and that the deployment is using the intended App Service instance. For `403`
+For `401` authentication failures, confirm the runtime managed identity is configured on the
+`statsthegame-dev-api` Container App and that the active revision supplies the intended `AZURE_CLIENT_ID`. For `403`
 authorisation failures, inspect the identity's role assignment scope and confirm **Storage Blob Data
 Contributor** applies to `statsthegameblobdev` or to both `staged-ingestion` and
 `dataset-releases`. New role assignments can take
@@ -164,7 +164,7 @@ failure and keep file-dependent operations failed closed.
 
 ## Related records
 
-- [ADR-011: Private Azure Blob Storage with PostgreSQL provenance](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-011-file-and-object-storage.md)
+- [ADR-011: Private Azure Blob Storage with PostgreSQL provenance](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-011-file-and-object-storage.md){ target="_blank" rel="noopener" }
 - [Batch staging, file storage and processing pipeline](../architecture/batch-ingestion-pipeline.md)
 - [Privacy and retention](../security/privacy-retention.md)
 
@@ -172,5 +172,6 @@ failure and keep file-dependent operations failed closed.
 
 This operations guide was created with the assistance of Codex[GPT-5].
 The production managed-identity wiring and credential-safe operational guidance were updated with
-the assistance of Codex[GPT-5]. The immutable dataset-release storage lifecycle and the safe local
+the assistance of Codex[GPT-5]. The current Container Apps deployment and receipt-boundary wording
+was later reviewed and reconciled with the assistance of ChatGPT-Web[GPT-5.6 Sol]. The immutable dataset-release storage lifecycle and the safe local
 filesystem provider were documented with the assistance of Codex[GPT-5].

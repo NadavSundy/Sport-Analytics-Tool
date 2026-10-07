@@ -109,3 +109,30 @@ export const ANALYTICS_QUERY_JSON_SCHEMA = {
     },
   ],
 };
+
+/**
+ * The shape the provider is constrained to (issue #851): one definition, and
+ * optionally a few questions the platform could answer instead.
+ *
+ * Suggestions sit beside the definition rather than inside it because
+ * `definitionVersion` is a digest of the definition alone; a suggestion within it
+ * would make the same question carry different versions. The definition schema
+ * above is therefore reused unchanged.
+ *
+ * The suggestion branches are the answerable kinds only — the `unsupported`
+ * branch is dropped — so the provider cannot offer the reader a refusal to click.
+ * The three-suggestion cap is not expressed here, because `maxItems` is one of
+ * the keywords a constrained schema rejects; the adapter applies it.
+ */
+export const ANALYTICS_QUERY_TRANSLATION_JSON_SCHEMA = {
+  type: 'object',
+  properties: {
+    definition: ANALYTICS_QUERY_JSON_SCHEMA,
+    suggestions: {
+      type: 'array',
+      items: { anyOf: ANALYTICS_QUERY_JSON_SCHEMA.anyOf.slice(0, -1) },
+    },
+  },
+  required: ['definition'],
+  additionalProperties: false,
+};

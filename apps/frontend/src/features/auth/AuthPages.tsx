@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ApiResponseError } from '../../api/client';
 import { SubmitterAccessPanel } from '../submitter-access/SubmitterAccessPanel';
+import { ApiAccessPanel } from '../api-access/ApiAccessPanel';
 import { useAuth } from './AuthProvider';
 import { useAuthenticatedApiClient } from './useAuthenticatedApiClient';
 import { getCurrentUserProfile } from './current-user-api';
@@ -10,14 +11,9 @@ import { safeInternalReturnPath } from './auth-return';
 import { LocalNavigation } from '../../components/NavigationPrimitives';
 import type { Competition, CurrentUserProfile } from '@sport-analytics/contracts';
 import { competitionOptions } from '../submissions/BatchUploadPage';
+import { usePageTitle } from '../../components/usePageTitle';
 
 type OAuthCallbackError = 'cancelled' | 'provider-error';
-
-function usePageTitle(title: string) {
-  useEffect(() => {
-    document.title = `${title} | Stat'sTheGame`;
-  }, [title]);
-}
 
 function getOAuthCallbackError(search: string, hash: string): OAuthCallbackError | null {
   const searchParameters = new URLSearchParams(search);
@@ -490,7 +486,9 @@ function AccountSignOutAction() {
 export function AccountPage() {
   const { identity, isAuthenticated, isLoading } = useAuth();
   const { section = 'overview' } = useParams();
-  const activeSection = ['overview', 'access', 'security'].includes(section) ? section : 'overview';
+  const activeSection = ['overview', 'access', 'api-access', 'security'].includes(section)
+    ? section
+    : 'overview';
 
   usePageTitle('Account');
 
@@ -511,6 +509,7 @@ export function AccountPage() {
               items={[
                 { label: 'Overview', to: '/account/overview' },
                 { label: 'Access', to: '/account/access' },
+                { label: 'API access', to: '/account/api-access' },
                 { label: 'Account management', to: '/account/security' },
               ]}
             />
@@ -518,6 +517,7 @@ export function AccountPage() {
               <AccountOverview identityEmail={identity.email} />
             ) : null}
             {activeSection === 'access' ? <SubmitterAccessPanel /> : null}
+            {activeSection === 'api-access' ? <ApiAccessPanel /> : null}
             {activeSection === 'security' ? (
               <>
                 <AccountSignOutAction />

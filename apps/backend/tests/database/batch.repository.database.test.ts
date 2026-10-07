@@ -855,7 +855,15 @@ describe.sequential('batch repository database integration', () => {
         ]),
       ).resolves.toMatchObject({ rows: [{ count: '0' }] });
       await expect(
-        client.query(`SELECT count(*)::text AS count FROM background_job`),
+        client.query(
+          `SELECT count(*)::text AS count
+           FROM background_job AS job
+           JOIN batch ON batch.batch_id = job.batch_id
+           WHERE batch.submitter_id = $1::bigint
+             AND batch.idempotency_key LIKE $2
+             AND job.job_type = 'batch.validate'`,
+          [current.accountId, `${sourcePrefix}-active-limit-%`],
+        ),
       ).resolves.toMatchObject({ rows: [{ count: '3' }] });
     });
   });

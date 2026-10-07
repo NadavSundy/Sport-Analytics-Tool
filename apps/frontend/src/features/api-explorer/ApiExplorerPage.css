@@ -1039,7 +1039,7 @@
 
 /* Internal Swagger scrollbars */
 :root[data-theme='night'] .api-explorer__swagger .swagger-ui * {
-  scrollbar-color: var(--colour-border-strong) var(--colour-surface);
+  scrollbar-color: var(--colour-text-muted) var(--colour-surface);
 }
 
 /* === End Issue #661 Swagger Night Match complete readability fix === */

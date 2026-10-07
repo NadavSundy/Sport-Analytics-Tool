@@ -1,21 +1,26 @@
-# Project Process & Evidence
+# Project Records & Evidence
 
-This section is the assessment/evidence entry point. Product and developer documentation explain how
-the system works; this section shows how the team planned, reviewed, tested and documented the work.
-Authoritative evidence remains under `evidence/` and is linked rather than copied into MkDocs.
+This section is the entry point for retained project records and evidence. It brings together decisions,
+stakeholder and meeting records, testing and validation evidence, AI-use records and historical
+material without duplicating the detailed source artefacts.
 
-## Start by evidence type
+The development approach itself is documented separately under
+[Methodology](methodology-overview.md). Authoritative retained evidence remains under `evidence/`
+and is linked from these pages rather than copied into the documentation site.
 
-| Need                                                           | Start here                                                                                                                                              |
-| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Sprint planning, stand-ups, stakeholder records and close-outs | [Sprint Evidence](sprint-evidence.md)                                                                                                                   |
-| Original Teams meeting transcripts and readable PDF copies     | [Team Meeting Transcripts](team-meeting-transcripts.md)                                                                                                 |
-| Requirements/rubric traceability                               | [Sprint 1 traceability](../planning/sprint-1-requirements-traceability.md) / [Sprint 2 traceability](../planning/sprint-2-requirements-traceability.md) |
-| Testing, validation and formal user-testing evidence           | [Testing & Validation Evidence](validation-and-user-testing.md)                                                                                         |
-| Architecture and project decisions                             | [Decisions Index](decisions.md)                                                                                                                         |
-| AI registers and AI transcript evidence                        | [AI Use & Evidence](ai-use-evidence.md)                                                                                                                 |
-| Project workflow and ceremonies                                | [Project Methodology](../project_methodology.md)                                                                                                        |
-| Backlog and milestone planning                                 | [Project Backlog & Milestone Plan](../planning/project-backlog.md)                                                                                      |
+## Evidence and record routes
+
+| Need                                                           | Start here                                                                                                                                                                                                                            |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sprint planning, stand-ups, stakeholder records and close-outs | [Sprint Evidence](sprint-evidence.md)                                                                                                                                                                                                 |
+| Original Teams meeting transcripts and readable PDF copies     | [Team Meeting Transcripts](team-meeting-transcripts.md)                                                                                                                                                                               |
+| Requirements/rubric traceability                               | [Sprint 1 traceability](../planning/sprint-1-requirements-traceability.md) / [Sprint 2 traceability](../planning/sprint-2-requirements-traceability.md) / [final traceability](../planning/final-requirements-rubric-traceability.md) |
+| Testing, validation and formal user-testing evidence           | [Testing & Validation Evidence](validation-and-user-testing.md)                                                                                                                                                                       |
+| Architecture and project decisions                             | [Decisions Index](decisions.md)                                                                                                                                                                                                       |
+| AI registers and AI transcript evidence                        | [AI Use & Evidence](ai-use-evidence.md)                                                                                                                                                                                               |
+| Project workflow, Sprint structure and ceremonies              | [Project Methodology](../project_methodology.md)                                                                                                                                                                                      |
+| Source-control and Pull Request methodology                    | [Git Methodology](../git-methodology.md)                                                                                                                                                                                              |
+| Backlog and milestone planning                                 | [Project Backlog & Milestone Plan](../planning/project-backlog.md)                                                                                                                                                                    |
 
 ## Methodology
 
@@ -45,7 +50,7 @@ separate from the Microsoft Teams meeting transcripts indexed under
 
 ## Repository evidence root
 
-The repository-level [evidence README](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/README.md)
+The repository-level [evidence README](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/README.md){ target="_blank" rel="noopener" }
 explains the evidence directories and integrity rules. Normal product documentation should not be
 used as a substitute for retained evidence, and retained evidence should not be duplicated into the
 public docs merely to make it visible.

@@ -175,7 +175,7 @@ is 109, not the published 112, because the margin depends on the revised target.
 | Uganda legal-delivery count          | Disputed; see source data note 1           |
 | Result margin under D/L              | Transcribed; not derivable from totals     |
 
-No automated comparison exists for this fixture yet. It is added under issue #287.
+Automated comparison now exists in `apps/backend/tests/database/reference-figures.database.test.ts`. The published figures remain the independent reference evidence for that verification.
 
 ## AI Declaration
 

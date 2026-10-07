@@ -545,7 +545,7 @@ test(
     await page.keyboard.press('Enter');
 
     await expect(
-      page.getByRole('heading', { level: 1, name: 'Team One innings 0 total' }),
+      page.getByRole('heading', { level: 1, name: 'Team One innings 1 total' }),
     ).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Contributing events' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Delivery 1' })).toBeVisible();

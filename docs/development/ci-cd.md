@@ -138,8 +138,14 @@ Redocly linting.
 
 ## Lighthouse performance regression gate
 
-Issue #797 adds a dedicated `lighthouse` job for representative public frontend routes. The job
-builds the contracts and production frontend, serves the Vite preview, and audits these routes:
+Issue #797 adds a dedicated `lighthouse` job for representative public frontend routes. The
+change planner runs it on pushes and pull requests only when a changed path can affect the
+production frontend bundle or Lighthouse execution: `apps/frontend/**`, `packages/contracts/**`,
+root dependency/configuration files, Lighthouse scripts/configuration, or CI workflow files.
+Documentation and evidence-only changes set the planner output to `false`, so the skipped job is
+expected and does not conceal a frontend regression. Unknown paths still select full validation,
+including Lighthouse. When selected, the job builds the contracts and production frontend, serves
+the Vite preview, and audits these routes:
 
 ```text
 /
@@ -168,7 +174,7 @@ The job retains `summary.md`, `summary.json` and individual JSON reports in the
 `lighthouse-public-baseline-<commit>` artifact. Upload uses `if: always()` so reports remain
 available after a regression failure. The gate covers public routes only; it does not bypass or
 claim automated coverage for authenticated routes. See
-[Issue #797 Lighthouse evidence](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-797-lighthouse-performance.md)
+[Issue #797 Lighthouse evidence](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-797-lighthouse-performance.md){ target="_blank" rel="noopener" }
 for the approved baseline source and final hosted-run evidence.
 
 ## Intermediate ingestion merge gate

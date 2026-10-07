@@ -1,10 +1,13 @@
 import {
-  analyticsQueryDefinitionSchema,
+  analyticsQueryTranslationSchema,
   ANALYTICS_QUERY_PROMPT_DESCRIPTION,
+  MAX_QUERY_SUGGESTIONS,
+  querySuggestionSchema,
   type AnalyticsQueryDefinition,
+  type QuerySuggestion,
 } from '@sport-analytics/contracts';
 
-import { ANALYTICS_QUERY_JSON_SCHEMA } from './analytics-query.json-schema';
+import { ANALYTICS_QUERY_TRANSLATION_JSON_SCHEMA } from './analytics-query.json-schema';
 
 /**
  * The server-side adapter that turns a reader's question into an issue #811
@@ -18,7 +21,7 @@ import { ANALYTICS_QUERY_JSON_SCHEMA } from './analytics-query.json-schema';
  * Two things this adapter guarantees, because they are the reason it exists:
  *
  *   - **It returns only a definition that has passed the contract.** The
- *     provider is constrained to `ANALYTICS_QUERY_JSON_SCHEMA`, which fixes the
+ *     provider is constrained to `ANALYTICS_QUERY_TRANSLATION_JSON_SCHEMA`, which fixes the
  *     shape, and the result is then parsed with `analyticsQueryDefinitionSchema`,
  *     which enforces the bounds and the scope rule the JSON Schema cannot carry.
  *     Anything that fails either step raises `LlmInvalidOutputError`.
@@ -95,6 +98,12 @@ export class LlmInvalidOutputError extends Error {
 
 export interface AnalyticsQueryTranslation {
   definition: AnalyticsQueryDefinition;
+  /**
+   * Questions the platform can answer, when this one could not be answered
+   * exactly. Each has passed the definition contract, and anything that did not
+   * was dropped, so an interface may offer these without validating them again.
+   */
+  suggestions: QuerySuggestion[];
   /** The model that produced the definition, as the provider reported it. */
   model: string;
   /** Reported so a later issue can meter spend without a second call. */
@@ -172,6 +181,34 @@ function extractText(content: unknown): string {
   return text;
 }
 
+/**
+ * Keeps the suggestions that are answerable and drops the rest.
+ *
+ * A suggestion is shown to a reader as something to ask, so it has to pass the
+ * definition contract before it is offered. They are validated one at a time on
+ * purpose: one unusable suggestion must cost the reader nothing but that
+ * suggestion, never the answer itself, so a failure here is a silent omission
+ * rather than an error.
+ */
+function validSuggestions(suggestions: unknown[] | undefined): QuerySuggestion[] {
+  if (!suggestions) {
+    return [];
+  }
+
+  const valid: QuerySuggestion[] = [];
+  for (const candidate of suggestions) {
+    const parsed = querySuggestionSchema.safeParse(candidate);
+    if (parsed.success) {
+      valid.push(parsed.data);
+    }
+    if (valid.length === MAX_QUERY_SUGGESTIONS) {
+      break;
+    }
+  }
+
+  return valid;
+}
+
 export function createLlmClient(options: LlmClientOptions): LlmClient {
   const fetchImplementation = options.fetchImplementation ?? globalThis.fetch;
 
@@ -188,7 +225,7 @@ export function createLlmClient(options: LlmClientOptions): LlmClient {
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: `<question>\n${question}\n</question>` }],
       output_config: {
-        format: { type: 'json_schema', schema: ANALYTICS_QUERY_JSON_SCHEMA },
+        format: { type: 'json_schema', schema: ANALYTICS_QUERY_TRANSLATION_JSON_SCHEMA },
       },
     });
   }
@@ -288,15 +325,16 @@ export function createLlmClient(options: LlmClientOptions): LlmClient {
       }
 
       // The contract, not the constrained schema, decides what is returned.
-      const definition = analyticsQueryDefinitionSchema.safeParse(parsed);
-      if (!definition.success) {
+      const translation = analyticsQueryTranslationSchema.safeParse(parsed);
+      if (!translation.success) {
         throw new LlmInvalidOutputError(
           'The language model returned a definition that does not satisfy the query contract.',
         );
       }
 
       return {
-        definition: definition.data,
+        definition: translation.data.definition,
+        suggestions: validSuggestions(translation.data.suggestions),
         model: typeof payload.model === 'string' ? payload.model : options.model,
         usage: {
           inputTokens: tokenCount(payload.usage, 'input_tokens'),

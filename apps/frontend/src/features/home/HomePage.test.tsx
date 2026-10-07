@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HomePage } from './HomePage';
 
 function useMotionPreference(reducedMotion: boolean) {
@@ -28,6 +28,10 @@ function renderHomePage() {
 }
 
 describe('homepage', () => {
+  beforeAll(async () => {
+    await import('./HomePageContent');
+  });
+
   beforeEach(() => {
     useMotionPreference(false);
     vi.stubGlobal('WebGLRenderingContext', class WebGLRenderingContext {});
@@ -65,6 +69,14 @@ describe('homepage', () => {
       screen.queryByRole('heading', { name: 'See the event inside the statistic.' }),
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('hero-scene-fallback')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Cricket match in progress' })).toHaveAttribute(
+      'src',
+      '/images/cricket-match-john-oswald-unsplash.jpg',
+    );
+    expect(screen.getByRole('link', { name: 'Photo: John Oswald / Unsplash' })).toHaveAttribute(
+      'href',
+      'https://unsplash.com/photos/2-men-playing-cricket-on-green-grass-field-during-daytime-7r6cX6FYNz0',
+    );
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -86,6 +98,19 @@ describe('homepage', () => {
     expect(await screen.findByText('/api/v1/fixtures')).toBeInTheDocument();
     expect(await screen.findByText('/api/v1/fixtures/{fixtureId}/events')).toBeInTheDocument();
     expect(await screen.findByText('/api/v1/fixtures/{fixtureId}/statistics')).toBeInTheDocument();
+  });
+
+  it('gives public visitors a clear, complete set of record-entry routes', async () => {
+    renderHomePage();
+
+    expect(await screen.findByText('No account required')).toBeInTheDocument();
+
+    const gateway = await screen.findByRole('navigation', { name: 'Open a public view' });
+    expect(
+      within(gateway)
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('href')),
+    ).toEqual(['/fixtures', '/competitions', '/participants', '/competitors']);
   });
 
   it('keeps the intentional static fallback and avoids the Three.js canvas for reduced motion', () => {

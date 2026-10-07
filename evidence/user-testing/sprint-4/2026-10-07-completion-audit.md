@@ -46,6 +46,8 @@ The human public session and assisted submission/review session demonstrate comp
 
 ## Remaining close-out inputs
 
+Local close-out validation passed: repository structure (39 required files), whole-repository Prettier check, both kit-script syntax checks, contracts build, all three package schema expectations, 28 local evidence links, strict MkDocs build and diff whitespace checks. Documentation conflicts in README.md and mkdocs.yml were resolved while integrating origin/main `5a5bfc81`. Hosted CI and independent peer review remain pending; no complete application-suite run is claimed for this documentation update.
+
 1. Another real final-stage session, preferably reviewer on the near-final build; retain canonical task attempts and assistance honestly.
 2. Confirm the local session's anonymous participant identity, experience and actual post-session feedback.
 3. Import privacy-reviewed original AI conversation evidence and redact five account-bearing screenshots before repository retention.

@@ -310,9 +310,10 @@ belong properly to this domain-definition issue:
 2. **Storage benchmark for the corpus at full scale** (3,193,996 deliveries,
    2.5× the size of the subset the original storage projection was based on)
    is still outstanding — owner and date not yet assigned.
-3. **Object-storage option for source files and dataset releases:** whether
-   holding these outside PostgreSQL changes the ADR-003 hosting decision is
-   still open.
+3. **Object storage for source files and dataset releases ? resolved:** private Azure Blob Storage
+   is used behind the provider-independent `ObjectStore` boundary, with PostgreSQL retaining
+   provenance/metadata. The current deployment uses managed identity and keeps this storage decision
+   separate from the supported Container Apps hosting boundary; see ADR-011 and the deployment guides.
 4. **`IT20` misclassification (§10, item 8):** raised against the downloader
    but not yet fixed; needs a decision on whether to patch the downloader's
    classification logic or handle it in ingestion/validation instead.
@@ -330,15 +331,9 @@ belong properly to this domain-definition issue:
   boundary. Fixture, season, and date-range grants remain possible future
   extensions, but are not prerequisites for issue #43 or the direct-submission
   flow.
-- **This document's own approval status:** draft, pending explicit team
-  review and stakeholder sign-off as required by #37's Definition of Done.
-  Because the underlying schema decision already has six-person approval,
-  this document's review can focus on the parts that were not previously
-  written down explicitly: the submitter scope foundation (§9), the statistic
-  requirement-tier assignments (§7), and the open questions (§12).
-- **Outstanding before this issue can close:** team review, stakeholder
-  review (or explicit recording of unresolved questions per §12), and a
-  merged Pull Request per the Git workflow specified in #37.
+- **Document status:** issue #37 is closed. The document records the agreed domain baseline while retaining unresolved stakeholder questions explicitly in ?12.
+
+- **Final-state note:** #37 is closed. Any questions still listed in ?12 are retained as documented unresolved stakeholder limitations rather than prerequisites for issue closure.
 
 ## Change log
 
@@ -348,6 +343,8 @@ belong properly to this domain-definition issue:
   off a wide are wide runs charged to the bowler (Law 22.6, ADR-014).
 
 ## AI Declaration
+
+The current final-state reconciliation of this document was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 
 The submitter-scope implementation status was updated with the assistance of
 Codex[GPT-5.6 Sol].

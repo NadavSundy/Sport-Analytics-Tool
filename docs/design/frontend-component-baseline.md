@@ -37,6 +37,19 @@ All components work at desktop and mobile widths. Tables retain their meaningful
 
 Keep labels visible, never use placeholders as labels, and give destructive controls an explicit confirmation interaction. Test both themes, keyboard navigation, browser zoom and mobile table overflow when adding a component or route.
 
+## Shell and route conventions
+
+These conventions came out of the issue #800 route review. New routes get them for free when they use the shared layouts.
+
+- **Page title.** `PageLayout`, `DetailLayout`, `BrowseCollection` and the page-level `DetailLoading`/`DetailError` states call `usePageTitle`, which names the tab `<h1> | Stat'sTheGame`. A page that renders its own `<h1>` calls `usePageTitle` itself with the same text. Loading and error states embedded beneath a page heading pass `level={2}` so they neither add a second `<h1>` nor replace the page title.
+- **Navigation focus.** On a move to a different path, `PublicShell` opens the new page at the top and focuses `<main>`. Back/forward keeps the browser's scroll restoration, and a query-string change (filters, pagination) keeps focus where it is. Pages must not scroll the window themselves.
+- **Header tiers.** `useHeaderLayout` sets `data-layout` on the header to `full`, `compact` (theme control shrinks to its switch) or `menu` (navigation moves into the menu panel). The tiers are rem-based and depend on whether the account has workspace links, which need about 400px more. When adding a header link, rerun `tests/e2e/responsive-layout.spec.ts` and adjust `headerLayoutQueries` if it fails.
+- **Page width.** Page containers use `min(100% - var(--page-gutter), <max>)`. `--page-gutter` halves below 40rem, so mobile margins do not depend on rule order.
+- **Horizontal scroll.** `DataTable` and the other table wrappers show an edge shadow while more columns lie beyond that edge. Inside a grid, give inputs and grid children `min-width: 0` so an input's intrinsic width cannot stop a page from reflowing at 320px.
+- **Status colour.** Use `--colour-success`, `--colour-warning` and `--colour-error` (and their `-soft` backgrounds) together with text. `src/styles.test.ts` fails if a stylesheet consumes a colour token that neither theme declares.
+- **Motion.** Buttons and header items scale to `0.97` while pressed, menus enter from their trigger in 160–200ms with a strong ease-out, and hover effects apply only to fine pointers. The global reduced-motion rule removes the movement.
+
 ## AI Declaration
 
 The preceding document was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The shell and route conventions section was written with the assistance of Claude Code[Opus 5.5].

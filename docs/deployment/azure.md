@@ -50,8 +50,7 @@ same Bicep and immutable-image path used by automatic CI.
 The frontend is a pre-built static bundle with no server-side runtime, so it does not need App Service
 compute at all: it is now deployed to a Cloudflare Pages project and served from Cloudflare's edge, with
 client-side routing preserved through a Pages `_redirects` SPA fallback. The historical frontend App
-Service `statsthegame-web-dev` is kept live in parallel only until Cloudflare Pages acceptance succeeds,
-then retired — see [Frontend deployment (Cloudflare Pages)](frontend-cloudflare-pages.md) for the
+Service `statsthegame-web-dev` is historical infrastructure and is not part of the supported frontend deployment path. Whether that Azure resource remains provisioned is an account-level cleanup question; the supported frontend runtime is Cloudflare Pages.md) for the
 acceptance checklist, required secrets, backend CORS and Supabase Auth configuration, and the retirement
 sequence.
 

@@ -1028,7 +1028,7 @@ at Sprint 2 close-out against:
 
 The detailed active Sprint 3 plan is recorded in:
 
-[`evidence/sprints/sprint-3/2026-09-15-planning.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-3/2026-09-15-planning.md)
+[`evidence/sprints/sprint-3/2026-09-15-planning.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-3/2026-09-15-planning.md){ target="_blank" rel="noopener" }
 
 and is tracked through Issue #577 and the Sprint 3 Gitea milestone.
 

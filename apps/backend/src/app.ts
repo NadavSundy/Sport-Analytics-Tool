@@ -83,6 +83,11 @@ import { createObjectStorageComposition } from './modules/object-storage/object-
 import { createBatchRouter } from './modules/batches/batch.routes';
 import { createBatchService, type BatchService } from './modules/batches/batch.service';
 import { createApiConsumerRouter } from './modules/api-consumers/api-consumer.routes';
+import { createApiAccessRouter } from './modules/api-consumers/api-access.routes';
+import {
+  createApiAccessService,
+  type ApiAccessService,
+} from './modules/api-consumers/api-access.service';
 import {
   createApiConsumerService,
   type ApiConsumerService,
@@ -141,6 +146,7 @@ export interface AppDependencies {
   batchPayloadStorageService?: BatchPayloadStorageService;
   batchService?: BatchService;
   apiConsumerService?: ApiConsumerService;
+  apiAccessService?: ApiAccessService;
   apiConsumerRepository?: ApiConsumerRepository;
   anonymousAccessRepository?: AnonymousAccessRepository;
   datasetReleaseService?: DatasetReleaseService;
@@ -210,17 +216,14 @@ export function createApp(dependencies: AppDependencies = {}) {
           }),
         )
       : createUnavailableAccountDeletionService());
+  const readAuthUserEmail = environment.SUPABASE_SECRET_KEY
+    ? createSupabaseAdminUserEmailReader({
+        SUPABASE_URL: environment.SUPABASE_URL,
+        SUPABASE_SECRET_KEY: environment.SUPABASE_SECRET_KEY,
+      })
+    : undefined;
   const adminService =
-    dependencies.adminService ??
-    createAdminService(
-      undefined,
-      environment.SUPABASE_SECRET_KEY
-        ? createSupabaseAdminUserEmailReader({
-            SUPABASE_URL: environment.SUPABASE_URL,
-            SUPABASE_SECRET_KEY: environment.SUPABASE_SECRET_KEY,
-          })
-        : undefined,
-    );
+    dependencies.adminService ?? createAdminService(undefined, readAuthUserEmail);
   const weatherService = dependencies.weatherService ?? new WeatherService();
   const fixtureWeatherService =
     dependencies.fixtureWeatherService ?? createFixtureWeatherService(weatherService);
@@ -235,6 +238,9 @@ export function createApp(dependencies: AppDependencies = {}) {
     dependencies.apiConsumerRepository ?? createLazyApiConsumerRepository();
   const apiConsumerService =
     dependencies.apiConsumerService ?? createApiConsumerService(apiConsumerRepository);
+  const apiAccessService =
+    dependencies.apiAccessService ??
+    createApiAccessService(undefined, apiConsumerService, readAuthUserEmail);
   const consumerAuthentication = createConsumerAuthentication(apiConsumerRepository);
   const anonymousAccessRepository =
     dependencies.anonymousAccessRepository ?? createLazyAnonymousAccessRepository();
@@ -366,6 +372,10 @@ export function createApp(dependencies: AppDependencies = {}) {
   app.use(
     API_BASE_PATH,
     createApiConsumerRouter(verifyAccessToken, synchronizeAccount, apiConsumerService),
+  );
+  app.use(
+    API_BASE_PATH,
+    createApiAccessRouter(verifyAccessToken, synchronizeAccount, apiAccessService),
   );
   app.use(
     API_BASE_PATH,
