@@ -84,6 +84,14 @@ jobs:
       - name: Test CI change-routing rules
         run: node --test tests/ci/*.test.mjs
 
+      # Pure node tests over sibling script modules: no dependency install and no
+      # change-plan gate, for the same reasons the step above has neither. Run
+      # unconditionally because these guard the natural-language evaluation set,
+      # which is run by hand against a paid provider — a case that silently stops
+      # testing anything is only ever discovered by paying for a run.
+      - name: Test repository script modules
+        run: npm run test:scripts
+
   validation:
     needs: plan
     if: >-
