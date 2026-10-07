@@ -103,18 +103,28 @@ const CORE_CASES = [
       { kind: 'participant_statistics', scope: 'career', participant: { name: 'BB McCullum' } },
     ],
   },
+  // Issue #868 requires a scorecard name, so the expected hint is "Q de Kock" and
+  // not the full name the reader wrote. This was a regression in run 1 only
+  // because the case still asserted the rule #868 replaced — "copy the name the
+  // reader wrote" — and the pin is moved rather than loosened.
   {
     id: 'participant-runs-only',
     question: 'How many runs has Quinton de Kock scored in total?',
     accept: [
-      { kind: 'participant_statistics', scope: 'career', participant: { name: 'Quinton de Kock' } },
+      { kind: 'participant_statistics', scope: 'career', participant: { name: 'Q de Kock' } },
     ],
   },
+  // An apostrophe in a name has to survive translation. The question is written
+  // in scorecard form on purpose: converting "D'Arcy Short" to initials drops the
+  // apostrophe entirely, so the old wording stopped testing apostrophes the
+  // moment #868 required the conversion. A surname apostrophe is what the
+  // contract's name rule has to carry, and asking in scorecard form tests that
+  // rather than the model's knowledge of a player's initials.
   {
     id: 'participant-apostrophe-name',
-    question: "Show me D'Arcy Short's career numbers",
+    question: "How has SNJ O'Keefe done in his career?",
     accept: [
-      { kind: 'participant_statistics', scope: 'career', participant: { name: "D'Arcy Short" } },
+      { kind: 'participant_statistics', scope: 'career', participant: { name: "SNJ O'Keefe" } },
     ],
   },
 
@@ -360,13 +370,35 @@ export function compareTranslation(testCase, definition, suggestions = [], assum
   return { id: testCase.id, pass: true, detail: `${describe(definition)}${offered}${assumed}` };
 }
 
+/**
+ * One definition in a line.
+ *
+ * Participant names are included because run 1 of the issue #868 evaluation
+ * reported two failures as "expected one of participant_statistics scope=career;
+ * got participant_statistics scope=career" — identical, and therefore useless.
+ * The mismatching key was the participant name, which this did not print, so the
+ * only way to learn what the model had actually returned was to pay for another
+ * run. Anything a case can match on has to be visible here.
+ */
 function describe(definition) {
-  const { kind, reason, metric, scope, limit } = definition;
+  const { kind, reason, metric, scope, limit, participant, participants, competition, season } =
+    definition;
+
+  const names = participants
+    ? `participants=${participants.map((entry) => entry?.name).join(' vs ')}`
+    : participant && `participant=${participant.name}`;
+
+  const scopeName =
+    (competition && `competition=${competition.name}`) ||
+    (season && `season=${season.competitionName} ${season.seasonLabel}`);
+
   return [
     kind,
     reason && `reason=${reason}`,
     metric && `metric=${metric}`,
     scope && `scope=${scope}`,
+    names,
+    scopeName,
     limit !== undefined && `limit=${limit}`,
   ]
     .filter(Boolean)

@@ -223,3 +223,89 @@ test('the rendered record contains no credential-shaped text', () => {
   assert.doesNotMatch(rendered, /sk-ant/i);
   assert.doesNotMatch(rendered, /LLM_API_KEY/);
 });
+
+/**
+ * Run 1 of the issue #868 evaluation reported two failures as "expected one of
+ * participant_statistics scope=career; got participant_statistics scope=career".
+ * Identical, and therefore useless: the mismatching key was the participant
+ * name, which the description did not print.
+ */
+test('a failure detail distinguishes two definitions that differ only by name', () => {
+  const result = compareTranslation(caseById('participant-runs-only'), {
+    kind: 'participant_statistics',
+    scope: 'career',
+    participant: { name: 'Quinton de Kock' },
+  });
+
+  assert.equal(result.pass, false);
+  // Both names appear, so the line says what was wanted and what arrived.
+  assert.match(result.detail, /participant=Q de Kock/);
+  assert.match(result.detail, /participant=Quinton de Kock/);
+  assert.notEqual(
+    result.detail.split('; got ')[0],
+    'expected one of ' + result.detail.split('; got ')[1],
+  );
+});
+
+test('a failure detail names the competition and season a definition carried', () => {
+  const result = compareTranslation(caseById('leaderboard-runs-season'), {
+    kind: 'leaderboard',
+    metric: 'most_runs',
+    scope: 'competition',
+    competition: { name: 'Big Bash League' },
+  });
+
+  assert.equal(result.pass, false);
+  assert.match(result.detail, /competition=Big Bash League/);
+});
+
+test('a comparison names both participants', () => {
+  const result = compareTranslation(caseById('comparison-career'), {
+    kind: 'participant_comparison',
+    scope: 'season',
+    participants: [{ name: 'V Kohli' }, { name: 'RD Gaikwad' }],
+  });
+
+  assert.equal(result.pass, false);
+  assert.match(result.detail, /participants=V Kohli vs RD Gaikwad/);
+});
+
+test('a season reference is described by competition and label', () => {
+  const result = compareTranslation(caseById('participant-career'), {
+    kind: 'participant_statistics',
+    scope: 'season',
+    participant: { name: 'BB McCullum' },
+    season: { competitionName: 'Indian Premier League', seasonLabel: '2026' },
+  });
+
+  assert.equal(result.pass, false);
+  assert.match(result.detail, /season=Indian Premier League 2026/);
+});
+
+// The two expectations run 1 showed to be wrong, re-pinned rather than loosened.
+test('the name cases expect the scorecard form issue #868 requires', () => {
+  const runsOnly = caseById('participant-runs-only');
+  assert.deepEqual(runsOnly.accept[0].participant, { name: 'Q de Kock' });
+  assert.equal(runsOnly.accept.length, 1, 'the pin was moved, not widened');
+
+  const apostrophe = caseById('participant-apostrophe-name');
+  assert.deepEqual(apostrophe.accept[0].participant, { name: "SNJ O'Keefe" });
+  assert.equal(apostrophe.accept.length, 1, 'the pin was moved, not widened');
+  // The point of the case is the apostrophe, so it has to survive the question.
+  assert.ok(apostrophe.question.includes("O'Keefe"), 'the question lost its apostrophe');
+});
+
+test('a wording naming no published measure expects a refusal with help', () => {
+  const hitter = caseById('casual-biggest-hitter');
+
+  assert.deepEqual(hitter.accept, [{ kind: 'unsupported', reason: 'ambiguous' }]);
+  assert.equal(hitter.expectSuggestions, true);
+});
+
+test("a reader's own short form is not scored as an assumption", () => {
+  const abbreviated = caseById('default-abbreviation-is-not-an-assumption');
+
+  assert.ok(abbreviated, 'no case covers an abbreviation the reader wrote');
+  assert.deepEqual(abbreviated.expectAssumptions, []);
+  assert.ok(abbreviated.question.includes('IPL'));
+});

@@ -119,9 +119,20 @@ async function main() {
     } catch (error) {
       // The adapter's messages are fixed strings carrying neither the question nor
       // the model's output, so recording the name and message leaks nothing.
+      //
+      // A contract failure also carries the paths and codes that failed (issue
+      // #868), which is the difference between "a definition was rejected" and
+      // "it put a competition reference beside a season one". Those are property
+      // names from our own contract, never model output: the adapter deliberately
+      // omits the Zod messages, which interpolate the value received.
       const name = error instanceof Error ? error.name : 'UnknownError';
       const message = error instanceof Error ? error.message : '';
-      results.push({ id: testCase.id, pass: false, detail: `${name}: ${message}`, turns });
+      const issues = Array.isArray(error?.contractIssues) ? error.contractIssues : [];
+      const where =
+        issues.length > 0
+          ? ` [${issues.map((issue) => `${issue.path}: ${issue.code}`).join('; ')}]`
+          : '';
+      results.push({ id: testCase.id, pass: false, detail: `${name}: ${message}${where}`, turns });
     }
 
     const last = results.at(-1);

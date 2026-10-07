@@ -123,10 +123,16 @@ export const CONVERSATIONAL_QUERY_CASES = [
     question: 'Which bowler is the most economical in the Indian Premier League?',
     accept: [{ kind: 'leaderboard', metric: 'best_economy_rate' }],
   },
+  // Run 1 refused this with suggestions, and that is correct: "biggest hitter"
+  // names no published measure — it could mean sixes, strike rate or runs — so
+  // the subjective rule should reach it. The wording has been removed from the
+  // casual map, which had been telling the model two contradictory things, and
+  // the expectation now asserts the refusal rather than a metric.
   {
     id: 'casual-biggest-hitter',
     question: 'Who is the biggest hitter in the Indian Premier League?',
-    accept: [{ kind: 'leaderboard', metric: 'most_sixes' }],
+    accept: [{ kind: 'unsupported', reason: 'ambiguous' }],
+    expectSuggestions: true,
   },
   {
     id: 'casual-fastest-scorer',
@@ -232,6 +238,18 @@ export const CONVERSATIONAL_QUERY_CASES = [
     id: 'default-competition-not-assumed-when-named',
     question: 'Who has the most sixes in the Indian Premier League?',
     accept: [{ kind: 'leaderboard', metric: 'most_sixes' }],
+    expectAssumptions: [],
+  },
+  // Nor is writing out a short form the reader used. Run 1 reported an assumed
+  // competition here even though the reader said "the IPL", which would have
+  // labelled a perfectly scoped answer as assumed.
+  {
+    id: 'default-abbreviation-is-not-an-assumption',
+    question: 'Who took the most wickets in the IPL?',
+    accept: [
+      { kind: 'leaderboard', metric: 'most_wickets', scope: 'competition' },
+      { kind: 'leaderboard', metric: 'most_wickets', scope: 'season' },
+    ],
     expectAssumptions: [],
   },
   // A season is never assumed. The model is told neither today's date nor which
