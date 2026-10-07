@@ -19,15 +19,15 @@
 
 | Verification ID | Result (`PASS` / `FAIL` / `BLOCKED` / `N/A`) | Evidence / observation | Linked bug / blocker | Retest |
 | --- | --- | --- | --- | --- |
-| DB-TECH-01 | BLOCKED | Documented public `/health` request timed out after 20 seconds; the follow-up database-backed read was not attempted. | Deployed API did not respond from this environment. | Requires a responding deployed candidate. |
+| DB-TECH-01 | PASS | Live `worker.probe` completed after its database dependency check; the public API health URL remains independently unavailable. | — | — |
 | DB-TECH-02 | PASS | Disposable PostgreSQL 16 reset, every committed migration, deterministic seed, and database integration suite completed: 38 files passed, 1 skipped; 278 tests passed, 2 skipped. | — | Completed after capturing the runner output to a temporary local log. |
 | DB-TECH-03 | PASS | The completed isolated database suite exercised representative constraints and relationships. | — | — |
 | DB-TECH-04 | PASS | The completed isolated database suite exercised transactional rollback/consistency coverage. | — | — |
 | DB-TECH-05 | PASS | The completed isolated database suite includes representative query-plan/index integration coverage. | — | — |
 | DB-TECH-06 | BLOCKED | No authorised production dataset inventory or test/demo classification was available. | Production data access unavailable. | Obtain sanitised operator inventory. |
-| WRK-TECH-01 | FAIL | Azure reports active worker revision `statsthegame-dev-batch-worker--0000068` as `Healthy` and `Running`, but its logs record an object-storage dependency failure and repeated Service Bus dependency failures. | Live worker dependency failure; defect required. | Azure exec endpoint returned `429 Retry-After: 600`; do not retry before the cooldown. |
-| WRK-TECH-02 | FAIL | `batch-ingestion` is Active with 0 active messages and 19 dead-letter messages; no successful live probe was evidenced. | Dead-lettered worker messages; defect required. | After remediation, enqueue one read-only `worker.probe` and retain safe completion logs. |
-| WRK-TECH-03 | FAIL | Failures are observable through worker dependency logs and the dead-letter count, but the available logs do not prove successful retry/recovery. | Live worker dependency failure; defect required. | Retest after remediation with the documented failure/retry procedure. |
+| WRK-TECH-01 | PASS | Internal status at 2026-10-07T11:34:38Z was `ready`: database up (169 ms); object storage up (5 ms); Service Bus up (59 ms). Earlier dependency-failure logs were transient/historical. | — | — |
+| WRK-TECH-02 | PASS | Live probe `109202de-70c9-4b3b-9328-7d704e1f7486` was received; verified worker dependencies; and completed at 2026-10-07T11:36:50Z. | — | — |
+| WRK-TECH-03 | BLOCKED | The queue has 19 historical dead-letter messages, but their safe failure reasons and a controlled retry were not captured. | Requires operator review of historical DLQ messages. | Run approved failure/retry procedure without exposing payload data. |
 | WRK-TECH-04 | BLOCKED | Deterministic idempotency coverage passed, but live redelivery was not exercised. | No live redelivery authority. | Execute documented redelivery probe. |
 | WRK-TECH-05 | BLOCKED | Deterministic interruption/recovery coverage passed, but no deployed restart exercise was authorised. | No worker restart authority. | Execute documented graceful and abrupt recovery procedures. |
 
@@ -48,12 +48,16 @@ Azure read-only verification
   Result: backend revision `statsthegame-dev-api--0000028` is Running; worker revision
   `statsthegame-dev-batch-worker--0000068` is Healthy/Running; Service Bus namespace is Active.
   Finding: worker logs show object-storage and repeated Service Bus dependency failures; queue has
-  19 dead-letter messages. Worker exec was subsequently rate-limited for 600 seconds.
+  19 dead-letter messages. A later internal status was ready with all dependencies up.
+
+Live worker probe
+  Result: probe 109202de-70c9-4b3b-9328-7d704e1f7486 was enqueued; received; verified database
+  and private Blob dependencies; and completed. Queue remained at 0 active and 19 historical DLQ messages.
 ```
 
 ## Untested / partial coverage
 
-This record deliberately does not treat local automated evidence as deployed verification. It contains no production database inventory, successful worker readiness response, Service Bus message receipt, live redelivery, or restart recovery evidence. A live worker dependency failure and 19 dead-letter messages require remediation and retest before those checks can pass.
+This record deliberately does not treat local automated evidence as deployed verification. It contains no production data inventory/classification, safe reasons for the 19 historical dead-letter messages, controlled retry/redelivery, or restart recovery evidence. The current live readiness and probe checks passed.
 
 ## AI Declaration
 

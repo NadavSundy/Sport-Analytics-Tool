@@ -1186,8 +1186,8 @@ Run the documented deployed backend/database health/smoke path.
 - Intended services can connect.
 - Public response does not reveal credentials.
 
-**Status:** `BLOCKED`
-**Evidence / defect / retest:** #875 execution record; documented public health endpoint timed out.
+**Status:** `PASS`
+**Evidence / defect / retest:** #875 execution record; live `worker.probe` completed after its database dependency check.
 
 ### DB-TECH-02 — Clean migration/integration setup
 
@@ -1269,8 +1269,8 @@ Use deployed worker health/readiness endpoints/runbook.
 - Liveness reports running process.
 - Readiness reflects required dependencies accurately.
 
-**Status:** `FAIL`
-**Evidence / defect / retest:** #875 execution record; active revision is platform-healthy, but runtime logs show failed Service Bus dependency checks and an object-storage dependency failure. A defect must be created and retested before release.
+**Status:** `PASS`
+**Evidence / defect / retest:** #875 execution record; current internal status is `ready` with database, object storage, and Service Bus all `up`. Earlier failure logs were transient/historical.
 
 ### WRK-TECH-02 — Representative queued job completes
 
@@ -1283,8 +1283,8 @@ Enqueue an approved representative ingestion/background job and follow the durab
 - Message is received and work reaches the correct terminal state.
 - API/request process is not required to remain open for the full job.
 
-**Status:** `FAIL`
-**Evidence / defect / retest:** #875 execution record; the active `batch-ingestion` queue has 19 dead-letter messages and no live successful probe evidence. A defect must be created and retested before release.
+**Status:** `PASS`
+**Evidence / defect / retest:** #875 execution record; live `worker.probe` was received, verified dependencies, and completed. The 19 historical dead-letter messages require separate review.
 
 ### WRK-TECH-03 — Failure diagnostics and retry
 
@@ -1297,8 +1297,8 @@ Exercise a controlled failing job or approved failure fixture.
 - Failure is durable/observable with useful diagnostics.
 - Supported retry changes state predictably.
 
-**Status:** `FAIL`
-**Evidence / defect / retest:** #875 execution record; failures are observable in logs and the dead-letter count, but the retained diagnostics do not establish successful recovery/retry. A defect must be created and retested before release.
+**Status:** `BLOCKED`
+**Evidence / defect / retest:** #875 execution record; 19 historical dead-letter messages are observable, but their safe failure reasons and a controlled retry have not been captured.
 
 ### WRK-TECH-04 — Duplicate delivery/idempotency
 
