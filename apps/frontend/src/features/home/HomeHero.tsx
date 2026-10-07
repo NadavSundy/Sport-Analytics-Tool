@@ -113,7 +113,11 @@ export function HomeHero() {
       <div className="home-hero__crease" aria-hidden="true" />
       <img
         className="home-hero__lead-image"
-        src="/images/cricket-match-john-oswald-unsplash.jpg"
+        src="/images/cricket-match-john-oswald-unsplash.webp"
+        srcSet="/images/cricket-match-john-oswald-unsplash-960.webp 960w, /images/cricket-match-john-oswald-unsplash.webp 1800w"
+        sizes="100vw"
+        fetchPriority="high"
+        decoding="async"
         alt="Cricket match in progress"
       />
       <div className="content-boundary home-hero__layout">

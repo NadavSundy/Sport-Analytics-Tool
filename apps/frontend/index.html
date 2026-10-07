@@ -4,6 +4,35 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Stat'sTheGame: The game, measured ball by ball." />
+    <script>
+      // Discover the home LCP image before React loads, without downloading it
+      // on the other public and authenticated routes.
+      if (window.location.pathname === '/') {
+        const heroImage = document.createElement('link');
+        heroImage.rel = 'preload';
+        heroImage.as = 'image';
+        heroImage.href = '/images/cricket-match-john-oswald-unsplash.webp';
+        heroImage.imageSrcset =
+          '/images/cricket-match-john-oswald-unsplash-960.webp 960w, /images/cricket-match-john-oswald-unsplash.webp 1800w';
+        heroImage.imageSizes = '100vw';
+        heroImage.fetchPriority = 'high';
+        document.head.appendChild(heroImage);
+      }
+    </script>
+    <link
+      rel="preload"
+      href="../../node_modules/@fontsource/barlow-condensed/files/barlow-condensed-latin-700-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="../../node_modules/@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <link rel="icon" href="/brand/statsthegame-favicon.svg" type="image/svg+xml" />
     <link rel="alternate icon" href="/favicon.ico" />
     <title>Stat'sTheGame</title>
