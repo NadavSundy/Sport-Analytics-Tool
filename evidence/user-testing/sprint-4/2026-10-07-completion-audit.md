@@ -46,6 +46,8 @@ The human public session and assisted submission/review session demonstrate comp
 
 ## Remaining close-out inputs
 
+CI follow-up: run 1704 stopped at hygiene because Knip classified the standalone local kit and verification scripts as unused. They are now explicit root entry points. Their four existing dependencies are declared as root development dependencies using the backend's matching ranges; existing locked package versions are preserved. Local `npm run hygiene` passes Knip, Syncpack and architecture checks (398 modules, 1400 dependencies). Focused formatting and diff checks pass. Hosted CI must rerun on the follow-up commit; this does not resolve the remaining participant/acceptance gaps.
+
 Local close-out validation passed: repository structure (39 required files), whole-repository Prettier check, both kit-script syntax checks, contracts build, all three package schema expectations, 28 local evidence links, strict MkDocs build and diff whitespace checks. Documentation conflicts in README.md and mkdocs.yml were resolved while integrating origin/main `5a5bfc81`. Hosted CI and independent peer review remain pending; no complete application-suite run is claimed for this documentation update.
 
 1. Another real final-stage session, preferably reviewer on the near-final build; retain canonical task attempts and assistance honestly.
