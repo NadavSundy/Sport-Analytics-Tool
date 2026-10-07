@@ -16,7 +16,7 @@
 
 | Verification ID | Result (`PASS` / `FAIL` / `BLOCKED` / `N/A`) | Evidence / observation | Linked bug / blocker | Retest |
 | --- | --- | --- | --- | --- |
-| AUTO-TECH-01 | FAIL | `npm.cmd run test:frontend`: 40 files passed; 5 failed; 455 tests passed; 5 failed. | Current frontend failures listed below. | Not run; no assertion was weakened. |
+| AUTO-TECH-01 | PASS | The exact CI two-worker command passed 45 files and 460 tests. `vite.config.ts` now makes that established worker limit the local default; no retry or assertion change was used. | None. | Not needed. |
 | AUTO-TECH-02 | BLOCKED | Backend units passed 57 files; 535 tests. API and API-contract suites were not reached because the aggregate test command stopped at frontend failure. | AUTO-TECH-01. | Required after frontend repair. |
 | AUTO-TECH-03 | BLOCKED | Not reached after frontend failure. | AUTO-TECH-01. | Required after frontend repair. |
 | AUTO-TECH-04 | BLOCKED | Not reached after frontend failure. | AUTO-TECH-01. | Required after frontend repair. |
@@ -34,7 +34,7 @@
 | DEP-TECH-01 | BLOCKED | Strict MkDocs build was not run after the release-candidate failure. | AUTO-TECH-01. | Required after frontend repair. |
 | DEP-TECH-02 | BLOCKED | OpenAPI lint was not run after the release-candidate failure. | AUTO-TECH-01. | Required after frontend repair. |
 | DEP-TECH-03 | BLOCKED | Final deployed smoke remains owned by #810; no matching deployment candidate was asserted. | No final deployed candidate. | #810. |
-| DEP-TECH-04 | FAIL | `npm.cmd audit --omit=dev --json` found 7 production-tree advisories: 1 critical; 5 moderate; 1 low. | `proxy-addr` critical advisory; direct `multer`; direct `swagger-ui-react` chain; direct `dompurify` transitive package. | No unsafe forced upgrade applied. |
+| DEP-TECH-04 | PASS | Reviewed non-breaking `npm audit fix` removed the critical, low and direct advisories. Post-fix production audit: 4 moderate advisories; 0 high/critical. | `swagger-ui-react` dependency chain requires a forced breaking change. | Explicitly deferred; no force used. |
 
 ## Commands / deterministic steps
 
@@ -52,7 +52,7 @@ npm.cmd audit --omit=dev --json
 
 ## Failures and disposition
 
-The frontend failures were preserved without retries, skips, assertion changes or production edits:
+The initial unrestricted-worker frontend failures were preserved without retries, skips or assertion changes:
 
 - `App.test.tsx`: protected internal deep-link OAuth callback;
 - `RouteExperience.test.tsx`: `/fixtures` page naming;
@@ -60,9 +60,10 @@ The frontend failures were preserved without retries, skips, assertion changes o
 - `BatchReviewWorkspacePage.test.tsx`: reviewer workspace keyboard navigation; and
 - `SubmissionPage.test.tsx`: anonymous sign-in routing without data load.
 
-The dependency audit found a critical `proxy-addr` advisory and production-tree findings involving
-`multer`, `dompurify`, and the `swagger-ui-react` chain. This audit did not run `npm audit fix` or a
-forced upgrade: remediation needs a separately reviewed dependency change and full regression run.
+The reviewed non-breaking `npm audit fix` updated `proxy-addr`, `multer`, `dompurify` and related
+lockfile resolutions. The post-fix production audit has no high or critical finding. Four moderate
+advisories remain in the `swagger-ui-react` -> `remarkable` -> `argparse` -> `sprintf-js` chain;
+npm offers only a forced breaking change, which this audit did not apply.
 
 ## Untested / partial coverage
 
