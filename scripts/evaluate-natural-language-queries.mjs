@@ -14,6 +14,11 @@
  * It calls the issue #814 adapter directly rather than the HTTP endpoint, so it
  * measures translation alone: no limiter, no name resolution and no database.
  *
+ * A case carrying a `conversation` sends those turns as prior context, so the
+ * follow-up cases added for issue #868 measure what the prompt does with history.
+ * A case's name hints are therefore scored as the model wrote them: whether a
+ * surname resolves to one player is name resolution, which this does not reach.
+ *
  * The key is read from `LLM_API_KEY` and is never printed, logged or written. The
  * only thing recorded about the provider is the model identifier it reported.
  */
@@ -48,6 +53,10 @@ function requireBuiltContracts() {
     'analyticsQueryDefinitionSchema',
     'ANALYTICS_QUERY_PROMPT_DESCRIPTION',
     'MAX_QUERY_SUGGESTIONS',
+    // Issue #868. The adapter reads these, so a stale build fails every case
+    // after the provider has already been paid for each one.
+    'queryAssumptionSchema',
+    'MAX_QUERY_ASSUMPTIONS',
   ];
   const missing = needed.filter((name) => contracts[name] === undefined);
 
@@ -75,10 +84,15 @@ async function main() {
   const startedAt = new Date().toISOString();
   const output = resolve(
     argument('--output', 'NL_QUERY_EVALUATION_OUTPUT') ??
-      `evidence/validation/issue-815-natural-language-evaluation-${startedAt.slice(0, 10)}.md`,
+      `evidence/validation/issue-868-natural-language-evaluation-${startedAt.slice(0, 10)}.md`,
   );
 
-  const client = createLlmClient({ apiKey, model, timeoutMs });
+  // The default competition the deployment configures (issue #868). Passed in so
+  // the evaluation measures the prompt the deployment actually sends.
+  const defaultCompetition =
+    argument('--default-competition', 'NL_QUERY_DEFAULT_COMPETITION') ?? 'Indian Premier League';
+
+  const client = createLlmClient({ apiKey, model, timeoutMs, defaultCompetition });
 
   console.log(`Evaluating ${NATURAL_LANGUAGE_QUERY_CASES.length} cases against ${model}.`);
 
@@ -88,16 +102,26 @@ async function main() {
   // Sequential on purpose: it keeps the provider's own rate limit out of the
   // measurement, and a failed case then names itself in order.
   for (const testCase of NATURAL_LANGUAGE_QUERY_CASES) {
+    const turns = testCase.conversation?.length ?? 0;
+
     try {
-      const translation = await client.translateQuestion(testCase.question);
+      const translation = await client.translateQuestion(testCase.question, testCase.conversation);
       reportedModel = translation.model;
-      results.push(compareTranslation(testCase, translation.definition, translation.suggestions));
+      results.push({
+        ...compareTranslation(
+          testCase,
+          translation.definition,
+          translation.suggestions,
+          translation.assumptions,
+        ),
+        turns,
+      });
     } catch (error) {
       // The adapter's messages are fixed strings carrying neither the question nor
       // the model's output, so recording the name and message leaks nothing.
       const name = error instanceof Error ? error.name : 'UnknownError';
       const message = error instanceof Error ? error.message : '';
-      results.push({ id: testCase.id, pass: false, detail: `${name}: ${message}` });
+      results.push({ id: testCase.id, pass: false, detail: `${name}: ${message}`, turns });
     }
 
     const last = results.at(-1);

@@ -16,12 +16,17 @@
  * it is acceptable.
  */
 
+import {
+  CONVERSATIONAL_QUERY_CASES,
+  TESTER_QUESTION_CASES,
+} from './natural-language-conversational-cases.mjs';
+
 /**
  * Every matcher is a partial definition: the keys it names must match, and keys
  * it does not name are not examined. That keeps a case about the thing it tests
  * — the metric, the scope, the refusal — rather than about every default.
  */
-export const NATURAL_LANGUAGE_QUERY_CASES = [
+const CORE_CASES = [
   // Leaderboards.
   {
     id: 'leaderboard-runs-competition',
@@ -274,6 +279,16 @@ export const NATURAL_LANGUAGE_QUERY_CASES = [
   },
 ];
 
+/**
+ * The whole evaluation set: the issue #815 cases, the issue #868 conversational
+ * cases, and whatever questions testers have contributed.
+ */
+export const NATURAL_LANGUAGE_QUERY_CASES = [
+  ...CORE_CASES,
+  ...CONVERSATIONAL_QUERY_CASES,
+  ...TESTER_QUESTION_CASES,
+];
+
 /** True when every key the matcher names matches, nested objects included. */
 function matches(matcher, actual) {
   if (Array.isArray(matcher)) {
@@ -298,7 +313,7 @@ function matches(matcher, actual) {
  * A failure says which matcher was expected and what arrived, so a run can be
  * read without the provider in front of you.
  */
-export function compareTranslation(testCase, definition, suggestions = []) {
+export function compareTranslation(testCase, definition, suggestions = [], assumptions = []) {
   if (definition === undefined || definition === null) {
     return { id: testCase.id, pass: false, detail: 'no definition was returned' };
   }
@@ -322,8 +337,27 @@ export function compareTranslation(testCase, definition, suggestions = []) {
     };
   }
 
+  // An assumption has to be reported to be acceptable (issue #868). A question
+  // answered against the default competition without saying so showed the reader
+  // an answer to a narrower question than they asked, so it fails here even
+  // though the definition itself matched. An empty expectation asserts the
+  // opposite: that nothing was assumed.
+  if (testCase.expectAssumptions !== undefined) {
+    const expected = [...testCase.expectAssumptions].sort().join(', ') || 'none';
+    const actual = [...assumptions].sort().join(', ') || 'none';
+
+    if (expected !== actual) {
+      return {
+        id: testCase.id,
+        pass: false,
+        detail: `${describe(definition)} but assumed ${actual}, expected ${expected}`,
+      };
+    }
+  }
+
   const offered = suggestions.length > 0 ? ` + ${suggestions.length} suggestion(s)` : '';
-  return { id: testCase.id, pass: true, detail: `${describe(definition)}${offered}` };
+  const assumed = assumptions.length > 0 ? ` (assumed ${[...assumptions].sort().join(', ')})` : '';
+  return { id: testCase.id, pass: true, detail: `${describe(definition)}${offered}${assumed}` };
 }
 
 function describe(definition) {
@@ -350,7 +384,7 @@ export function renderResults({ model, startedAt, results }) {
   const rows = results
     .map(
       (result) =>
-        `| ${result.id} | ${result.pass ? 'pass' : 'FAIL'} | ${result.detail.replaceAll('|', '\\|')} |`,
+        `| ${result.id} | ${result.turns ?? 0} | ${result.pass ? 'pass' : 'FAIL'} | ${result.detail.replaceAll('|', '\\|')} |`,
     )
     .join('\n');
 
@@ -364,20 +398,28 @@ export function renderResults({ model, startedAt, results }) {
 | Cases | ${total} |
 | Passed | ${passed} |
 | Failed | ${failed} |
+| Multi-turn cases | ${results.filter((result) => (result.turns ?? 0) > 0).length} |
 
 A case passes when the returned definition matches one of the translations the
 case accepts. Some cases accept more than one reading, because translation is not
 deterministic and two readings of the same question can both be defensible; the
 case list records which and why.
 
-| Case | Result | Detail |
-| ---- | ------ | ------ |
+A case stating "expectSuggestions" also has to offer something answerable, and a
+case stating "expectAssumptions" also has to report exactly those assumptions: a
+question answered against the default competition without saying so fails, because
+the reader would have been shown an answer to a narrower question than they asked.
+
+The "Turns" column is how many earlier turns the case sent as prior context.
+
+| Case | Turns | Result | Detail |
+| ---- | ----- | ------ | ------ |
 ${rows}
 
 ## AI Declaration
 
 The evaluation set and runner were produced with the assistance of
-Claude-Code[Claude Opus 5 (1M context)] under issue #815. The run recorded above
-was performed by Ben Swartz.
+Claude-Code[Claude Opus 5 (1M context)] under issues #815 and #868. The run
+recorded above was performed by Ben Swartz.
 `;
 }
