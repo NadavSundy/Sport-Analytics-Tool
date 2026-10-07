@@ -410,8 +410,9 @@ this architecture is considered fully accepted.
 
 ## AI Declaration
 
-This document was drafted with the assistance of Claude (Anthropic), consolidating and cross-linking
-existing repository documentation (`azure-app-service-recovery.md`, `overview.md`, `azure-backend.md`,
+This document was drafted and updated with the assistance of Claude.ai[Claude Sonnet 5],
+consolidating and cross-linking existing repository documentation (`azure-app-service-recovery.md`,
+`overview.md`, `azure-backend.md`,
 `azure-worker.md`, `production-scale-acceptance.md`, ADR 0003, ADR-010, ADR-011), the merged Bicep
 templates (`infra/azure/backend/main.bicep`, `infra/azure/worker/main.bicep`), and the completed #565
 evidence (`evidence/sprints/sprint-3/issue-565-production-scale-deployment-acceptance.md` and

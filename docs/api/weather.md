@@ -200,4 +200,6 @@ the `Weather` tag.
 
 ## AI Declaration
 
-The preceding document was planned and generated with the assistance of Claude Sonnet 5.
+The preceding document was planned, generated, reviewed and edited with the assistance of
+ChatGPT-Web[GPT-5.5], Claude-Web[Claude Sonnet 5], Claude.ai[Claude Sonnet 5] and
+Codex[GPT-5].
