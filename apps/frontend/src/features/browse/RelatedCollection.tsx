@@ -21,15 +21,28 @@ export function RelatedCollection<Resource>({
   title,
 }: RelatedCollectionProps<Resource>) {
   const headingId = useId();
-  const [cursor, setCursor] = useState<string | null>(null);
+  const scope = filters.toString();
+  // Cursor pagination is forward-only on the API, so the component keeps the cursor that
+  // produced every visited page. The last entry is the current page; `null` is the first page.
+  // The history is tied to the related scope so a different parent record starts at page one.
+  const [history, setHistory] = useState<{ cursors: Array<string | null>; scope: string }>({
+    cursors: [null],
+    scope,
+  });
+  const cursors = history.scope === scope ? history.cursors : [null];
+  const cursor = cursors.at(-1) ?? null;
+  const page = cursors.length;
   const search = useMemo(() => {
-    const params = new URLSearchParams(filters);
+    const params = new URLSearchParams(scope);
     params.set('limit', '10');
     if (cursor) {
       params.set('cursor', cursor);
     }
     return `?${params.toString()}`;
-  }, [cursor, filters]);
+  }, [cursor, scope]);
+  const goToNextPage = (nextCursor: string) =>
+    setHistory({ cursors: [...cursors, nextCursor], scope });
+  const goToPreviousPage = () => setHistory({ cursors: cursors.slice(0, -1), scope });
   const loadRecords = useCallback((signal: AbortSignal) => load(search, signal), [load, search]);
   const state = usePublicData(loadRecords, search);
 
@@ -77,18 +90,37 @@ export function RelatedCollection<Resource>({
       {state.status === 'ready' && state.data.data.length > 0 ? (
         <>
           {renderRecords(state.data.data)}
-          {state.data.pagination.nextCursor ? (
+          {state.data.pagination.nextCursor || page > 1 ? (
             <nav aria-label={`${title} pagination`} className="pagination">
+              <button
+                aria-label={`Previous ${resourceLabel} page`}
+                className="button button--secondary"
+                disabled={page === 1}
+                onClick={goToPreviousPage}
+                type="button"
+              >
+                Previous page
+              </button>
+              <p aria-live="polite" className="pagination__status">
+                Page {page}
+              </p>
               <button
                 aria-label={`Next ${resourceLabel} page`}
                 className="button button--secondary"
-                onClick={() => setCursor(state.data.pagination.nextCursor)}
+                disabled={!state.data.pagination.nextCursor}
+                onClick={() => {
+                  const { nextCursor } = state.data.pagination;
+                  if (nextCursor) {
+                    goToNextPage(nextCursor);
+                  }
+                }}
                 type="button"
               >
                 Next page
               </button>
             </nav>
-          ) : (
+          ) : null}
+          {state.data.pagination.nextCursor ? null : (
             <p className="pagination__end">End of published results</p>
           )}
         </>
