@@ -104,7 +104,9 @@ describe('ApiExplorerPage', () => {
     renderPage();
 
     expect(await screen.findByText('Supported API major version: v1')).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { level: 1, name: 'API Explorer' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { level: 1, name: 'API Explorer' }),
+    ).not.toBeInTheDocument();
   });
 
   it('renders the public /api route without requiring a signed-in user', async () => {

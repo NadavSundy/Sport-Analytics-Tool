@@ -8,14 +8,14 @@ This is a verification record, not a replacement design specification. The autho
 
 ## Documentation review
 
-| Acceptance area | Current source of truth | Review outcome |
-| --- | --- | --- |
-| Information architecture and navigation | Information architecture §§2–3; `PublicShell` and `App.tsx` routes | Current: public, account, submitter and administrator journeys match the routes and role boundaries. |
-| Brand and visual guidance | Brand guidelines; `styles.css` semantic Day Match/Night Match tokens | Current: the documented themes, typography, focus treatment, responsive layout and motion rules are represented by the shared stylesheet and shell. |
-| Accessibility approach and evidence | Brand guidelines §16; component baseline; browser/accessibility strategy in [CI/CD](../development/ci-cd.md) | Discoverable: semantic controls, visible labels and focus, reduced motion, keyboard navigation, responsive overflow and automated Axe/browser coverage are documented. |
-| Responsive support | Brand guidelines §11.4; component baseline shell conventions; responsive Playwright strategy | Current: header tiers, mobile gutters, table overflow and the mobile browser subset are documented as implementation behaviour, not promises of unaudited devices. |
-| Role journeys and states | Information architecture §§3–4 | Current: viewer, submitter and administrator journeys describe loading, empty, validation, error and success states where those states apply. |
-| Frontend architecture and components | Component baseline; `apps/frontend/src/components/README.md`; `apps/frontend/src/features/README.md` | Current: shared shell/components and feature ownership are documented without claiming that frontend visibility authorizes a request. |
+| Acceptance area                         | Current source of truth                                                                                      | Review outcome                                                                                                                                                         |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Information architecture and navigation | Information architecture §§2–3; `PublicShell` and `App.tsx` routes                                           | Current: public, account, submitter and administrator journeys match the routes and role boundaries.                                                                   |
+| Brand and visual guidance               | Brand guidelines; `styles.css` semantic Day Match/Night Match tokens                                         | Current: the documented themes, typography, focus treatment, responsive layout and motion rules are represented by the shared stylesheet and shell.                    |
+| Accessibility approach and evidence     | Brand guidelines §16; component baseline; browser/accessibility strategy in [CI/CD](../development/ci-cd.md) | Discoverable: semantic controls, visible labels and focus, reduced motion, keyboard navigation, responsive overflow and automated Axe/browser coverage are documented. |
+| Responsive support                      | Brand guidelines §11.4; component baseline shell conventions; responsive Playwright strategy                 | Current: header tiers, mobile gutters, table overflow and the mobile browser subset are documented as implementation behaviour, not promises of unaudited devices.     |
+| Role journeys and states                | Information architecture §§3–4                                                                               | Current: viewer, submitter and administrator journeys describe loading, empty, validation, error and success states where those states apply.                          |
+| Frontend architecture and components    | Component baseline; `apps/frontend/src/components/README.md`; `apps/frontend/src/features/README.md`         | Current: shared shell/components and feature ownership are documented without claiming that frontend visibility authorizes a request.                                  |
 
 ## Corrected performance finding
 
@@ -27,10 +27,10 @@ The homepage hero photograph is the local mobile Largest Contentful Paint candid
 
 Local production-bundle Lighthouse was run on `/` with the repository runner’s mobile profile and three-run median aggregation:
 
-| Measurement | Individual runs | Median Performance | Median LCP | Median TBT | Result |
-| --- | --- | ---: | ---: | ---: | --- |
-| Before image priority | 74, 76, 82 | 76 | 4363 ms | 276 ms | Strict target not met |
-| After image priority | 80, 78, 81 | 80 | 4373 ms | 172 ms | Strict target not met |
+| Measurement           | Individual runs | Median Performance | Median LCP | Median TBT | Result                |
+| --------------------- | --------------- | -----------------: | ---------: | ---------: | --------------------- |
+| Before image priority | 74, 76, 82      |                 76 |    4363 ms |     276 ms | Strict target not met |
+| After image priority  | 80, 78, 81      |                 80 |    4373 ms |     172 ms | Strict target not met |
 
 The improvement is real for the measured score and blocking time, but it is **not** evidence that the mobile production target (Performance >=90, LCP <=2500 ms, TBT <=200 ms and CLS <=0.1) has been recovered. The local production desktop single run was 99; it is not a deployed or hosted-CI result. The repository’s public-route CI baseline gate remains unchanged: three runs, median aggregation, persisted route/profile floors and fail-closed handling.
 
