@@ -21,6 +21,10 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     globals: true,
+    // Keep the default local invocation aligned with the hosted CI lane. More
+    // workers overload the shared jsdom/browser-style tests and create false
+    // failures; this is a concurrency limit, not a retry policy.
+    maxWorkers: 2,
     // Vitest 4 removed poolOptions; worker execArgv is now a top-level test option.
     // Node 25+ exposes Web Storage globals that conflict with Vitest's jsdom
     // environment, so disable Node's implementation in test workers and let
