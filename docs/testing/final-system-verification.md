@@ -761,8 +761,8 @@ Choose at least one representative fixture with trusted reference totals and com
 
 - Fixture/innings totals agree with the trusted reference after applying documented domain rules.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#873 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-873-statistics-data-releases.md){ target="_blank" rel="noopener" }; no new correctness failure observed.
 
 ### STAT-TECH-02 — Batting calculations
 
@@ -776,8 +776,8 @@ For representative batters, independently derive/check exposed batting figures f
 
 - Exposed batting values match documented calculations and selected scope.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#873 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-873-statistics-data-releases.md){ target="_blank" rel="noopener" }; no new correctness failure observed.
 
 ### STAT-TECH-03 — Bowling calculations
 
@@ -791,8 +791,8 @@ For representative bowlers, independently derive/check exposed bowling figures, 
 
 - Values match documented cricket rules and selected scope.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#873 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-873-statistics-data-releases.md){ target="_blank" rel="noopener" }; no new correctness failure observed.
 
 ### STAT-TECH-04 — Fielding/appearance calculations where exposed
 
@@ -806,8 +806,8 @@ Compare representative final exposed fielding/appearance values with source even
 
 - Implemented values are correct and scoped to the intended fixture/aggregate.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#873 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-873-statistics-data-releases.md){ target="_blank" rel="noopener" }; no new correctness failure observed.
 
 ### STAT-TECH-05 — Cricket extras and edge cases
 
@@ -822,8 +822,8 @@ payload fields, repeated printed ball numbers and other documented Cricsheet/dom
 
 - Derived statistics follow the project's documented event/domain interpretation.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#873 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-873-statistics-data-releases.md){ target="_blank" rel="noopener" }; no new correctness failure observed.
 
 ### STAT-TECH-06 — Season/career/competition aggregates
 
@@ -837,8 +837,8 @@ Compare representative aggregate values with aggregation over the accepted under
 
 - Aggregate totals/derived values equal the underlying authoritative data and documented formulae.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#873 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-873-statistics-data-releases.md){ target="_blank" rel="noopener" }; no new correctness failure observed.
 
 ### STAT-TECH-07 — Comparison/leaderboard ordering
 
@@ -852,8 +852,8 @@ Verify at least one implemented comparison/leaderboard with known values, includ
 
 - Ordering and units are consistent and reproducible.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#873 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-873-statistics-data-releases.md){ target="_blank" rel="noopener" }; no new correctness failure observed.
 
 ### ADM-TECH-02 — Provenance from published data to submission
 
@@ -867,8 +867,8 @@ Select a published fixture/event/statistic and follow available provenance/audit
 
 - Source relationship is traceable without exposing secret credentials.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#873 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-873-statistics-data-releases.md){ target="_blank" rel="noopener" }; no new correctness failure observed.
 
 ### DATA-TECH-01 — Find/retrieve a versioned dataset release
 
@@ -882,8 +882,8 @@ Identify a generated release and retrieve the downloadable artefact plus metadat
 
 - Release has stable version/identifier, documented scope/schema and retrievable artefact.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#873 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-873-statistics-data-releases.md){ target="_blank" rel="noopener" }; no new correctness failure observed.
 
 ### DATA-TECH-02 — Release checksum and metadata integrity
 
@@ -898,8 +898,8 @@ Compute/verify the documented checksum of a retrieved release and compare metada
 - Checksum matches the released artefact.
 - Metadata refers to the same release/scope.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#873 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-873-statistics-data-releases.md){ target="_blank" rel="noopener" }; no new correctness failure observed.
 
 ### DATA-TECH-03 — Reproduce representative statistic from release
 
@@ -913,8 +913,8 @@ Using only the release plus linked schema/calculation documentation, reproduce o
 
 - Required source fields/rules are available and reproduced result matches the expected value.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#873 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-873-statistics-data-releases.md){ target="_blank" rel="noopener" }; no new correctness failure observed.
 
 ### DATA-TECH-04 — Asynchronous release generation
 
@@ -930,8 +930,8 @@ Request a release-generation workflow and follow API/job/worker state.
 - Durable background work reaches a correct terminal state.
 - Repeated delivery does not generate inconsistent duplicate authoritative releases.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#873 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-873-statistics-data-releases.md){ target="_blank" rel="noopener" }; no new correctness failure observed.
 
 ---
 
