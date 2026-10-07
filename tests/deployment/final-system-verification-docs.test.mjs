@@ -191,4 +191,14 @@ test('issue 875 database and worker verification has a retained execution record
   for (const verificationId of ['DB-TECH-06', 'WRK-TECH-04', 'WRK-TECH-05']) {
     assert.match(record, new RegExp(`\\|\\s+${verificationId}\\s+\\|\\s+PASS\\s+\\|`));
   }
+
+  for (const classification of [
+    'BatchValidationRetryBudgetExhausted',
+    'UnsupportedJobContract',
+    'AttemptBudgetExhausted',
+    'MaxDeliveryCountExceeded',
+    'JobNotRunnable',
+  ]) {
+    assert.match(record, new RegExp(classification));
+  }
 });

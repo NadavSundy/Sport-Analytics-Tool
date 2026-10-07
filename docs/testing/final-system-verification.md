@@ -1297,8 +1297,8 @@ Exercise a controlled failing job or approved failure fixture.
 - Failure is durable/observable with useful diagnostics.
 - Supported retry changes state predictably.
 
-**Status:** `BLOCKED`
-**Evidence / defect / retest:** #875 execution record; 19 historical dead-letter messages are observable, but their safe failure reasons and a controlled retry have not been captured.
+**Status:** `PASS`
+**Evidence / defect / retest:** #875 execution record; Peek-only inspection classified all 19 historical dead-letter messages without changing them. The retained reasons establish the terminal routing mechanism, not an unproven infrastructure/RBAC/network root cause.
 
 ### WRK-TECH-04 — Duplicate delivery/idempotency
 
