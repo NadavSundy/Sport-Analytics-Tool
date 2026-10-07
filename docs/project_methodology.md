@@ -51,7 +51,7 @@ The selected methodology provides enough structure to demonstrate planning, stak
 
 ## 3. Project Management Platform
 
-Gitea will act as the team’s primary source of truth for project work.
+Gitea will act as the team's primary source of truth for project work.
 
 The team will use:
 
@@ -92,7 +92,7 @@ An item may remain in the backlog where:
 
 The `Ready` column contains work that is sufficiently defined and can be started.
 
-An issue may only move to `Ready` when it meets the team’s Definition of Ready.
+An issue may only move to `Ready` when it meets the team's [Definition of Ready](#13-definition-of-ready).
 
 ### 4.3 In Progress
 
@@ -121,7 +121,7 @@ A blocked issue must include a comment explaining:
 
 ### 4.6 Done
 
-The `Done` column contains work that satisfies the team’s Definition of Done.
+The `Done` column contains work that satisfies the team's [Definition of Done](#14-definition-of-done).
 
 An issue may not be moved to `Done` merely because implementation has started or a partial result exists.
 
@@ -136,22 +136,25 @@ Sprint 3
 Final Submission
 ```
 
-Each milestone period will be treated as a sprint.
+The first three milestone periods are the project's formal Sprints. Milestone 4 is the
+Final Submission period. The team continues to use lightweight planning, tracking and
+review practices during Final Submission where useful, but Milestone 4 is not a fourth
+formal Sprint.
 
-Every sprint will include:
+Each formal Sprint is intended to include:
 
 1. sprint planning;
 2. continuous work tracking;
-3. weekly stakeholder interaction;
-4. a weekly team standup;
+3. regular stakeholder interaction;
+4. a weekly team standup where reasonably possible;
 5. development and review; and
 6. a brief sprint close-out.
 
-Each sprint will have a clear sprint goal that states the main outcome the team intends to achieve.
+Each formal Sprint has a clear Sprint goal that states the main outcome the team intends to achieve.
 
 ## 6. Sprint Planning
 
-The team will hold one sprint-planning meeting at the beginning of each sprint.
+The team will hold one sprint-planning meeting at the beginning of each formal Sprint.
 
 The meeting should normally last between 30 and 45 minutes.
 
@@ -162,7 +165,7 @@ During sprint planning, the team will:
 3. review stakeholder feedback;
 4. review incomplete work from the previous sprint;
 5. select issues from the backlog;
-6. confirm that selected issues meet the Definition of Ready;
+6. confirm that selected issues meet the [Definition of Ready](#13-definition-of-ready);
 7. identify dependencies and technical risks;
 8. assign initial issue owners;
 9. allocate selected issues to the relevant Gitea milestone; and
@@ -194,7 +197,7 @@ A full transcript of the meeting is not required.
 
 ## 7. Weekly Stakeholder Meeting
 
-The team will meet with the assigned stakeholder or tutor every Tuesday, where reasonably possible.
+The team will normally interact with the assigned stakeholder or tutor each week, with Tuesday used as the preferred meeting day where reasonably possible.
 
 The meeting should normally last between 20 and 30 minutes.
 
@@ -245,11 +248,11 @@ Stakeholder feedback that affects the project must result in one of the followin
 
 Requirements may not be changed silently.
 
-Where a Tuesday meeting cannot take place, the team may use a structured written update or arrange the meeting on another day during the same week.
+Where a synchronous Tuesday meeting cannot take place, the team may use a structured written update or arrange the interaction on another day during the same week.
 
 ## 8. Weekly Team Standup
 
-The team will hold one internal standup every Thursday.
+The team will normally hold one internal standup each week, with Thursday used as the preferred day where reasonably possible.
 
 The standup should normally last no longer than 15 minutes.
 
@@ -262,9 +265,8 @@ Each team member will answer:
 
 The team will also briefly:
 
-- review the Gitea Project board;
-- check progress towards the sprint goal;
-- review actions arising from Tuesday’s stakeholder meeting;
+- check progress towards the Sprint goal;
+- review actions arising from the week's stakeholder interaction;
 - identify delayed or blocked work;
 - confirm whether responsibilities need to change; and
 - identify any urgent issue requiring a separate discussion.
@@ -279,7 +281,9 @@ Formal minutes are not required for every standup. A brief weekly note must reco
 - changes to responsibility; and
 - actions for the following week.
 
-The Gitea Project board must be updated throughout the week. The Thursday standup is not the only time at which issue statuses may be changed.
+The Gitea Project board is maintained continuously throughout the week as the team's primary
+visual tracker of work state. Issue statuses may be updated whenever work changes, and the board
+does not need to be formally reviewed during every standup.
 
 Additional short standups may be arranged during the final days before a milestone where necessary. These additional meetings are an exception and do not replace the standard weekly schedule.
 
@@ -495,9 +499,9 @@ Where an issue remains blocked for more than one week, the team must decide whet
 
 ## 16. Sprint Close-Out
 
-At the end of each sprint, the team will complete a brief sprint close-out.
+At the end of each formal Sprint, the team will complete a brief Sprint close-out.
 
-The Tuesday stakeholder meeting closest to the sprint deadline will be used to:
+The stakeholder interaction closest to the Sprint deadline will be used to:
 
 - demonstrate completed work;
 - confirm whether completed work meets stakeholder expectations;
@@ -506,7 +510,7 @@ The Tuesday stakeholder meeting closest to the sprint deadline will be used to:
 - identify known defects and limitations; and
 - confirm how incomplete or changed work will be handled.
 
-During the final Thursday standup of the sprint, the team will briefly reflect on:
+During the final weekly standup of the Sprint, the team will briefly reflect on:
 
 1. what worked well;
 2. what caused difficulty; and
@@ -547,7 +551,7 @@ Incomplete work must be:
 - divided into smaller issues; or
 - removed from scope with justification.
 
-The agreed improvement must be reviewed during the following sprint to determine whether it was applied and whether it was effective.
+The agreed improvement must be reviewed during the following formal Sprint, or during the Final Submission period after Sprint 3, to determine whether it was applied and whether it was effective.
 
 ## 17. Communication and Decision-Making
 
@@ -625,6 +629,23 @@ Work completed before the effective date of a change will remain governed by the
 
 Minor wording corrections that do not change the actual process may be made without following the full change procedure.
 
+### 18.1 Refinement in Practice
+
+The core lightweight Scrumban methodology remained in use throughout the project, but some
+practices were refined as the team gained experience with the workflow.
+
+The Gitea Project board remained an actively maintained day-to-day visual tracker of work.
+In practice, weekly standups focused primarily on progress, blockers, responsibilities and
+next actions rather than requiring a formal walkthrough of every board column.
+
+Stakeholder interaction also remained regular while allowing structured asynchronous communication
+or alternative meeting days when timetable, assessment or stakeholder availability made the
+preferred Tuesday meeting impractical.
+
+These refinements clarify how the methodology was applied in practice. They do not retrospectively
+rewrite the original Sprint records, which remain the authoritative evidence of how the process
+evolved over the project lifecycle.
+
 ## 19. Evidence of Compliance
 
 The team will demonstrate that this methodology has been followed through evidence in Gitea and the project repository.
@@ -632,13 +653,13 @@ The team will demonstrate that this methodology has been followed through eviden
 Evidence will include:
 
 - a populated and actively maintained Gitea Project board;
-- Gitea milestones for each sprint;
+- Gitea milestones for each formal Sprint and the Final Submission period;
 - issues with descriptions and acceptance criteria;
 - assigned and labelled issues;
 - visible movement of work across board columns;
 - blocked issues with documented reasons;
-- Tuesday stakeholder-meeting notes;
-- Thursday standup summaries;
+- regular stakeholder-interaction records, including synchronous meetings and structured asynchronous exchanges;
+- weekly standup summaries;
 - sprint-planning records;
 - sprint close-out records;
 - documented improvements between sprints;
@@ -648,15 +669,15 @@ Evidence will include:
 
 The existence of this document alone will not be considered sufficient evidence of compliance.
 
-The team’s Gitea activity and repository documentation must demonstrate that the methodology was followed consistently.
+The team's Gitea activity and repository documentation must demonstrate that the methodology was followed consistently.
 
 ## 20. Standard Weekly Workflow
 
 The standard weekly process will be:
 
-### Tuesday
+### Tuesday - preferred stakeholder day
 
-- Meet with the stakeholder or tutor.
+- Meet with the stakeholder or tutor, or complete the agreed structured asynchronous interaction.
 - Demonstrate progress.
 - Clarify requirements.
 - Record feedback and decisions.
@@ -668,7 +689,7 @@ The standard weekly process will be:
 - Reprioritise issues where required.
 - Update the Project board.
 
-### Thursday
+### Thursday - preferred standup day
 
 - Hold the internal team standup.
 - Review progress towards the sprint goal.
@@ -690,17 +711,21 @@ The team will follow this process:
 
 1. Record meaningful work as Gitea issues.
 2. Define acceptance criteria before work begins.
-3. Prioritise work according to project requirements and sprint goals.
+3. Prioritise work according to project requirements and formal Sprint goals.
 4. Track work continuously on the Gitea Project board.
-5. Meet the stakeholder every Tuesday where reasonably possible.
-6. Hold an internal team standup every Thursday.
+5. Maintain regular stakeholder interaction, using Tuesday as the preferred meeting day where reasonably possible.
+6. Hold a weekly internal team standup, using Thursday as the preferred day where reasonably possible.
 7. Keep work small and limit each member to one main active issue.
 8. Review and verify work before marking it as done.
-9. Complete a brief close-out at the end of each sprint.
+9. Complete a brief close-out at the end of each formal Sprint.
 10. Record important decisions and stakeholder feedback.
 11. Change the methodology only where evidence shows that it is causing significant or repeated problems.
 12. Apply the methodology consistently throughout the project.
 
 ## AI Declaration
 
-The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Thinking].
+The preceding document was originally planned, generated, reviewed and edited with the assistance
+of ChatGPT-Web[GPT-5.6 Thinking].
+
+The Issue #881 methodology review, terminology clarification and documentation refinements were
+reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].

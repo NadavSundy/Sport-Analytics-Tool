@@ -1,4 +1,4 @@
-# Sprint 4 Evidence
+# Final Submission Evidence
 
 This directory contains repository evidence for Sprint 4 / the final project
 submission milestone.
