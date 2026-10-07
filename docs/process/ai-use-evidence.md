@@ -24,6 +24,11 @@ The original shared register is retained until migration is complete.
 The original shared register:
 [`ai-usage-register.csv`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/ai/ai-usage-register.csv){ target="_blank" rel="noopener" }.
 
+## Final attribution audit
+
+The final cross-repository AI declaration and attribution audit is retained at
+[`evidence/validation/issue-891-ai-attribution-audit.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-891-ai-attribution-audit.md){ target="_blank" rel="noopener" }.
+
 ## Transcript evidence
 
 Transcripts supporting register entries are stored per team member under
