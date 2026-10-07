@@ -1186,8 +1186,8 @@ Run the documented deployed backend/database health/smoke path.
 - Intended services can connect.
 - Public response does not reveal credentials.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `BLOCKED`
+**Evidence / defect / retest:** #875 execution record; documented public health endpoint timed out.
 
 ### DB-TECH-02 — Clean migration/integration setup
 
@@ -1202,8 +1202,8 @@ Run the repository database integration setup against the approved test database
 - Committed migrations/schema initialise successfully in the test environment.
 - Database integration suite passes.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `BLOCKED`
+**Evidence / defect / retest:** #875 execution record; disposable migrations and seed completed, but no terminal integration summary was captured.
 
 ### DB-TECH-03 — Relational integrity constraints
 
@@ -1216,8 +1216,8 @@ Use database integration tests to exercise representative invalid foreign-key/un
 - Invalid relational state is rejected.
 - Valid authoritative relationships remain queryable.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `BLOCKED`
+**Evidence / defect / retest:** #875 execution record; requires completed database-suite result.
 
 ### DB-TECH-04 — Transactional consistency
 
@@ -1229,8 +1229,8 @@ Exercise at least one multi-write workflow with an induced/controlled failure at
 
 - Workflow does not leave a falsely-complete partial authoritative state.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `BLOCKED`
+**Evidence / defect / retest:** #875 execution record; requires completed database-suite result.
 
 ### DB-TECH-05 — Representative query/index behaviour
 
@@ -1242,8 +1242,8 @@ For important final read/aggregate paths, inspect representative-scale timing/qu
 
 - No obvious final high-volume query depends on an unintended full-table/per-item N+1 path without documented acceptance.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `BLOCKED`
+**Evidence / defect / retest:** #875 execution record; no current representative-scale query-plan run.
 
 ### DB-TECH-06 — Production/test data distinction
 
@@ -1255,8 +1255,8 @@ Record final production dataset source/scale and the policy used to distinguish 
 
 - Final documentation can answer what production data is present and what data was introduced only for testing.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `BLOCKED`
+**Evidence / defect / retest:** #875 execution record; no authorised production inventory.
 
 ### WRK-TECH-01 — Worker liveness/readiness
 
@@ -1269,8 +1269,8 @@ Use deployed worker health/readiness endpoints/runbook.
 - Liveness reports running process.
 - Readiness reflects required dependencies accurately.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `BLOCKED`
+**Evidence / defect / retest:** #875 execution record; deployed worker has no public ingress and no operator access was provided.
 
 ### WRK-TECH-02 — Representative queued job completes
 
@@ -1283,8 +1283,8 @@ Enqueue an approved representative ingestion/background job and follow the durab
 - Message is received and work reaches the correct terminal state.
 - API/request process is not required to remain open for the full job.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `BLOCKED`
+**Evidence / defect / retest:** #875 execution record; 125 local worker tests passed, but no authorised live probe was run.
 
 ### WRK-TECH-03 — Failure diagnostics and retry
 
@@ -1297,8 +1297,8 @@ Exercise a controlled failing job or approved failure fixture.
 - Failure is durable/observable with useful diagnostics.
 - Supported retry changes state predictably.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `BLOCKED`
+**Evidence / defect / retest:** #875 execution record; no authorised live failure fixture.
 
 ### WRK-TECH-04 — Duplicate delivery/idempotency
 
@@ -1310,8 +1310,8 @@ Exercise retry/redelivery of the same durable command in the supported integrati
 
 - Canonical publication/release side effects are not duplicated.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `BLOCKED`
+**Evidence / defect / retest:** #875 execution record; no authorised live redelivery.
 
 ### WRK-TECH-05 — Interruption/restart recovery
 
@@ -1324,8 +1324,8 @@ Use the documented safe worker recovery exercise or existing automated recovery 
 - In-progress durable work can resume/retry according to lease/checkpoint semantics.
 - Work does not silently disappear or duplicate authoritative results.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `BLOCKED`
+**Evidence / defect / retest:** #875 execution record; no authorised deployed restart exercise.
 
 ---
 

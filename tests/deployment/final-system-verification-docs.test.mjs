@@ -159,3 +159,32 @@ test('issue 871 frontend and role verification has a complete retained execution
   );
   assert.match(record, /test:e2e --/);
 });
+
+test('issue 875 database and worker verification has a retained execution record', () => {
+  const record = readFileSync(
+    'evidence/validation/final-system-verification/issue-875-database-worker.md',
+    'utf8',
+  );
+
+  for (const verificationId of [
+    'DB-TECH-01',
+    'DB-TECH-02',
+    'DB-TECH-03',
+    'DB-TECH-04',
+    'DB-TECH-05',
+    'DB-TECH-06',
+    'WRK-TECH-01',
+    'WRK-TECH-02',
+    'WRK-TECH-03',
+    'WRK-TECH-04',
+    'WRK-TECH-05',
+  ]) {
+    assert.match(
+      record,
+      new RegExp(`\\|\\s+${verificationId}\\s+\\|\\s+(?:PASS|FAIL|BLOCKED|N\\/A)\\s+\\|`),
+    );
+  }
+
+  assert.match(record, /does not treat local automated evidence as deployed verification/i);
+  assert.match(record, /No passwords, bearer tokens, OAuth credentials, API keys or service secrets/i);
+});
