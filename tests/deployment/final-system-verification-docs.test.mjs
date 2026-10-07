@@ -9,6 +9,10 @@ const template = readFileSync(
   'evidence/validation/final-system-verification/execution-record-template.md',
   'utf8',
 );
+const issue873Evidence = readFileSync(
+  'evidence/validation/final-system-verification/issue-873-statistics-data-releases.md',
+  'utf8',
+);
 
 test('final verification bank is explicit non-user technical verification', () => {
   assert.match(bank, /authoritative \*\*final non-user technical verification bank\*\*/i);
@@ -75,7 +79,7 @@ test('bank uses actual repository verification commands', () => {
 });
 
 test('MkDocs and validation index expose final system verification', () => {
-  assert.match(nav, /Final System Verification:\s+testing\/final-system-verification\.md/);
+  assert.match(nav, /Final System Verification Bank:\s+testing\/final-system-verification\.md/);
   assert.match(
     evidenceIndex,
     /\[Final system verification bank\]\(\.\.\/testing\/final-system-verification\.md\)/i,
@@ -87,4 +91,27 @@ test('execution evidence template keeps secrets out and preserves failures/retes
   assert.match(template, /Linked bug \/ blocker/);
   assert.match(template, /Retest/);
   assert.match(template, /preserve the original failure/i);
+});
+
+test('issue 873 records final statistics and reproducibility verification explicitly', () => {
+  assert.match(issue873Evidence, /Candidate commit\/tag\s*\|\s*`d963e138d`/);
+  for (const verificationId of [
+    'STAT-TECH-01',
+    'STAT-TECH-02',
+    'STAT-TECH-03',
+    'STAT-TECH-04',
+    'STAT-TECH-05',
+    'STAT-TECH-06',
+    'STAT-TECH-07',
+    'ADM-TECH-02',
+    'DATA-TECH-01',
+    'DATA-TECH-02',
+    'DATA-TECH-03',
+    'DATA-TECH-04',
+  ]) {
+    assert.match(issue873Evidence, new RegExp(`\\|\\s+${verificationId}\\s+\\|\\s+PASS\\s+\\|`));
+  }
+  assert.match(issue873Evidence, /278 tests passed; 1 file skipped; 2 tests skipped/);
+  assert.match(issue873Evidence, /269 tests passed/);
+  assert.match(issue873Evidence, /No new correctness failure was observed/i);
 });
