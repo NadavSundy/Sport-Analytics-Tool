@@ -49,20 +49,15 @@ Related: [Sprint 2 requirements & rubric traceability](../planning/sprint-2-requ
 
 ## Sprint 3
 
-| Date           | Record                                                                                                                                                                                                                                                 |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 15 Sep 2026    | Sprint planning - [Source record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-3/2026-09-15-planning.md){ target="_blank" rel="noopener" }                                                     |
-| 17 Sep 2026    | Stand-up - [Source record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-3/2026-09-17-standup.md){ target="_blank" rel="noopener" }                                                             |
-| 22–24 Sep 2026 | Asynchronous stakeholder exchange - [Source record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-3/2026-09-22%20Asynch%20Stakeholder%20meeting){ target="_blank" rel="noopener" }              |
-| 24 Sep 2026    | Stand-up image - [Source record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-3/2026-09-24%20Standup.jpeg){ target="_blank" rel="noopener" }                                                   |
-| Sprint 3       | Production-scale deployment acceptance - [Source record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-3/issue-565-production-scale-deployment-acceptance.md){ target="_blank" rel="noopener" } |
-| Sprint 3       | Performance re-validation - [Source record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-3/issue-599-performance-revalidation.md){ target="_blank" rel="noopener" }                            |
-
-Repository index: [Sprint 3 README](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-3/README.md){ target="_blank" rel="noopener" }.
+| Date                                                                                                                                                                                     | Record                                                                                                                                                                                                                                    |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 15 Sep 2026                                                                                                                                                                              | Sprint planning - [Source record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-3/2026-09-15-planning.md){ target="_blank" rel="noopener" }                                        |
+| 17 Sep 2026                                                                                                                                                                              | Stand-up - [Source record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-3/2026-09-17-standup.md){ target="_blank" rel="noopener" }                                                |
+| 22–24 Sep 2026                                                                                                                                                                           | Asynchronous stakeholder exchange - [Source record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-3/2026-09-22%20Asynch%20Stakeholder%20meeting){ target="_blank" rel="noopener" } |
+| 24 Sep 2026                                                                                                                                                                              | Stand-up image - [Source record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-3/2026-09-24%20Standup.jpeg){ target="_blank" rel="noopener" }                                      |
+| Repository index: [Sprint 3 README](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-3/README.md){ target="_blank" rel="noopener" }. |
 
 Gitea remains authoritative for current issue state, assignees, dependencies and completion status.
-Sprint 3 requirements/rubric close-out should be linked here when its authoritative record exists
-rather than reconstructed on this page.
 
 Additional Sprint 3 records:
 
@@ -71,35 +66,47 @@ Additional Sprint 3 records:
 
 Related: [Sprint 3 requirements & rubric traceability](../planning/sprint-3-requirements-traceability.md).
 
-The 28 September record began as the pre-finalisation close-out. The final #613 close-out and retrospective were subsequently merged to `main` in PR #790. The record therefore remains useful as Sprint 3 evidence, while #612 is treated as explicit carry-forward into the final-submission period.
+The 28 September record began as the pre-finalisation close-out. The final #613 close-out and
+retrospective were subsequently merged to `main` in PR #790. The retained record therefore provides
+Sprint 3 close-out evidence, while #612 records explicit carry-forward into the Final Submission period.
 
-## Sprint 4
+## Final Submission — Milestone 4
 
-Sprint 4 is the final project-submission milestone.
+The course defines three formal Sprints followed by **Milestone 4: Submission**.
+The period after Sprint 3 is therefore treated as the **Final Submission period**, not as a fourth
+formal Sprint.
 
-| Date        | Record                                                                                                                                                                                                                          |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 30 Sep 2026 | Sprint 4 planning and final-submission scope - [Source record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-4/2026-09-30-planning.md){ target="_blank" rel="noopener" } |
+Some historical repository evidence was originally stored under the
+`evidence/sprints/sprint-4/` path and used "Sprint 4" terminology. Those paths are retained to
+preserve the historical record and existing links; their names should not be interpreted as defining
+an additional formal Sprint.
 
-Repository index:
-[`evidence/sprints/sprint-4/README.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-4/README.md){ target="_blank" rel="noopener" }
+| Date        | Record                                                                                                                                                                                                                         |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 30 Sep 2026 | Final Submission planning and scope - [Source record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/final-submission/2026-09-30-planning.md){ target="_blank" rel="noopener" } |
 
-The planning record captures the refined final-submission backlog, early
-completed Sprint 4 work, sequencing, scope decisions, known risks and the
-relationship between the original roadmap and the current Gitea milestone.
+Historical repository index:
+[`evidence/final-submission/README.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-4/README.md){ target="_blank" rel="noopener" }
+
+The planning record captures the refined Final Submission backlog, early completed work,
+sequencing, scope decisions, known risks and the relationship between the original roadmap and the
+current Gitea milestone.
 
 Current issue status and formal dependencies remain authoritative in Gitea.
 
-The Issue #799 Sprint 4 planning navigation update was planned, generated and
-edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The Issue #799 Final Submission planning navigation update was planned, generated and edited with
+the assistance of ChatGPT-Web[GPT-5.6 Sol].
 
-## How to add future Sprint evidence
+## How Sprint evidence is retained
 
-Create a new `evidence/sprints/sprint-<n>/` directory, retain concise Markdown records for normal
-planning/stand-up/stakeholder navigation, and add dated entries here. If a Microsoft Teams transcript
-is retained as a Word document, keep the original `.docx`; a same-name `.pdf` may be added beside it
-as a readable presentation copy and indexed on [Team Meeting Transcripts](team-meeting-transcripts.md).
-Do not convert unrelated evidence formats merely for consistency.
+For the three formal Sprints, retain concise Markdown records for planning, stand-up, stakeholder
+interaction and close-out under the corresponding `evidence/sprints/sprint-<n>/` directory. Final
+Submission methodology evidence is retained under `evidence/sprints/final-submission/`.
+
+If a Microsoft Teams transcript is retained as a Word document, keep the original `.docx`; a
+same-name `.pdf` may be added beside it as a readable presentation copy and indexed on
+[Team Meeting Transcripts](team-meeting-transcripts.md). Do not convert unrelated evidence formats
+merely for consistency.
 
 ## AI Declaration
 
@@ -109,3 +116,6 @@ refresh and transcript routing were reviewed and edited with the assistance of
 ChatGPT-Web[GPT-5.6 Sol].
 
 The Issue #613 Sprint 3 close-out navigation update was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+
+The Issue #881 methodology-in-practice review, formal Sprint terminology clarification and evidence
+index cleanup were reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].

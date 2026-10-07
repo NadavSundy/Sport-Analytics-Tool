@@ -1,4 +1,4 @@
-﻿# Redacted WhatsApp Evidence â€” Sprint 2 Stakeholder Review
+﻿# Redacted WhatsApp Evidence - Sprint 2 Stakeholder Review
 
 **Date:** 8 September 2026
 **Purpose:** Evidence of asynchronous Sprint 2 stakeholder interaction
