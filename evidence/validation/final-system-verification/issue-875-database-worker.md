@@ -25,9 +25,9 @@
 | DB-TECH-04 | PASS | The completed isolated database suite exercised transactional rollback/consistency coverage. | — | — |
 | DB-TECH-05 | PASS | The completed isolated database suite includes representative query-plan/index integration coverage. | — | — |
 | DB-TECH-06 | BLOCKED | No authorised production dataset inventory or test/demo classification was available. | Production data access unavailable. | Obtain sanitised operator inventory. |
-| WRK-TECH-01 | BLOCKED | Local `health.test.ts` passed (2 tests); deployed worker status is internal only. | No Azure operator access. | Inspect deployed `/health/status` through approved operator path. |
-| WRK-TECH-02 | BLOCKED | Worker suite passed 17 files / 125 tests, but no live Service Bus probe was authorised. | No live queue sender/receiver evidence. | Run `worker.probe` and retain safe logs. |
-| WRK-TECH-03 | BLOCKED | Deterministic worker failure/retry coverage passed, but no controlled deployed failing job was authorised. | No live failure fixture. | Execute approved failure fixture. |
+| WRK-TECH-01 | FAIL | Azure reports active worker revision `statsthegame-dev-batch-worker--0000068` as `Healthy` and `Running`, but its logs record an object-storage dependency failure and repeated Service Bus dependency failures. | Live worker dependency failure; defect required. | Azure exec endpoint returned `429 Retry-After: 600`; do not retry before the cooldown. |
+| WRK-TECH-02 | FAIL | `batch-ingestion` is Active with 0 active messages and 19 dead-letter messages; no successful live probe was evidenced. | Dead-lettered worker messages; defect required. | After remediation, enqueue one read-only `worker.probe` and retain safe completion logs. |
+| WRK-TECH-03 | FAIL | Failures are observable through worker dependency logs and the dead-letter count, but the available logs do not prove successful retry/recovery. | Live worker dependency failure; defect required. | Retest after remediation with the documented failure/retry procedure. |
 | WRK-TECH-04 | BLOCKED | Deterministic idempotency coverage passed, but live redelivery was not exercised. | No live redelivery authority. | Execute documented redelivery probe. |
 | WRK-TECH-05 | BLOCKED | Deterministic interruption/recovery coverage passed, but no deployed restart exercise was authorised. | No worker restart authority. | Execute documented graceful and abrupt recovery procedures. |
 
@@ -43,11 +43,17 @@ npm run test:database
 
 Invoke-WebRequest <documented API>/health -TimeoutSec 20
   Result: timed out.
+
+Azure read-only verification
+  Result: backend revision `statsthegame-dev-api--0000028` is Running; worker revision
+  `statsthegame-dev-batch-worker--0000068` is Healthy/Running; Service Bus namespace is Active.
+  Finding: worker logs show object-storage and repeated Service Bus dependency failures; queue has
+  19 dead-letter messages. Worker exec was subsequently rate-limited for 600 seconds.
 ```
 
 ## Untested / partial coverage
 
-This record deliberately does not treat local automated evidence as deployed verification. It contains no production database inventory, worker readiness response, Service Bus message receipt, live failure/retry/redelivery, or restart recovery evidence. Those checks require approved Azure/operator access and a responding deployed API.
+This record deliberately does not treat local automated evidence as deployed verification. It contains no production database inventory, successful worker readiness response, Service Bus message receipt, live redelivery, or restart recovery evidence. A live worker dependency failure and 19 dead-letter messages require remediation and retest before those checks can pass.
 
 ## AI Declaration
 

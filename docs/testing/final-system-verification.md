@@ -1269,8 +1269,8 @@ Use deployed worker health/readiness endpoints/runbook.
 - Liveness reports running process.
 - Readiness reflects required dependencies accurately.
 
-**Status:** `BLOCKED`
-**Evidence / defect / retest:** #875 execution record; deployed worker has no public ingress and no operator access was provided.
+**Status:** `FAIL`
+**Evidence / defect / retest:** #875 execution record; active revision is platform-healthy, but runtime logs show failed Service Bus dependency checks and an object-storage dependency failure. A defect must be created and retested before release.
 
 ### WRK-TECH-02 — Representative queued job completes
 
@@ -1283,8 +1283,8 @@ Enqueue an approved representative ingestion/background job and follow the durab
 - Message is received and work reaches the correct terminal state.
 - API/request process is not required to remain open for the full job.
 
-**Status:** `BLOCKED`
-**Evidence / defect / retest:** #875 execution record; 125 local worker tests passed, but no authorised live probe was run.
+**Status:** `FAIL`
+**Evidence / defect / retest:** #875 execution record; the active `batch-ingestion` queue has 19 dead-letter messages and no live successful probe evidence. A defect must be created and retested before release.
 
 ### WRK-TECH-03 — Failure diagnostics and retry
 
@@ -1297,8 +1297,8 @@ Exercise a controlled failing job or approved failure fixture.
 - Failure is durable/observable with useful diagnostics.
 - Supported retry changes state predictably.
 
-**Status:** `BLOCKED`
-**Evidence / defect / retest:** #875 execution record; no authorised live failure fixture.
+**Status:** `FAIL`
+**Evidence / defect / retest:** #875 execution record; failures are observable in logs and the dead-letter count, but the retained diagnostics do not establish successful recovery/retry. A defect must be created and retested before release.
 
 ### WRK-TECH-04 — Duplicate delivery/idempotency
 
