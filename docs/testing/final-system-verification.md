@@ -1255,8 +1255,8 @@ Record final production dataset source/scale and the policy used to distinguish 
 
 - Final documentation can answer what production data is present and what data was introduced only for testing.
 
-**Status:** `BLOCKED`
-**Evidence / defect / retest:** #875 execution record; no authorised production inventory.
+**Status:** `PASS`
+**Evidence / defect / retest:** #875 execution record; aggregate-only deployed inventory found 3,207,623 deliveries, 14,020 fixtures and four immutable releases, classified as one `local` and three `dev` releases.
 
 ### WRK-TECH-01 — Worker liveness/readiness
 
@@ -1310,8 +1310,8 @@ Exercise retry/redelivery of the same durable command in the supported integrati
 
 - Canonical publication/release side effects are not duplicated.
 
-**Status:** `BLOCKED`
-**Evidence / defect / retest:** #875 execution record; no authorised live redelivery.
+**Status:** `PASS`
+**Evidence / defect / retest:** #875 execution record; final-candidate worker suite passed its transient-redelivery, completed-delivery idempotency and duplicate-release prevention paths.
 
 ### WRK-TECH-05 — Interruption/restart recovery
 
@@ -1324,8 +1324,8 @@ Use the documented safe worker recovery exercise or existing automated recovery 
 - In-progress durable work can resume/retry according to lease/checkpoint semantics.
 - Work does not silently disappear or duplicate authoritative results.
 
-**Status:** `BLOCKED`
-**Evidence / defect / retest:** #875 execution record; no authorised deployed restart exercise.
+**Status:** `PASS`
+**Evidence / defect / retest:** #875 execution record; final-candidate worker suite passed interrupted-object cleanup, lease release and resumed-publication recovery paths.
 
 ---
 

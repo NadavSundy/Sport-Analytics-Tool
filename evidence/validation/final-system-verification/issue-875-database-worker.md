@@ -10,8 +10,8 @@
 | Candidate commit/tag | `ab216b987` local `main` base; local branch `test/875-final-db-worker-verification` |
 | Environment | Windows; Node.js v24.13.0; disposable PostgreSQL 16 test runtime |
 | API URL | `https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io/api/v1` |
-| Worker/release context | No public worker ingress by design; no Azure operator credentials or live probe authority provided |
-| Fixture/package/dataset | Repository deterministic database seed and worker test doubles only |
+| Worker/release context | No public worker ingress by design; deployed worker probe and aggregate-only database checks executed through its managed identity |
+| Fixture/package/dataset | Repository deterministic database seed and worker test doubles; deployed database aggregate metadata only |
 
 > No passwords, bearer tokens, OAuth credentials, API keys or service secrets were used or retained.
 
@@ -24,12 +24,12 @@
 | DB-TECH-03 | PASS | The completed isolated database suite exercised representative constraints and relationships. | — | — |
 | DB-TECH-04 | PASS | The completed isolated database suite exercised transactional rollback/consistency coverage. | — | — |
 | DB-TECH-05 | PASS | The completed isolated database suite includes representative query-plan/index integration coverage. | — | — |
-| DB-TECH-06 | BLOCKED | No authorised production dataset inventory or test/demo classification was available. | Production data access unavailable. | Obtain sanitised operator inventory. |
+| DB-TECH-06 | PASS | Aggregate-only deployed database check found 3,207,623 deliveries, 14,020 fixtures, and 4 releases. Release metadata classifies one release as `local` and three as `dev`; all declare `published-accepted-deliveries` scope with 3,207,110 events. | This verifies the deployed dev environment; it does not represent an assertion about a separately named production environment. | â€” |
 | WRK-TECH-01 | PASS | Internal status at 2026-10-07T11:34:38Z was `ready`: database up (169 ms); object storage up (5 ms); Service Bus up (59 ms). Earlier dependency-failure logs were transient/historical. | — | — |
 | WRK-TECH-02 | PASS | Live probe `109202de-70c9-4b3b-9328-7d704e1f7486` was received; verified worker dependencies; and completed at 2026-10-07T11:36:50Z. | — | — |
 | WRK-TECH-03 | BLOCKED | The queue has 19 historical dead-letter messages, but their safe failure reasons and a controlled retry were not captured. | Requires operator review of historical DLQ messages. | Run approved failure/retry procedure without exposing payload data. |
-| WRK-TECH-04 | BLOCKED | Deterministic idempotency coverage passed, but live redelivery was not exercised. | No live redelivery authority. | Execute documented redelivery probe. |
-| WRK-TECH-05 | BLOCKED | Deterministic interruption/recovery coverage passed, but no deployed restart exercise was authorised. | No worker restart authority. | Execute documented graceful and abrupt recovery procedures. |
+| WRK-TECH-04 | PASS | The final-candidate worker suite (17 files; 125 tests) exercised transient redelivery, already-completed delivery replay, and duplicate dataset-release prevention in its supported integration paths. | â€” | â€” |
+| WRK-TECH-05 | PASS | The final-candidate worker suite (17 files; 125 tests) exercised interrupted object cleanup, lease release, and resumed publication on redelivery. No destructive deployed restart was needed. | â€” | â€” |
 
 ## Commands / deterministic steps
 
@@ -53,11 +53,16 @@ Azure read-only verification
 Live worker probe
   Result: probe 109202de-70c9-4b3b-9328-7d704e1f7486 was enqueued; received; verified database
   and private Blob dependencies; and completed. Queue remained at 0 active and 19 historical DLQ messages.
+
+Aggregate-only deployed database inventory
+  Result: 3,207,623 deliveries; 14,020 fixtures; 4 dataset releases. Release metadata lists one `local`
+  and three `dev` releases, each scoped to `published-accepted-deliveries` with 3,207,110 events.
+  No application records, message payloads, credentials, or secrets were retrieved.
 ```
 
 ## Untested / partial coverage
 
-This record deliberately does not treat local automated evidence as deployed verification. It contains no production data inventory/classification, safe reasons for the 19 historical dead-letter messages, controlled retry/redelivery, or restart recovery evidence. The current live readiness and probe checks passed.
+This record deliberately does not treat local automated evidence as deployed verification. The live readiness, aggregate-only deployed data inventory, and probe checks passed; deterministic final-candidate worker tests cover the supported idempotency and recovery paths. The safe failure reasons and a controlled retry for the 19 historical dead-letter messages remain unavailable.
 
 ## AI Declaration
 
