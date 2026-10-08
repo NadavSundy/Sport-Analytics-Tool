@@ -205,14 +205,14 @@ not evidence that the Azure resource has already been decommissioned:
 4. update `docs/deployment/overview.md` and `docs/adr/0003-azure-hosting.md` to record that the frontend
    no longer uses Azure App Service.
 
-The backend already migrated off Azure App Service onto Container Apps (issue #563), with
-`statsthegame-api-dev` retained only as its own manual rollback path (see
-`docs/deployment/azure-backend.md`). Once the frontend also stops using App Service, neither normal
-frontend nor backend hosting depends on the shared App Service Plan any longer, so it can be removed
-entirely provided no other documented workload still depends on it — check for one before deleting the
-plan itself.
+The backend already migrated off Azure App Service onto Container Apps (issue #563). Its former
+`statsthegame-api-dev` resource is historical and is not a supported recovery target; use the reviewed
+Container Apps recovery workflow in `docs/deployment/azure-backend.md`. Neither supported frontend nor
+backend hosting depends on the shared App Service Plan. Before deleting a historical plan, confirm Azure
+resource ownership and that no other workload depends on it.
 
 ## AI Declaration
 
 This document was drafted with the assistance of Claude (Anthropic) migrating the previous
 Azure App Service frontend deployment documentation to Cloudflare Pages. The final current-versus-historical hosting boundary was later reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The Issue #888 historical backend-recovery wording was corrected with the assistance of Codex[GPT-5].

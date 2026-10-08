@@ -97,6 +97,15 @@ complete successful coverage run, so failed/partial runs retain the previous val
 
 The frontend coverage script remains `vitest run --coverage`. Coverage-specific retries and worker limits were investigated and rejected because they would mask failures rather than improve the validity of the coverage result. The separate local frontend-test failures encountered during investigation were traced to stale shared-contract build output and addressed independently in #656. Ordinary frontend tests remain blocking in normal quality validation, while the late coverage job reports incomplete coverage without blocking deployment.
 
+## Latest retained final-system coverage evidence
+
+The final automated-quality record for candidate `26fc2857b` reports **80.77% lines**, **79.49%
+statements**, **84.92% functions**, and **72.27% branches**. These are counter-aggregated local
+results, not a claim of hosted CI, deployed coverage, or a new passing threshold. Thresholds remained
+informational for that run. The record also preserves the remaining frontend regressions, incomplete
+suite matrix and production-dependency findings rather than treating the percentages as a release
+decision: [Issue #877 automated quality audit](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-877-automated-quality-audit.md){ target="_blank" rel="noopener" }.
+
 ## Verification
 
 The coverage strategy regression tests verify workspace scope, explicit untested-source inclusion,
@@ -123,3 +132,5 @@ The Issue #578 coverage architecture, aggregation logic, CI integration, regress
 this documentation were produced with the assistance of ChatGPT-Web[GPT-5.6 Sol]. The student must
 review the implementation and record the locally observed baseline and verification results before
 closing the issue.
+The Issue #887 final coverage-evidence link and CI-routing correction were completed with the
+assistance of Codex[GPT-5].

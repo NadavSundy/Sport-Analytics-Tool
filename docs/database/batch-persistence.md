@@ -1,8 +1,10 @@
 # Batch persistence extensions
 
-Issue #359 extends the durable batch-staging foundation delivered by #276. It supplies storage
-primitives only: it does not implement the receipt API, workers, validation rules, review state
-machine, or publication workflow owned by #277 through #283.
+Issue #359 extends the durable batch-staging foundation delivered by #276. At that migration's
+scope, it supplied storage primitives only; the receipt API, worker, validation, review state
+machine, and publication workflow were delivered separately by #277 through #283. The sections
+below distinguish that historical migration scope from the implemented end-to-end persistence
+workflow.
 
 ## Gap analysis
 
@@ -39,6 +41,27 @@ results as current or superseded. Revalidation never deletes earlier evidence: i
 previous active view, updates the retained staged item, and reuses the durable validation job and
 outbox command.
 
+## Implemented worker lifecycle
+
+The current receipt workflow first stores the private source object, then creates the `batch`,
+`background_job`, and `outbox_message` records together in one PostgreSQL transaction. The outbox
+relay claims unpublished commands with `FOR UPDATE SKIP LOCKED`, sends the small command to the
+transport, and records publication only after the broker acknowledges it. A message delivery is
+therefore a trigger, not the authoritative record of batch state.
+
+For `batch.validate`, the worker claims the `validating` `batch_checkpoint` lease and persists
+validated items in bounded transactions. Each committed chunk advances `last_ordinal` in that same
+transaction, so a reclaimed lease resumes after the durable checkpoint rather than repeating prior
+work. Validation evidence, job progress and safe terminal errors remain in PostgreSQL. Review and
+publication use the separately persisted batch state, decision history, `publishing` checkpoint and
+published-event provenance; a failed or redelivered command cannot replace the retained audit trail.
+
+The worker and deployment guides describe the execution, retry and operational boundary; this page
+documents the relational state that makes recovery and provenance possible. See the
+[worker guide](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/apps/worker/README.md){ target="_blank" rel="noopener" },
+[Azure worker deployment](../deployment/azure-worker.md) and [batch API](../api/batches.md) for the
+corresponding runtime contracts.
+
 ## Verification
 
 The PostgreSQL integration suite applies all migrations to an isolated database. The batch-repository
@@ -59,3 +82,5 @@ On Windows PowerShell where script execution blocks `npm.ps1`, use `npm.cmd run 
 The Issue #359 gap analysis, persistence documentation, and migration verification description were
 produced with the assistance of Codex[GPT-5].
 The Issue #425 mapping-decision persistence section was produced with the assistance of Codex[GPT-5].
+The Issue #885 historical-scope clarification and implemented worker-persistence section were
+completed with the assistance of Codex[GPT-5].

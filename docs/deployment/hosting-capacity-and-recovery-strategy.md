@@ -140,10 +140,8 @@ on port 3000. Owns request/response work only: authenticated CRUD, public reads,
 _enqueuing_ dataset-release jobs — it does not perform the CPU-intensive release generation itself. Uses
 separate pull/runtime managed identities (no ACR admin credentials, no Blob keys, no connection strings
 in configuration). Startup/liveness/readiness probes call `/api/v1/health`. `statsthegame-api-dev` (App
-Service) is retained as a manual rollback target only, per
-[`azure-backend.md` §Rollback during acceptance](azure-backend.md#rollback-during-acceptance) — it is not
-part of the normal deployment path and must not be retired before App Service retirement is explicitly
-decided.
+Service) is historical only and is not a supported rollback or recovery target; use the reviewed Container
+Apps recovery workflow in [`azure-backend.md`](azure-backend.md).
 
 **PostgreSQL / Supabase.**
 Authoritative relational store for the application and for the durable transactional outbox that
@@ -231,13 +229,9 @@ layer actually under investigation (this generalises the Sprint 2 diagnostic seq
   az containerapp revision list --resource-group <rg> --name statsthegame-dev-api --output table
   az containerapp revision list --resource-group <rg> --name statsthegame-dev-batch-worker --output table
   ```
-  Confirm an active revision exists, is healthy, and is running the expected commit-SHA image. For the
-  App Service rollback target specifically:
-  ```bash
-  az webapp show --resource-group <rg> --name statsthegame-api-dev \
-    --query "{state:state,usageState:usageState,host:defaultHostName}" -o table
-  ```
-  A `QuotaExceeded`/`Exceeded` result here is the same class of failure as the Sprint 2 incident.
+  Confirm an active revision exists, is healthy, and is running the expected commit-SHA image. The
+  historical App Service quota incident is retained in `azure-app-service-recovery.md`; do not use that
+  resource as a current recovery path.
 - **Distinguish from application failure:** a request that never reaches the application (no matching
   entry in `az containerapp logs show`) points at this layer, not the code.
 
@@ -321,7 +315,7 @@ Do not describe any of this as simply "free." The actual hosting model, per comp
 | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Frontend (static)                                                             | Cloudflare Pages                                                                      | Static asset hosting; no server-side compute, so no compute cost regardless of traffic.                                                                                                                                                                                                                                                                                               |
 | Backend API                                                                   | Azure Container Apps, consumption plan, 0.5 vCPU/1Gi, `minReplicas=0`/`maxReplicas=1` | Billed for active vCPU-seconds/GiB-seconds while a replica is running; scales to zero and incurs no compute charge while idle. Azure Container Apps includes a monthly consumption-plan free grant before metered billing applies — the exact remaining grant/usage is an account-level figure, not a static one, and should be read from the Azure subscription rather than assumed. |
-| Background worker                                                             | Azure Container Apps, consumption plan, 0.5 vCPU/1Gi, `minReplicas=0`/`maxReplicas=3` | Same billing model as the API; scales to zero between queued jobs, so cost tracks actual dataset-release/validation activity rather than being continuous.                                                                                                                                                                                                                            |
+| Background worker                                                             | Azure Container Apps, consumption plan, 0.5 vCPU/1Gi, `minReplicas=1`/`maxReplicas=3` | One replica remains available so the transactional-outbox relay can publish queued work; KEDA may add replicas up to the documented maximum.                                                                                                                                                                                                                                          |
 | Service Bus                                                                   | Standard namespace (required for sessions/duplicate detection used by the queue)      | Namespace-level charge independent of the API/worker's own scale-to-zero behaviour — this is the one component in the async path that is not scale-to-zero.                                                                                                                                                                                                                           |
 | Azure Container Registry                                                      | Basic tier                                                                            | Fixed low-cost tier for private image storage; not scale-to-zero, but flat and low.                                                                                                                                                                                                                                                                                                   |
 | PostgreSQL / Auth                                                             | Supabase-managed                                                                      | Managed-service plan; not part of the Azure resource group and not affected by Container Apps scaling.                                                                                                                                                                                                                                                                                |
@@ -329,16 +323,14 @@ Do not describe any of this as simply "free." The actual hosting model, per comp
 
 ### Avoiding accidental ongoing cost from the temporary mitigation
 
-The Sprint 2 B2 upgrade was deliberately temporary, and the App Service plan is still live today as the
-acceptance-period rollback target described in `azure-backend.md`. Concretely, to avoid paying for
-compute that isn't part of the normal deployment path:
+The Sprint 2 B2 upgrade was deliberately temporary. If the historical App Service plan still exists,
+it is not a recovery target. To avoid paying for compute that is not part of the supported deployment
+path:
 
 1. **Do not scale the App Service plan up "just in case."** It is a historical resource, not a supported manual recovery path, and is not
    warm standby capacity; it does not need to track the Container Apps capacity plan.
-2. **Track its retirement as an explicit, recorded decision**, not an implicit one. `azure-backend.md`
-   is explicit that `statsthegame-api-dev` must not be retired, stopped, or reconfigured until the full
-   acceptance checklist in that document is complete and retirement is deliberately decided — but that
-   also means it must actually be revisited once acceptance is complete, rather than left running
+2. **Track its retirement as an explicit, recorded decision**, not an implicit one. Confirm resource
+   ownership and dependencies first, then remove the historical resource rather than leaving it running
    indefinitely by default.
 3. **Prefer scale-to-zero configuration for any new Container Apps component** unless there is a
    documented reason (such as Service Bus's namespace-level pricing) that it cannot scale to zero.
@@ -422,3 +414,5 @@ gaps in that evidence (browser screenshots, worker revision name, API/Service-He
 exact metrics time range, a clean non-fault-driven worker restart, and any production-environment run)
 are called out explicitly rather than assumed complete. The project team must review this document and
 confirm the linked source documents before merging.
+The Issue #888 current recovery-boundary and worker-capacity wording was corrected with the assistance
+of Codex[GPT-5].

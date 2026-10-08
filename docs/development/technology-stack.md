@@ -64,7 +64,7 @@ The frontend may communicate directly with Supabase Auth for managed sign-in and
 | Pino HTTP                    | `^10.3.0`        | Structured HTTP request logging.                                              | Produces machine-readable request logs and supports redaction of sensitive headers such as `Authorization`.                                                                      |
 | dotenv                       | `^17.4.2`        | Loads ignored local backend environment files.                                | Keeps local configuration outside committed source while preserving a simple developer setup.                                                                                    |
 | Multer                       | `^2.0.2`         | Parses bounded multipart file uploads for the privileged legacy import route. | Uses established multipart middleware with explicit application limits instead of maintaining a custom multipart parser. Normal submitter uploads use the staged batch pipeline. |
-| `@azure/identity`            | `4.13.1`         | Supplies `DefaultAzureCredential` for production Blob access.                 | Uses the Azure App Service managed identity without Blob account keys, connection strings, SAS tokens, or another application-held storage secret.                               |
+| `@azure/identity`            | `4.13.1`         | Supplies `DefaultAzureCredential` for production Blob access.                 | Uses the Azure Container Apps managed identity without Blob account keys, connection strings, SAS tokens, or another application-held storage secret.                            |
 | `@azure/storage-blob`        | `12.27.0`        | Streams retained object bytes to private Azure Blob Storage.                  | Implements the accepted ADR-011 provider behind the backend-owned `ObjectStore` boundary.                                                                                        |
 | `@sport-analytics/contracts` | `0.1.0`          | Shared API schemas/types.                                                     | Keeps backend responses and validation aligned with the shared contract boundary.                                                                                                |
 
@@ -149,14 +149,14 @@ ADR-005 records the database host and authentication service as separate Supabas
 
 ## Deployment, collaboration and CI/CD
 
-| Technology / service          | Purpose                                                                  | Motivation / notes                                                                                                                                                       |
-| ----------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Git                           | Version control.                                                         | Required project history and traceability mechanism.                                                                                                                     |
-| Gitea                         | Repository hosting, issues, Pull Requests, project board and milestones. | University-hosted collaboration platform used as the authoritative project record.                                                                                       |
-| GitHub Flow adapted for Gitea | Branch/PR methodology.                                                   | Selected over Git Flow to keep review and traceability without permanent `develop`/release branches. See `docs/git-methodology.md`.                                      |
-| Gitea Actions                 | Continuous integration and Azure deployment workflows.                   | Keeps automated checks and deployment definitions in the same repository.                                                                                                |
-| Azure App Service (Linux)     | Hosts the React frontend and Express backend.                            | ADR 0003 selected App Service for managed HTTPS, Node.js support and a simple Sprint 1 deployment model. Azure Container Apps and Azure Static Web Apps were considered. |
-| Cloudflare Pages              | Hosts public documentation.                                              | Keeps the documentation deployment independent from the application deployments.                                                                                         |
+| Technology / service          | Purpose                                                                  | Motivation / notes                                                                                                                                                        |
+| ----------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Git                           | Version control.                                                         | Required project history and traceability mechanism.                                                                                                                      |
+| Gitea                         | Repository hosting, issues, Pull Requests, project board and milestones. | University-hosted collaboration platform used as the authoritative project record.                                                                                        |
+| GitHub Flow adapted for Gitea | Branch/PR methodology.                                                   | Selected over Git Flow to keep review and traceability without permanent `develop`/release branches. See `docs/git-methodology.md`.                                       |
+| Gitea Actions                 | Continuous integration and change-aware deployment workflows.            | Keeps automated checks and deployment definitions in the same repository.                                                                                                 |
+| Azure Container Apps          | Hosts the Express backend API and asynchronous worker.                   | The supported backend and worker paths use immutable ACR images, Bicep, managed identities and Key Vault references. Historical Azure App Service is not current hosting. |
+| Cloudflare Pages              | Hosts the React frontend and public documentation.                       | Serves independently deployed static Vite and MkDocs output through Wrangler-based workflows.                                                                             |
 
 ## External data and integrations
 
@@ -253,3 +253,5 @@ The Issue #364 current-state technology wording was reviewed and edited with the
 ChatGPT-Web[GPT-5.6 Sol].
 The Issue #297 Multer dependency record was reviewed and added with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The Issue #660 Swagger UI React and YAML dependency records were reviewed and added with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The Issue #888 current hosting-stack entries were corrected with the assistance of Codex[GPT-5].
+The Issue #890 Azure managed-identity attribution was corrected with the assistance of Codex[GPT-5].

@@ -16,6 +16,7 @@ remain the authority for exact columns, constraints and indexes.
 | How are database changes owned and applied?                         | [Migration guide](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/database/migrations/README.md){ target="_blank" rel="noopener" } and [overview](overview.md)                                                                                                                                                                                         |
 | Why PostgreSQL/Supabase and the session pooler?                     | [ADR-003](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-003-database-host-connection-and-migrations.md){ target="_blank" rel="noopener" } and [ADR-005](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-005-database-host-migration.md){ target="_blank" rel="noopener" } |
 | How is the database deployed with the application and worker?       | [Deployment overview](../deployment/overview.md), [Azure backend](../deployment/azure-backend.md) and [Azure worker](../deployment/azure-worker.md)                                                                                                                                                                                                                                 |
+| Which data is deployed, and which is only source or test data?      | [Final database audit](final-audit.md), [Cricsheet data source](../data/cricsheet.md), and [deterministic seeds](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/database/seeds/README.md){ target="_blank" rel="noopener" }                                                                                                                           |
 
 ## What is implemented and authoritative
 
@@ -47,6 +48,27 @@ decisions record staged ingestion without overwriting the accepted sport record.
 retains provider-independent metadata, checksum and lifecycle state for private source bytes. The
 exact batch persistence relations and their retention rules are documented in the linked detailed
 page above.
+
+## Dataset scale and data boundaries
+
+The documented deployed target is a **development** Supabase environment; this repository does not
+claim a separate production database or a complete worldwide cricket dataset. The final read-only
+deployment evidence recorded on 2026-10-01 observed immutable release
+`2026.09.25-issue-565-acceptance-1` with 3,207,110 published accepted deliveries and its SHA-256
+checksum. That is the size of one released, database-backed dataset, not a claim about every row in
+the database or a substitute for the source manifest.
+
+The historical source is Cricsheet event data. Its current documented full-download snapshot contains
+13,953 selected T20/IT20 matches and 3,193,996 deliveries; its generated archive, extracted files,
+manifest and summary remain local and uncommitted. Source coverage and the accepted-release count are
+therefore distinct snapshots with different purposes. The [Cricsheet data source](../data/cricsheet.md)
+records its licence, selection rules, reproducible manifest and coverage limitations.
+
+The four committed Cricsheet files under `database/seeds/matches/` are deliberately small,
+deterministic development and integration-test data. They exercise reference, super-over and
+miscounted-over cases through the normal ingestion path; they are not the deployed historical corpus
+or a representative production-size dataset. Database tests instead create an isolated PostgreSQL
+instance and seed it independently, so they do not connect to shared development data.
 
 ## Why this model
 
@@ -124,3 +146,5 @@ The preceding Issue #579 database architecture guide was planned, generated and 
 assistance of Codex[GPT-5].
 The issue #592 stored participant aggregate references were added with the assistance of Claude-Code[Claude Opus 5].
 The current Container Apps hosting wording and documentation reading-path links were updated with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The Issue #885 dataset-boundary and worker-persistence documentation verification was completed with
+the assistance of Codex[GPT-5].
