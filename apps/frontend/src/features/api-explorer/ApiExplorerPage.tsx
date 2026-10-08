@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { parse } from 'yaml';
 
 import { ApiExplorerLoadingIndicator } from './ApiExplorerLoadingIndicator';
-import { ApiExplorerRouteFrame } from './ApiExplorerRouteFrame';
 import './ApiExplorerPage.css';
 
 const SwaggerUI = lazy(async () => {
@@ -392,9 +391,5 @@ export function ApiExplorerContent() {
 }
 
 export function ApiExplorerPage() {
-  return (
-    <ApiExplorerRouteFrame>
-      <ApiExplorerContent />
-    </ApiExplorerRouteFrame>
-  );
+  return <ApiExplorerContent />;
 }
