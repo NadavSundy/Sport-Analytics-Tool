@@ -8,17 +8,16 @@ The natural-language query feature was demonstrated to the project stakeholder o
 At the time of the demonstration the feature consisted of the work delivered by issues #811 and #813
 (the query-definition contract and its evaluation), #814 (the server-side provider adapter, ADR-017),
 #815 (the `POST /api/v1/natural-language-queries` endpoint), #816 (the home-page question widget) and
-#851 (answerable suggestions beside a refusal). Issue #868 did not exist yet; it was created in
-response to this meeting.
+#851 (answerable suggestions beside a refusal). Neither issue #868 nor issue #924 existed yet; both
+were created in response to this meeting.
 
 **This record was written up after the meeting.** The demonstration was not recorded and
 contemporaneous minutes were not taken, so the feedback below is recorded from the team's own account
 of the session rather than from a transcript.
 
-> **Incomplete — attendance not retained.** Attendance has not been recorded here because it was not
-> retained at the time and must not be reconstructed. The two feedback items below are the items the
-> team recorded. If further feedback was raised at this meeting, it must be added with its own
-> disposition before this record is treated as complete.
+> **Attendance not retained.** Attendance is not recorded here because it was not retained at the
+> time and must not be reconstructed. The feedback list below is otherwise **complete**: Ben Swartz
+> has confirmed that the three items recorded are everything the meeting raised.
 
 ## Feedback received
 
@@ -35,14 +34,26 @@ Having asked about a player, asking a second question about the same player did 
 question was translated with no knowledge of the one before it, so an ordinary conversational
 follow-up — "what about his strike rate?" — could not be resolved.
 
+### 3. The assistant should be a floating chat bubble on every page
+
+Testers asked for the assistant to be reachable from anywhere in the product rather than only from
+the home page. The request was specific: a floating chat bubble fixed to the bottom-right corner of
+every page, replacing the home-page widget rather than sitting alongside it, and supporting
+follow-up questions within the conversation it holds.
+
+This is a larger change than it appears, because the home-page widget deliberately keeps no history
+and answers one question at a time. A chat surface implies a conversation the client maintains and
+sends back on each request, which the API already supports but no interface currently exercises.
+
 ## Disposition
 
-Both items were accepted and converted into one issue.
+All three items were accepted.
 
 | #   | Feedback                                | Disposition                                        |
 | --- | --------------------------------------- | -------------------------------------------------- |
 | 1   | Casual phrasing did not reach a metric  | Accepted — **issue #868**, delivered and evaluated |
 | 2   | Follow-up questions were not understood | Accepted — **issue #868**, delivered and evaluated |
+| 3   | Floating chat bubble on every page      | Accepted — **issue #924**, not yet started         |
 
 ### Issue #868 — what was delivered in response
 
@@ -69,6 +80,17 @@ documentation site's
 [Natural-Language Query Evidence](../../docs/validation/issue-817-natural-language-query-evidence.md)
 page.
 
+### Issue #924 — the outstanding response
+
+Item 3 is tracked by **issue #924, "Natural-language query follow-up work"**, which holds the
+remaining work for this feature as a checklist. The floating chat assistant sits there alongside the
+engineering follow-ups the feature's own documentation and evaluation runs identified, so the
+interface change and the behaviour it depends on — follow-up resolution after a leaderboard, and the
+empty-suggestions fallback a chat surface would hit more often than a one-shot widget does — are
+planned together rather than separately.
+
+Nothing in item 3 has been started. It is recorded here as accepted, not as delivered.
+
 ## Relationship to formal user testing
 
 This was a stakeholder demonstration, not a formal user-testing session. The feedback was behavioural
@@ -85,7 +107,7 @@ look more complete than it was.
 ## AI Declaration
 
 This record was drafted with the assistance of Claude-Code[Claude Opus 5 (1M context)] under issue
-#817. The two feedback items and the fact that issue #868 was the response are Ben Swartz's own
-account of the meeting; the description of what #868 delivered was taken from ADR-017 and the
-repository, and the run figures from the three evaluation records. Attendance was deliberately left
-unrecorded rather than reconstructed.
+#817. The three feedback items, their dispositions and the confirmation that the list is complete
+are Ben Swartz's own account of the meeting; the description of what #868 delivered was taken from
+ADR-017 and the repository, and the run figures from the three evaluation records. Attendance was
+deliberately left unrecorded rather than reconstructed.
