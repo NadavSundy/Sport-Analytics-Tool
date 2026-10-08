@@ -368,6 +368,141 @@ describe('role-gated event submission page', () => {
     expect(screen.queryByRole('button', { name: 'Submit events' })).not.toBeInTheDocument();
   });
 
+  describe('issue #909: transient submission access failures', () => {
+    function rateLimited(retryAfterSeconds: number): Response {
+      return {
+        ok: false,
+        status: 429,
+        headers: new Headers({ 'Retry-After': String(retryAfterSeconds) }),
+        json: vi.fn().mockResolvedValue({
+          error: {
+            code: 'RATE_LIMIT_EXCEEDED',
+            message: 'Too many anonymous requests. Retry after the current rate-limit window.',
+          },
+        }),
+      } as unknown as Response;
+    }
+
+    function isCompetitionScopeLookup(url: string) {
+      return /\/competitions\/[^/?]+$/.exec(url) !== null;
+    }
+
+    it('recovers on its own when the anonymous read limit briefly refuses the scope lookup', async () => {
+      let scopeLookups = 0;
+      const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith('/auth/me'))
+          return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+        if (isCompetitionScopeLookup(url)) {
+          scopeLookups += 1;
+          if (scopeLookups === 1) {
+            return Promise.resolve(
+              response(429, { error: { code: 'RATE_LIMIT_EXCEEDED', message: 'Busy.' } }),
+            );
+          }
+        }
+        return Promise.resolve(competitionRoute(url) ?? fixtures([]));
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      renderSubmissionPage();
+
+      expect(
+        await screen.findByRole('combobox', { name: 'Competition' }, { timeout: 5000 }),
+      ).toBeInTheDocument();
+      expect(scopeLookups).toBe(2);
+      expect(
+        screen.queryByRole('heading', { name: 'Submission access could not be checked' }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('recovers when the current-user request drops before reaching the API', async () => {
+      let profileRequests = 0;
+      const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith('/auth/me')) {
+          profileRequests += 1;
+          return profileRequests === 1
+            ? Promise.reject(new TypeError('Failed to fetch'))
+            : Promise.resolve(currentUser('submitter', 'approved', ['5']));
+        }
+        return Promise.resolve(competitionRoute(url) ?? fixtures([]));
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      renderSubmissionPage();
+
+      expect(
+        await screen.findByRole('combobox', { name: 'Competition' }, { timeout: 5000 }),
+      ).toBeInTheDocument();
+    });
+
+    it('says the role was confirmed and offers a retry when the scope lookup stays rate-limited', async () => {
+      let limited = true;
+      let scopeLookups = 0;
+      const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith('/auth/me'))
+          return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+        if (isCompetitionScopeLookup(url)) {
+          scopeLookups += 1;
+          if (limited) return Promise.resolve(rateLimited(30));
+        }
+        return Promise.resolve(competitionRoute(url) ?? fixtures([]));
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      renderSubmissionPage();
+
+      expect(
+        await screen.findByRole('heading', { name: 'Submission access could not be checked' }),
+      ).toBeInTheDocument();
+      // A 30 second window is longer than the page waits on its own, so it
+      // reports it instead of retrying straight back into the limit.
+      expect(scopeLookups).toBe(1);
+      expect(screen.getByText(/submitter role was confirmed/)).toBeInTheDocument();
+      expect(screen.getByText(/permissions have not changed/)).toBeInTheDocument();
+      expect(screen.getByText(/Try again in 30 seconds/)).toBeInTheDocument();
+      expect(screen.queryByText('Submitter role required')).not.toBeInTheDocument();
+
+      limited = false;
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+      expect(await screen.findByRole('combobox', { name: 'Competition' })).toBeInTheDocument();
+      expect(
+        screen.queryByRole('heading', { name: 'Submission access could not be checked' }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('does not retry or offer a retry when the session is rejected', async () => {
+      let profileRequests = 0;
+      const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith('/auth/me')) {
+          profileRequests += 1;
+          return Promise.resolve(
+            response(401, {
+              error: { code: 'UNAUTHORIZED', message: 'A valid authentication token is required.' },
+            }),
+          );
+        }
+        return Promise.resolve(competitionRoute(url) ?? fixtures([]));
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      renderSubmissionPage();
+
+      expect(
+        await screen.findByText('Your session is no longer valid. Sign in again to continue.'),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('combobox', { name: 'Competition' })).not.toBeInTheDocument();
+      const requestsAfterError = profileRequests;
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      expect(profileRequests).toBe(requestsAfterError);
+    });
+  });
+
   it('lists only fixtures returned for the approved submitter competition scope', async () => {
     const outsideScopeFixture = { ...fixture, fixtureId: '99', competitionId: '9' };
     const secondFixture = {
