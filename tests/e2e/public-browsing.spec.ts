@@ -78,6 +78,15 @@ async function selectTheme(page: Page, theme: 'day' | 'night') {
     }
   }
   await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+  // Check accessibility only after the selected theme's colours have settled.
+  await page.evaluate(async () => {
+    await Promise.all(
+      document
+        .getAnimations()
+        .filter((animation) => animation instanceof CSSTransition)
+        .map((transition) => transition.finished.catch(() => undefined)),
+    );
+  });
 }
 
 async function expectReadableAccessibleView(page: Page, internalValues: string[]) {

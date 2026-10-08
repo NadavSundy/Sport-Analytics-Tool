@@ -13,11 +13,14 @@ const responsiveViewports = [
 async function expectNoHorizontalOverflow(page: import('@playwright/test').Page) {
   for (const viewport of responsiveViewports) {
     await page.setViewportSize(viewport);
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
-      ),
-    ).toBe(false);
+    // Viewport resizing can return before the responsive layout has settled.
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+        ),
+      )
+      .toBe(false);
   }
 }
 

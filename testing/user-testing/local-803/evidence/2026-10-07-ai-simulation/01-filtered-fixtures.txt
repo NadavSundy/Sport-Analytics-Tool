@@ -1,0 +1,67 @@
+- link "Skip to main content":
+  - /url: "#main-content"
+- banner:
+  - link "Stat'sTheGame home":
+    - /url: /
+    - img "Stat'sTheGame"
+  - generic: Theme
+  - checkbox "Switch to Day Match theme" [checked]
+  - generic: Night Match
+  - button "Menu"
+- main:
+  - paragraph: Match archive
+  - heading "Fixtures" [level=1]
+  - paragraph: Browse published fixtures by competition, season, team, date and gender.
+  - heading "Filter records" [level=2]
+  - link "Clear filters":
+    - /url: /fixtures
+  - generic: Competition
+  - combobox "Competition"
+  - button "Show competition options": ▾
+  - generic: Season
+  - combobox "Season"
+  - button "Show season options": ▾
+  - generic: Team
+  - combobox "Team"
+  - button "Show team options": ▾
+  - generic: Gender
+  - searchbox "Gender"
+  - generic: Starting on or after
+  - textbox "Starting on or after": 2026-10-08
+  - generic: Starting on or before
+  - textbox "Starting on or before"
+  - generic: Records per page
+  - combobox "Records per page":
+    - option "25"
+    - option "50" [selected]
+    - option "100"
+  - heading "Active filters" [level=3]
+  - list:
+    - generic: "Starting on or after:"
+    - text: 2026-10-08
+  - button "Apply filters"
+  - region "Published fixtures":
+    - heading "Published fixtures" [level=2]
+    - paragraph: 1 record on this page
+    - list:
+      - paragraph:
+        - time: 08 Oct 2026
+      - heading "S4 Local Lions vs S4 Local Eagles" [level=3]:
+        - link "S4 Local Lions vs S4 Local Eagles":
+          - /url: /fixtures/2
+      - paragraph:
+        - text: LOCAL ONLY - Sprint 4 Disposable Cup · 2026 · T20
+        - link "View statistics for S4 Local Lions vs S4 Local Eagles":
+          - /url: /fixtures/2/statistics
+    - navigation "Fixtures pagination":
+      - button "Previous page" [disabled]
+      - paragraph: Page 1 of 1
+      - button "Next page" [disabled]
+- contentinfo:
+  - img "Stat'sTheGame"
+  - navigation "API resources":
+    - link "API Explorer":
+      - /url: /api
+    - link "API Documentation":
+      - /url: https://sports-analytics-tool.pages.dev/api/overview/
+  - paragraph: The game, measured ball by ball.

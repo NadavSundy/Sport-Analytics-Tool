@@ -51,7 +51,13 @@ Local response-time measurements belong in the
 production-scale deployment acceptance belong under [Deployment & Operations](../deployment/overview.md)
 and its linked acceptance/recovery pages.
 
+## Sprint 4 final user testing
+
+See [Sprint 4 status and preparation](user-testing-sprint-4-summary.md). Technical preparation does not replace the three required real sessions.
+
 ## AI Declaration
 
 The testing/quality documentation hub and evidence separation were planned and drafted with the
 assistance of ChatGPT-Web[GPT-5.6 Sol].
+
+The Sprint 4 preparation links were added with the assistance of Codex[GPT-6].

@@ -286,6 +286,8 @@ npx wrangler pages deploy site --project-name=sports-analytics-tool
 
 This repository makes use of AI code generation. Reconciliation against the task-level registers records the following tool/model pairs for code-generation or implementation work: ChatGPT-Web[GPT-5.5], ChatGPT-Web[GPT-5.6 Luna], ChatGPT-Web[GPT-5.6 Thinking], ChatGPT-Web[GPT-5.6 Sol], Codex[GPT-5], Codex[GPT-5.6 Sol], Codex[GPT-5.6 Terra], Codex[GPT-6], Claude-Web[Claude Sonnet 5], Claude-Web[Claude Opus 5], Claude-Web[Claude Opus 5.5], Claude-Code[Claude Opus 5], Claude-Code[Claude Opus 5 (1M context)], Claude-Code[Claude Opus 5.5] and Claude.ai[Claude Sonnet 5]. Historical register rows use a few spelling variants for the same web/code tools; the task-level CSVs remain authoritative for the exact label recorded for each task.
 
+Sprint 4 user testing for #803 also uses Codex[GPT-6] for local test preparation, evidence documentation and browser technical verification. Its member-register entry distinguishes real assisted participant evidence from AI simulation and pending acceptance/review.
+
 This repository does not use AI in-line editing/autocomplete tools as a repository workflow. No such usage is recorded in the current per-member registers.
 
 This repository makes use of AI-assisted code review. The task-level registers record code-review assistance from ChatGPT-Web[GPT-5.6 Thinking], ChatGPT-Web[GPT-5.6 Sol], Codex[GPT-5], Codex[GPT-5.6 Sol], Claude-Web[Claude Opus 4.5], Claude-Web[Claude Opus 5], Claude-Web[Claude Opus 5.5], Claude-Code[Claude Opus 5] and Claude-Code[Claude Opus 5.5]. Human review, testing and responsibility remain required.

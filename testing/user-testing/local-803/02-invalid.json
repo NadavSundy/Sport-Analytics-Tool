@@ -1,0 +1,162 @@
+{
+  "contractVersion": "803-invalid",
+  "packageId": "local803:package:1",
+  "competition": {
+    "context": {
+      "name": "LOCAL ONLY - Sprint 4 Disposable Cup"
+    }
+  },
+  "season": {
+    "context": {
+      "name": "2026"
+    }
+  },
+  "fixtures": [
+    {
+      "context": {
+        "date": "2026-10-08",
+        "teams": [
+          {
+            "context": {
+              "name": "S4 Local Lions"
+            }
+          },
+          {
+            "context": {
+              "name": "S4 Local Eagles"
+            }
+          }
+        ]
+      },
+      "innings": [
+        {
+          "context": {
+            "ordinal": 0,
+            "battingTeam": {
+              "context": {
+                "name": "S4 Local Lions"
+              }
+            }
+          },
+          "events": [
+            {
+              "eventId": "local803:delivery:fixture-1-ball-1",
+              "occurrenceSequence": 1,
+              "overNumber": 0,
+              "positionInOver": 0,
+              "ballLabel": "0.1",
+              "striker": {
+                "context": {
+                  "name": "S4 Local Striker",
+                  "team": {
+                    "context": {
+                      "name": "S4 Local Lions"
+                    }
+                  }
+                }
+              },
+              "nonStriker": {
+                "context": {
+                  "name": "S4 Local Non-striker",
+                  "team": {
+                    "context": {
+                      "name": "S4 Local Lions"
+                    }
+                  }
+                }
+              },
+              "bowler": {
+                "context": {
+                  "name": "S4 Local Bowler",
+                  "team": {
+                    "context": {
+                      "name": "S4 Local Eagles"
+                    }
+                  }
+                }
+              },
+              "runs": {
+                "offBat": 4,
+                "extras": 0,
+                "total": 4
+              },
+              "extras": {}
+            },
+            {
+              "eventId": "local803:delivery:fixture-1-ball-2",
+              "occurrenceSequence": 2,
+              "overNumber": 0,
+              "positionInOver": 1,
+              "ballLabel": "0.2",
+              "striker": {
+                "context": {
+                  "name": "S4 Local Striker",
+                  "team": {
+                    "context": {
+                      "name": "S4 Local Lions"
+                    }
+                  }
+                }
+              },
+              "nonStriker": {
+                "context": {
+                  "name": "S4 Local Non-striker",
+                  "team": {
+                    "context": {
+                      "name": "S4 Local Lions"
+                    }
+                  }
+                }
+              },
+              "bowler": {
+                "context": {
+                  "name": "S4 Local Bowler",
+                  "team": {
+                    "context": {
+                      "name": "S4 Local Eagles"
+                    }
+                  }
+                }
+              },
+              "runs": {
+                "offBat": 0,
+                "extras": 0,
+                "total": 0
+              },
+              "extras": {},
+              "wickets": [
+                {
+                  "kind": "caught",
+                  "playerOut": {
+                    "context": {
+                      "name": "S4 Local Striker",
+                      "team": {
+                        "context": {
+                          "name": "S4 Local Lions"
+                        }
+                      }
+                    }
+                  },
+                  "fielders": [
+                    {
+                      "participant": {
+                        "context": {
+                          "name": "S4 Local Fielder",
+                          "team": {
+                            "context": {
+                              "name": "S4 Local Eagles"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
