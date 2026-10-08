@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 1000" width="1280" height="1000" role="img" aria-labelledby="final-review-workspace-desktop-title final-review-workspace-desktop-desc" font-family="Helvetica, Arial, sans-serif">
+  <title id="final-review-workspace-desktop-title">Final wireframe: batch review workspace (desktop)</title>
+  <desc id="final-review-workspace-desktop-desc">Implemented administrator /reviews/batches workspace: Needs review and History lists, and a batch detail with provenance, validation, reference actions, participant onboarding, conflicts and the review decision.</desc>
+  <rect x="0" y="0" width="1280" height="1000" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="2"/>
+  <rect x="0" y="0" width="1280" height="64" fill="#14202B"/>
+  <text x="32" y="40" font-size="20" font-weight="700" fill="#FFFFFF" text-anchor="start">Stat&#x27;sTheGame</text>
+  <text x="220" y="39" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="start">Explore Data ▾</text>
+  <text x="370.4" y="39" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="start">Pinned ▾</text>
+  <text x="471.59999999999997" y="39" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="start">Downloads</text>
+  <text x="575.4" y="39" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="start">API</text>
+  <text x="1022" y="39" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="start">Manage account</text>
+  <text x="884" y="39" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="start">Administration</text>
+  <text x="706" y="39" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="start">Manage Submission ▾</text>
+  <rect x="1176" y="18" width="72" height="28" rx="14" fill="#22313E" stroke="#4A5866" stroke-width="1.5"/>
+  <text x="1212" y="37" font-size="12" font-weight="400" fill="#FFFFFF" text-anchor="middle">Theme</text>
+  <text x="48" y="100" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Manage Submission / Review</text>
+  <text x="48" y="124" font-size="11" font-weight="700" fill="#5E7F00" text-anchor="start">MANAGE SUBMISSION</text>
+  <text x="48" y="158" font-size="30" font-weight="700" fill="#14202B" text-anchor="start">Review</text>
+  <text x="48" y="182" font-size="14" font-weight="400" fill="#5B6772" text-anchor="start">Administrator-only. No separate reviewer role exists.</text>
+  <text x="60" y="202" font-size="14" font-weight="700" fill="#14202B" text-anchor="start">Needs review</text>
+  <rect x="56" y="210" width="108" height="3" fill="#5E7F00"/>
+  <text x="184" y="202" font-size="14" font-weight="500" fill="#5B6772" text-anchor="start">History</text>
+  <line x1="48" y1="213" x2="348" y2="213" stroke="#9AA4AD"/>
+  <rect x="48" y="232" width="340" height="600" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="66" y="262" font-size="15" font-weight="700" fill="#14202B" text-anchor="start">Needs review</text>
+  <rect x="62" y="278" width="312" height="58" rx="6" fill="#EEF4D9" stroke="#5E7F00" stroke-width="1.5"/>
+  <text x="76" y="302" font-size="13" font-weight="600" fill="#14202B" text-anchor="start">Season batch 1</text>
+  <text x="76" y="322" font-size="11" font-weight="400" fill="#5B6772" text-anchor="start">Submitter · competition · received</text>
+  <rect x="62" y="348" width="312" height="58" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="76" y="372" font-size="13" font-weight="600" fill="#14202B" text-anchor="start">Season batch 2</text>
+  <text x="76" y="392" font-size="11" font-weight="400" fill="#5B6772" text-anchor="start">Submitter · competition · received</text>
+  <rect x="62" y="418" width="312" height="58" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="76" y="442" font-size="13" font-weight="600" fill="#14202B" text-anchor="start">Season batch 3</text>
+  <text x="76" y="462" font-size="11" font-weight="400" fill="#5B6772" text-anchor="start">Submitter · competition · received</text>
+  <rect x="62" y="488" width="312" height="58" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="76" y="512" font-size="13" font-weight="600" fill="#14202B" text-anchor="start">Season batch 4</text>
+  <text x="76" y="532" font-size="11" font-weight="400" fill="#5B6772" text-anchor="start">Submitter · competition · received</text>
+  <rect x="62" y="558" width="312" height="58" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="76" y="582" font-size="13" font-weight="600" fill="#14202B" text-anchor="start">Season batch 5</text>
+  <text x="76" y="602" font-size="11" font-weight="400" fill="#5B6772" text-anchor="start">Submitter · competition · received</text>
+  <rect x="412" y="232" width="820" height="54" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="430" y="265" font-size="14" font-weight="700" fill="#14202B" text-anchor="start">Source and provenance</text>
+  <rect x="412" y="296" width="820" height="54" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="430" y="329" font-size="14" font-weight="700" fill="#14202B" text-anchor="start">Validation and reference summary</text>
+  <rect x="412" y="360" width="820" height="54" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="430" y="393" font-size="14" font-weight="700" fill="#14202B" text-anchor="start">Rejections by rule</text>
+  <rect x="412" y="424" width="820" height="54" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="430" y="457" font-size="14" font-weight="700" fill="#14202B" text-anchor="start">Reviewer actions required</text>
+  <rect x="412" y="488" width="820" height="54" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="430" y="521" font-size="14" font-weight="700" fill="#14202B" text-anchor="start">Participants to onboard</text>
+  <rect x="412" y="552" width="820" height="54" rx="6" fill="#FBEAE8" stroke="#9F2A1D" stroke-width="1.5"/>
+  <text x="430" y="585" font-size="14" font-weight="700" fill="#9F2A1D" text-anchor="start">Published delivery conflicts</text>
+  <rect x="412" y="616" width="820" height="54" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="430" y="649" font-size="14" font-weight="700" fill="#14202B" text-anchor="start">Fixture summaries</text>
+  <circle cx="400" cy="244" r="11" fill="#1F5FAD"/>
+  <text x="400" y="248.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+  <circle cx="400" cy="500" r="11" fill="#1F5FAD"/>
+  <text x="400" y="504.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+  <rect x="412" y="692" width="820" height="160" rx="6" fill="#F1F0EB" stroke="#14202B" stroke-width="1.5"/>
+  <text x="430" y="722" font-size="16" font-weight="700" fill="#14202B" text-anchor="start">Review decision</text>
+  <text x="430" y="746" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Only the accepted subset will publish. Reason required to return or reject.</text>
+  <rect x="430" y="758" width="784" height="34" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="442" y="780" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Reason (at least 10 characters)…</text>
+  <rect x="430" y="806" width="171" height="32" rx="6" fill="#5E7F00" stroke="#5E7F00" stroke-width="1.5"/>
+  <text x="515.5" y="827" font-size="13" font-weight="600" fill="#FFFFFF" text-anchor="middle">Approve and publish</text>
+  <rect x="613" y="806" width="186" height="32" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="706.0" y="827" font-size="13" font-weight="600" fill="#14202B" text-anchor="middle">Return for correction</text>
+  <rect x="811" y="806" width="118" height="32" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="870.0" y="827" font-size="13" font-weight="600" fill="#14202B" text-anchor="middle">Reject batch</text>
+  <circle cx="400" cy="704" r="11" fill="#1F5FAD"/>
+  <text x="400" y="708.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+  <rect x="24" y="872" width="1232" height="94" rx="8" fill="#E7F0FB" stroke="#1F5FAD" stroke-width="1.5"/>
+  <text x="40" y="894" font-size="13" font-weight="700" fill="#1F5FAD" text-anchor="start">Annotations</text>
+  <text x="40" y="916" font-size="12" font-weight="400" fill="#14202B" text-anchor="start">1. Batch detail at /reviews/batches/:batchReference; sections stack in one detail view.</text>
+  <text x="40" y="936" font-size="12" font-weight="400" fill="#14202B" text-anchor="start">2. Participants to onboard need a durable identifier before approval (#708, #770).</text>
+  <text x="40" y="956" font-size="12" font-weight="400" fill="#14202B" text-anchor="start">3. Decisions: Approve and publish (accepted subset), Return for correction, Reject batch.</text>
+</svg>

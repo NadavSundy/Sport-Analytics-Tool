@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 822" width="1280" height="822" role="img" aria-labelledby="final-player-comparison-desktop-title final-player-comparison-desktop-desc" font-family="Helvetica, Arial, sans-serif">
+  <title id="final-player-comparison-desktop-title">Final wireframe: Compare players (desktop)</title>
+  <desc id="final-player-comparison-desktop-desc">Implemented /participants/compare page: choose a fixture, Player A and Player B, then compare batting and bowling figures side by side.</desc>
+  <rect x="0" y="0" width="1280" height="822" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="2"/>
+  <rect x="0" y="0" width="1280" height="64" fill="#14202B"/>
+  <text x="32" y="40" font-size="20" font-weight="700" fill="#FFFFFF" text-anchor="start">Stat&#x27;sTheGame</text>
+  <text x="220" y="39" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="start">Explore Data ▾</text>
+  <rect x="220" y="46" width="106" height="3" fill="#B5E61D"/>
+  <text x="370.4" y="39" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="start">Downloads</text>
+  <text x="474.2" y="39" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="start">API</text>
+  <text x="1078" y="39" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="start">Sign in</text>
+  <rect x="1176" y="18" width="72" height="28" rx="14" fill="#22313E" stroke="#4A5866" stroke-width="1.5"/>
+  <text x="1212" y="37" font-size="12" font-weight="400" fill="#FFFFFF" text-anchor="middle">Theme</text>
+  <text x="48" y="100" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Players / Compare players</text>
+  <text x="48" y="124" font-size="11" font-weight="700" fill="#5E7F00" text-anchor="start">PUBLISHED FIXTURE STATISTICS</text>
+  <text x="48" y="158" font-size="30" font-weight="700" fill="#14202B" text-anchor="start">Compare players</text>
+  <text x="48" y="182" font-size="14" font-weight="400" fill="#5B6772" text-anchor="start">Select two players in one fixture to compare the published batting and bowling figures.</text>
+  <text x="48" y="214" font-size="13" font-weight="700" fill="#14202B" text-anchor="start">Fixture</text>
+  <rect x="48" y="224" width="376" height="40" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="62" y="249" font-size="13" font-weight="400" fill="#5B6772" text-anchor="start">Team A vs Team B · 12 Aug 2026  ▾</text>
+  <text x="448" y="214" font-size="13" font-weight="700" fill="#14202B" text-anchor="start">Player A</text>
+  <rect x="448" y="224" width="376" height="40" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="462" y="249" font-size="13" font-weight="400" fill="#5B6772" text-anchor="start">Search player…  ▾</text>
+  <text x="848" y="214" font-size="13" font-weight="700" fill="#14202B" text-anchor="start">Player B</text>
+  <rect x="848" y="224" width="376" height="40" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="862" y="249" font-size="13" font-weight="400" fill="#5B6772" text-anchor="start">Search player…  ▾</text>
+  <circle cx="36" cy="244" r="11" fill="#1F5FAD"/>
+  <text x="36" y="248.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+  <text x="48" y="306" font-size="18" font-weight="700" fill="#14202B" text-anchor="start">Batting</text>
+  <rect x="48" y="320" width="1184" height="168" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <rect x="48" y="320" width="1184" height="28" rx="6" fill="#F1F0EB"/>
+  <text x="58.0" y="339" font-size="12" font-weight="700" fill="#14202B" text-anchor="start">Measure</text>
+  <text x="827.3333333333334" y="339" font-size="12" font-weight="700" fill="#14202B" text-anchor="end">Player A</text>
+  <text x="1222.0" y="339" font-size="12" font-weight="700" fill="#14202B" text-anchor="end">Player B</text>
+  <line x1="48" y1="348" x2="1232" y2="348" stroke="#E2E5E8"/>
+  <text x="58" y="367" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Measure 1</text>
+  <text x="827.3333333333334" y="367" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="1222.0" y="367" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <line x1="48" y1="376" x2="1232" y2="376" stroke="#E2E5E8"/>
+  <text x="58" y="395" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Measure 2</text>
+  <text x="827.3333333333334" y="395" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="1222.0" y="395" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <line x1="48" y1="404" x2="1232" y2="404" stroke="#E2E5E8"/>
+  <text x="58" y="423" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Measure 3</text>
+  <text x="827.3333333333334" y="423" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="1222.0" y="423" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <line x1="48" y1="432" x2="1232" y2="432" stroke="#E2E5E8"/>
+  <text x="58" y="451" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Measure 4</text>
+  <text x="827.3333333333334" y="451" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="1222.0" y="451" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <line x1="48" y1="460" x2="1232" y2="460" stroke="#E2E5E8"/>
+  <text x="58" y="479" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Measure 5</text>
+  <text x="827.3333333333334" y="479" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="1222.0" y="479" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="48" y="524" font-size="18" font-weight="700" fill="#14202B" text-anchor="start">Bowling</text>
+  <rect x="48" y="538" width="1184" height="168" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <rect x="48" y="538" width="1184" height="28" rx="6" fill="#F1F0EB"/>
+  <text x="58.0" y="557" font-size="12" font-weight="700" fill="#14202B" text-anchor="start">Measure</text>
+  <text x="827.3333333333334" y="557" font-size="12" font-weight="700" fill="#14202B" text-anchor="end">Player A</text>
+  <text x="1222.0" y="557" font-size="12" font-weight="700" fill="#14202B" text-anchor="end">Player B</text>
+  <line x1="48" y1="566" x2="1232" y2="566" stroke="#E2E5E8"/>
+  <text x="58" y="585" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Measure 1</text>
+  <text x="827.3333333333334" y="585" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="1222.0" y="585" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <line x1="48" y1="594" x2="1232" y2="594" stroke="#E2E5E8"/>
+  <text x="58" y="613" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Measure 2</text>
+  <text x="827.3333333333334" y="613" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="1222.0" y="613" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <line x1="48" y1="622" x2="1232" y2="622" stroke="#E2E5E8"/>
+  <text x="58" y="641" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Measure 3</text>
+  <text x="827.3333333333334" y="641" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="1222.0" y="641" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <line x1="48" y1="650" x2="1232" y2="650" stroke="#E2E5E8"/>
+  <text x="58" y="669" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Measure 4</text>
+  <text x="827.3333333333334" y="669" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="1222.0" y="669" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <line x1="48" y1="678" x2="1232" y2="678" stroke="#E2E5E8"/>
+  <text x="58" y="697" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Measure 5</text>
+  <text x="827.3333333333334" y="697" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="1222.0" y="697" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <circle cx="36" cy="554" r="11" fill="#1F5FAD"/>
+  <text x="36" y="558.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+  <rect x="24" y="724" width="1232" height="74" rx="8" fill="#E7F0FB" stroke="#1F5FAD" stroke-width="1.5"/>
+  <text x="40" y="746" font-size="13" font-weight="700" fill="#1F5FAD" text-anchor="start">Annotations</text>
+  <text x="40" y="768" font-size="12" font-weight="400" fill="#14202B" text-anchor="start">1. Searchable comboboxes; deep links from a fixture or player page prefill the choice.</text>
+  <text x="40" y="788" font-size="12" font-weight="400" fill="#14202B" text-anchor="start">2. Rows: Runs, Balls faced, Strike rate, Fours, Sixes / Runs conceded, Overs, Wickets, Economy rate.</text>
+</svg>

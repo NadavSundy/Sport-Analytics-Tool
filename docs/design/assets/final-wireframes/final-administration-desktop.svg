@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 820" width="1280" height="820" role="img" aria-labelledby="final-administration-desktop-title final-administration-desktop-desc" font-family="Helvetica, Arial, sans-serif">
+  <title id="final-administration-desktop-title">Final wireframe: Administration hub (desktop)</title>
+  <desc id="final-administration-desktop-desc">Implemented /admin hub with Users &amp; access, API consumers and Data governance areas, and the API consumer detail view.</desc>
+  <rect x="0" y="0" width="1280" height="820" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="2"/>
+  <rect x="0" y="0" width="1280" height="64" fill="#14202B"/>
+  <text x="32" y="40" font-size="20" font-weight="700" fill="#FFFFFF" text-anchor="start">Stat&#x27;sTheGame</text>
+  <text x="220" y="39" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="start">Explore Data ▾</text>
+  <text x="370.4" y="39" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="start">Pinned ▾</text>
+  <text x="471.59999999999997" y="39" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="start">Downloads</text>
+  <text x="575.4" y="39" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="start">API</text>
+  <text x="1022" y="39" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="start">Manage account</text>
+  <text x="884" y="39" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="start">Administration</text>
+  <text x="706" y="39" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="start">Manage Submission ▾</text>
+  <rect x="1176" y="18" width="72" height="28" rx="14" fill="#22313E" stroke="#4A5866" stroke-width="1.5"/>
+  <text x="1212" y="37" font-size="12" font-weight="400" fill="#FFFFFF" text-anchor="middle">Theme</text>
+  <text x="48" y="100" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Administration</text>
+  <text x="48" y="124" font-size="11" font-weight="700" fill="#5E7F00" text-anchor="start">ADMINISTRATION</text>
+  <text x="48" y="158" font-size="30" font-weight="700" fill="#14202B" text-anchor="start">Administration</text>
+  <text x="48" y="182" font-size="14" font-weight="400" fill="#5B6772" text-anchor="start">Manage existing access controls and dataset publishing.</text>
+  <rect x="48" y="210" width="376" height="200" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="66" y="242" font-size="17" font-weight="700" fill="#14202B" text-anchor="start">Users &amp; access</text>
+  <text x="66" y="268" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Search users, review roles, manage submitter</text>
+  <text x="66" y="286" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">competition scopes.</text>
+  <rect x="66" y="316" width="118" height="32" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="125.0" y="337" font-size="13" font-weight="600" fill="#14202B" text-anchor="middle">Manage users</text>
+  <rect x="448" y="210" width="376" height="200" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="466" y="242" font-size="17" font-weight="700" fill="#14202B" text-anchor="start">API consumers</text>
+  <text x="466" y="268" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Issue and manage external API credentials, rate</text>
+  <text x="466" y="286" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">limits and daily quotas.</text>
+  <rect x="466" y="316" width="178" height="32" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="555.0" y="337" font-size="13" font-weight="600" fill="#14202B" text-anchor="middle">Manage API consumers</text>
+  <rect x="848" y="210" width="376" height="200" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="866" y="242" font-size="17" font-weight="700" fill="#14202B" text-anchor="start">Data governance</text>
+  <text x="866" y="268" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Publish versioned dataset releases; inspect the</text>
+  <text x="866" y="286" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">public catalogue.</text>
+  <rect x="866" y="316" width="201" height="32" rx="6" fill="#5E7F00" stroke="#5E7F00" stroke-width="1.5"/>
+  <text x="966.5" y="337" font-size="13" font-weight="600" fill="#FFFFFF" text-anchor="middle">Publish dataset release</text>
+  <rect x="866" y="356" width="193" height="32" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="962.5" y="377" font-size="13" font-weight="600" fill="#14202B" text-anchor="middle">View release catalogue</text>
+  <circle cx="36" cy="222" r="11" fill="#1F5FAD"/>
+  <text x="36" y="226.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+  <circle cx="436" cy="222" r="11" fill="#1F5FAD"/>
+  <text x="436" y="226.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+  <circle cx="836" cy="222" r="11" fill="#1F5FAD"/>
+  <text x="836" y="226.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+  <text x="48" y="452" font-size="16" font-weight="700" fill="#14202B" text-anchor="start">API consumer detail  (/admin/api-consumers/:consumerId)</text>
+  <rect x="48" y="468" width="376" height="150" rx="6" fill="#F1F0EB" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="66" y="498" font-size="15" font-weight="700" fill="#14202B" text-anchor="start">Configuration</text>
+  <text x="72" y="526" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">• Owner, status, rate limit, daily quota</text>
+  <text x="72" y="548" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">• Key prefixes and lifecycle dates</text>
+  <rect x="448" y="468" width="376" height="150" rx="6" fill="#F1F0EB" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="466" y="498" font-size="15" font-weight="700" fill="#14202B" text-anchor="start">Usage</text>
+  <text x="472" y="526" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">• UTC date window, operation, status class</text>
+  <text x="472" y="548" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">• Empty usage ≠ loading failure</text>
+  <rect x="848" y="468" width="376" height="150" rx="6" fill="#F1F0EB" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="866" y="498" font-size="15" font-weight="700" fill="#14202B" text-anchor="start">Key management</text>
+  <text x="872" y="526" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">• Rotate key (confirmed)</text>
+  <text x="872" y="548" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">• Revoke individual key</text>
+  <text x="872" y="570" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">• Raw key shown once only</text>
+  <circle cx="36" cy="480" r="11" fill="#1F5FAD"/>
+  <text x="36" y="484.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+  <rect x="24" y="648" width="1232" height="114" rx="8" fill="#E7F0FB" stroke="#1F5FAD" stroke-width="1.5"/>
+  <text x="40" y="670" font-size="13" font-weight="700" fill="#1F5FAD" text-anchor="start">Annotations</text>
+  <text x="40" y="692" font-size="12" font-weight="400" fill="#14202B" text-anchor="start">1. /admin/users: approve, reject or revoke submitter access and edit scopes (#45, #342).</text>
+  <text x="40" y="712" font-size="12" font-weight="400" fill="#14202B" text-anchor="start">2. /admin/api-consumers and /:consumerId (#775, #776).</text>
+  <text x="40" y="732" font-size="12" font-weight="400" fill="#14202B" text-anchor="start">3. /admin/dataset-releases/new → immutable public release (#458); catalogue /dataset-releases.</text>
+  <text x="40" y="752" font-size="12" font-weight="400" fill="#14202B" text-anchor="start">4. Access requests made in Account → API access are approved from this area.</text>
+</svg>

@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 1168" width="1280" height="1168" role="img" aria-labelledby="final-fixture-statistics-desktop-title final-fixture-statistics-desktop-desc" font-family="Helvetica, Arial, sans-serif">
+  <title id="final-fixture-statistics-desktop-title">Final wireframe: fixture match statistics (desktop)</title>
+  <desc id="final-fixture-statistics-desktop-desc">Implemented /fixtures/:fixtureId/statistics page: breadcrumbs, Overview / Statistics / Players sections, Compare players link, match analytics, scorecards, calculation details and data notices.</desc>
+  <rect x="0" y="0" width="1280" height="1168" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="2"/>
+  <rect x="0" y="0" width="1280" height="64" fill="#14202B"/>
+  <text x="32" y="40" font-size="20" font-weight="700" fill="#FFFFFF" text-anchor="start">Stat&#x27;sTheGame</text>
+  <text x="220" y="39" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="start">Explore Data ▾</text>
+  <rect x="220" y="46" width="106" height="3" fill="#B5E61D"/>
+  <text x="370.4" y="39" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="start">Downloads</text>
+  <text x="474.2" y="39" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="start">API</text>
+  <text x="1078" y="39" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="start">Sign in</text>
+  <rect x="1176" y="18" width="72" height="28" rx="14" fill="#22313E" stroke="#4A5866" stroke-width="1.5"/>
+  <text x="1212" y="37" font-size="12" font-weight="400" fill="#FFFFFF" text-anchor="middle">Theme</text>
+  <text x="48" y="100" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Fixtures / Team A vs Team B / Statistics</text>
+  <text x="48" y="124" font-size="11" font-weight="700" fill="#5E7F00" text-anchor="start">FIXTURE</text>
+  <text x="48" y="158" font-size="30" font-weight="700" fill="#14202B" text-anchor="start">Match statistics</text>
+  <text x="60" y="198" font-size="14" font-weight="500" fill="#5B6772" text-anchor="start">Overview</text>
+  <text x="151" y="198" font-size="14" font-weight="700" fill="#14202B" text-anchor="start">Statistics</text>
+  <rect x="147" y="206" width="92" height="3" fill="#5E7F00"/>
+  <text x="259" y="198" font-size="14" font-weight="500" fill="#5B6772" text-anchor="start">Players</text>
+  <line x1="48" y1="209" x2="348" y2="209" stroke="#9AA4AD"/>
+  <circle cx="36" cy="196" r="11" fill="#1F5FAD"/>
+  <text x="36" y="200.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+  <rect x="1080" y="176" width="141" height="32" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="1150.5" y="197" font-size="13" font-weight="600" fill="#14202B" text-anchor="middle">Compare players</text>
+  <circle cx="1068" cy="188" r="11" fill="#1F5FAD"/>
+  <text x="1068" y="192.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+  <rect x="48" y="230" width="1184" height="96" rx="8" fill="#F1F0EB" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="68" y="258" font-size="16" font-weight="700" fill="#14202B" text-anchor="start">Match summary</text>
+  <rect x="68" y="270" width="266" height="44" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="84" y="297" font-size="13" font-weight="600" fill="#14202B" text-anchor="start">Team A  164/6</text>
+  <rect x="354" y="270" width="266" height="44" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="370" y="297" font-size="13" font-weight="600" fill="#14202B" text-anchor="start">Team B  158/9</text>
+  <rect x="640" y="270" width="266" height="44" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="656" y="297" font-size="13" font-weight="600" fill="#14202B" text-anchor="start">Highest individual innings</text>
+  <rect x="926" y="270" width="266" height="44" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="942" y="297" font-size="13" font-weight="600" fill="#14202B" text-anchor="start">Result</text>
+  <rect x="48" y="346" width="380" height="130" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="66" y="374" font-size="15" font-weight="700" fill="#14202B" text-anchor="start">Innings summary</text>
+  <rect x="66" y="392" width="320" height="6" rx="3" fill="#D9DDE1"/>
+  <rect x="66" y="410" width="320" height="6" rx="3" fill="#D9DDE1"/>
+  <rect x="66" y="428" width="320" height="6" rx="3" fill="#D9DDE1"/>
+  <rect x="66" y="446" width="198" height="6" rx="3" fill="#D9DDE1"/>
+  <rect x="448" y="346" width="380" height="130" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="466" y="374" font-size="15" font-weight="700" fill="#14202B" text-anchor="start">Extras breakdown</text>
+  <rect x="466" y="392" width="320" height="6" rx="3" fill="#D9DDE1"/>
+  <rect x="466" y="410" width="320" height="6" rx="3" fill="#D9DDE1"/>
+  <rect x="466" y="428" width="320" height="6" rx="3" fill="#D9DDE1"/>
+  <rect x="466" y="446" width="198" height="6" rx="3" fill="#D9DDE1"/>
+  <rect x="848" y="346" width="384" height="130" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="866" y="374" font-size="15" font-weight="700" fill="#14202B" text-anchor="start">Powerplay</text>
+  <rect x="866" y="392" width="324" height="6" rx="3" fill="#D9DDE1"/>
+  <rect x="866" y="410" width="324" height="6" rx="3" fill="#D9DDE1"/>
+  <rect x="866" y="428" width="324" height="6" rx="3" fill="#D9DDE1"/>
+  <rect x="866" y="446" width="201" height="6" rx="3" fill="#D9DDE1"/>
+  <rect x="48" y="494" width="1184" height="92" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="66" y="522" font-size="15" font-weight="700" fill="#14202B" text-anchor="start">Match leaders</text>
+  <text x="66" y="548" font-size="13" font-weight="400" fill="#5B6772" text-anchor="start">Leading run scorers</text>
+  <text x="660" y="548" font-size="13" font-weight="400" fill="#5B6772" text-anchor="start">Leading wicket takers</text>
+  <rect x="66" y="562" width="310" height="6" rx="3" fill="#D9DDE1"/>
+  <rect x="660" y="562" width="310" height="6" rx="3" fill="#D9DDE1"/>
+  <text x="48" y="620" font-size="15" font-weight="700" fill="#14202B" text-anchor="start">Batting scorecard</text>
+  <rect x="48" y="632" width="1184" height="140" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <rect x="48" y="632" width="1184" height="28" rx="6" fill="#F1F0EB"/>
+  <text x="58.0" y="651" font-size="12" font-weight="700" fill="#14202B" text-anchor="start">Batter</text>
+  <text x="432.6666666666667" y="651" font-size="12" font-weight="700" fill="#14202B" text-anchor="end">Runs</text>
+  <text x="630.0" y="651" font-size="12" font-weight="700" fill="#14202B" text-anchor="end">Balls</text>
+  <text x="827.3333333333334" y="651" font-size="12" font-weight="700" fill="#14202B" text-anchor="end">4s</text>
+  <text x="1024.6666666666667" y="651" font-size="12" font-weight="700" fill="#14202B" text-anchor="end">6s</text>
+  <text x="1222.0" y="651" font-size="12" font-weight="700" fill="#14202B" text-anchor="end">Strike rate</text>
+  <line x1="48" y1="660" x2="1232" y2="660" stroke="#E2E5E8"/>
+  <text x="58" y="679" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Batter 1</text>
+  <text x="432.6666666666667" y="679" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="630.0" y="679" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="827.3333333333334" y="679" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="1024.6666666666667" y="679" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="1222.0" y="679" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <line x1="48" y1="688" x2="1232" y2="688" stroke="#E2E5E8"/>
+  <text x="58" y="707" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Batter 2</text>
+  <text x="432.6666666666667" y="707" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="630.0" y="707" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="827.3333333333334" y="707" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="1024.6666666666667" y="707" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="1222.0" y="707" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <line x1="48" y1="716" x2="1232" y2="716" stroke="#E2E5E8"/>
+  <text x="58" y="735" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Batter 3</text>
+  <text x="432.6666666666667" y="735" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="630.0" y="735" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="827.3333333333334" y="735" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="1024.6666666666667" y="735" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="1222.0" y="735" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <line x1="48" y1="744" x2="1232" y2="744" stroke="#E2E5E8"/>
+  <text x="58" y="763" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Batter 4</text>
+  <text x="432.6666666666667" y="763" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="630.0" y="763" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="827.3333333333334" y="763" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="1024.6666666666667" y="763" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="1222.0" y="763" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <circle cx="36" cy="648" r="11" fill="#1F5FAD"/>
+  <text x="36" y="652.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+  <text x="48" y="800" font-size="15" font-weight="700" fill="#14202B" text-anchor="start">Bowling scorecard</text>
+  <rect x="48" y="812" width="1184" height="112" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <rect x="48" y="812" width="1184" height="28" rx="6" fill="#F1F0EB"/>
+  <text x="58.0" y="831" font-size="12" font-weight="700" fill="#14202B" text-anchor="start">Bowler</text>
+  <text x="511.6" y="831" font-size="12" font-weight="700" fill="#14202B" text-anchor="end">Overs</text>
+  <text x="748.4000000000001" y="831" font-size="12" font-weight="700" fill="#14202B" text-anchor="end">Runs conceded</text>
+  <text x="985.2" y="831" font-size="12" font-weight="700" fill="#14202B" text-anchor="end">Wickets</text>
+  <text x="1222.0" y="831" font-size="12" font-weight="700" fill="#14202B" text-anchor="end">Economy</text>
+  <line x1="48" y1="840" x2="1232" y2="840" stroke="#E2E5E8"/>
+  <text x="58" y="859" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Bowler 1</text>
+  <text x="511.6" y="859" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="748.4000000000001" y="859" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="985.2" y="859" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="1222.0" y="859" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <line x1="48" y1="868" x2="1232" y2="868" stroke="#E2E5E8"/>
+  <text x="58" y="887" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Bowler 2</text>
+  <text x="511.6" y="887" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="748.4000000000001" y="887" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="985.2" y="887" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="1222.0" y="887" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <line x1="48" y1="896" x2="1232" y2="896" stroke="#E2E5E8"/>
+  <text x="58" y="915" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Bowler 3</text>
+  <text x="511.6" y="915" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="748.4000000000001" y="915" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="985.2" y="915" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="1222.0" y="915" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <rect x="48" y="944" width="580" height="56" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <text x="66" y="977" font-size="13" font-weight="400" fill="#5B6772" text-anchor="start">Calculation details ▸  (definitions of each statistic)</text>
+  <rect x="652" y="944" width="580" height="56" rx="6" fill="#FBEAE8" stroke="#9F2A1D" stroke-width="1.5"/>
+  <text x="670" y="977" font-size="13" font-weight="400" fill="#9F2A1D" text-anchor="start">Data notices — partial or unavailable figures are labelled</text>
+  <circle cx="40" cy="1014" r="11" fill="#1F5FAD"/>
+  <text x="40" y="1018.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+  <rect x="24" y="1030" width="1232" height="114" rx="8" fill="#E7F0FB" stroke="#1F5FAD" stroke-width="1.5"/>
+  <text x="40" y="1052" font-size="13" font-weight="700" fill="#1F5FAD" text-anchor="start">Annotations</text>
+  <text x="40" y="1074" font-size="12" font-weight="400" fill="#14202B" text-anchor="start">1. Fixture sections: Overview (facts + contextual weather), Statistics, Players.</text>
+  <text x="40" y="1094" font-size="12" font-weight="400" fill="#14202B" text-anchor="start">2. Opens /participants/compare pre-scoped to this fixture (#716).</text>
+  <text x="40" y="1114" font-size="12" font-weight="400" fill="#14202B" text-anchor="start">3. Numeric cells right-aligned with tabular numerals; tables scroll horizontally on small screens.</text>
+  <text x="40" y="1134" font-size="12" font-weight="400" fill="#14202B" text-anchor="start">4. A statistic opens /fixtures/:id/statistics/:statisticId: published result + contributing events + export.</text>
+</svg>
