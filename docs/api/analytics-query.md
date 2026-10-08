@@ -497,6 +497,64 @@ reader's own words, it already reaches a third party, and a log is the one place
 retained. The same holds for the earlier turns — a count is recorded, never their text. The client
 hash is not logged either, because nothing in a log needs it.
 
+## Known limitations
+
+These are current, accepted limitations rather than defects awaiting a fix. Each is a consequence of
+a decision recorded above or in ADR-017.
+
+**A follow-up resolves only against what an earlier _question_ named.** The model never sees an
+answer. Only the earlier questions and the definitions they were read as are sent, because no
+database content and no evaluation result reaches the provider — that is the privacy property the
+whole design is built on, not an oversight. So "What about his strike rate?" resolves after "What are
+V Kohli's career statistics?", because that turn's definition names the player. It cannot resolve
+after "Who scored the most runs in the 2024 Indian Premier League season?": that definition names a
+metric, a scope and a season, and the player the pronoun refers to exists only in the answer, which
+the model never reads. A follow-up of that kind comes back `unsupported` or resolves against the
+wrong thing, and a client should expect the reader to name the player again.
+
+**The home-page widget sends no conversation.** It answers one question at a time, each answer
+replacing the last, so follow-ups are available to API callers and are not exercised by the
+reader-facing surface. A client that wants them has to keep the history itself and send it on each
+request.
+
+**Suggestion generation varies between runs.** Suggestions come from the same non-deterministic
+translation step as the definition, so the same refused question can come back with three
+suggestions, with one, or with none. The field is absent rather than empty when nothing was
+suggested. The evaluation runs demonstrate the spread directly: between two runs twenty-one minutes
+apart, one refusal went from no suggestions to two, another from two to none. A client must therefore
+render a refusal that carries nothing to ask instead, rather than assuming a suggestion will always
+be there.
+
+**A season is never assumed.** The translation step is told the default competition but neither
+today's date nor which seasons the platform holds, so an assumed season would be a guess presented as
+an answer. "Last season" and "this year" come back `unsupported` with the reason `ambiguous`.
+`competition` is the only value `assumptions` can carry.
+
+**Translation is not deterministic.** The same question may be read differently on two occasions. The
+query-definition contract bounds what the variation can be — an invalid reading is rejected rather
+than answered — but it does not make the reading stable. Nothing downstream of the translation is
+affected: an identical definition always produces an identical `definitionVersion` and an identical
+answer.
+
+**A refused injection attempt may carry the wrong reason label.** The evaluation set's
+delimiter-escape case has been refused in every run, as it must be, but is labelled `ambiguous`
+rather than `outside_cricket_statistics` or `other`. The attempt fails safe — nothing is executed and
+no data is disclosed — so this is a reporting inaccuracy in a refusal rather than a security finding.
+
+**Two candidates may look identical.** 168 display names in the corpus map to more than one
+participant identifier, and the published participant resource carries nothing further to tell them
+apart. An interface must ask rather than guess, and cannot always make the choice meaningful to the
+reader.
+
+**A leaderboard answer carries no `statisticIds`.** The published leaderboard response contains no
+statistic identifier to report, so a leaderboard is traceable only by its `endpoint` and the resolved
+competition or season.
+
+**The first question after a deploy, or after a day idle, is slower.** The provider compiles the
+response schema on that request. `LLM_TIMEOUT_MS` is 15000 rather than the 5000 the weather adapter
+uses for exactly this reason, and one evaluation run recorded a timeout against a case that had
+passed in both earlier runs.
+
 ## Related reading
 
 - [Shared Contracts](contracts.md) — the query-definition contract this operation validates against.
@@ -512,6 +570,7 @@ documented with the assistance of Claude-Code[Claude Opus 5 (1M context)] under 
 follow-up questions, the default competition, the casual-phrasing guidance and the surname fallback
 were documented with the assistance of Claude-Code[Claude Opus 5 (1M context)] under issue #868. The
 suggestions and scoped answers were documented with the assistance of
-Claude-Code[Claude Opus 5 (1M context)] under issue #851. The cost summary was added with the
-assistance of Claude-Code[Claude Opus 5 (1M context)] under issue #817, using the figures ADR-017
-already records.
+Claude-Code[Claude Opus 5 (1M context)] under issue #851. The cost summary and the known limitations
+were added with the assistance of Claude-Code[Claude Opus 5 (1M context)] under issue #817; the
+figures are the ones ADR-017 already records and the limitations are drawn from the evaluation runs
+rather than restated from the implementation.
