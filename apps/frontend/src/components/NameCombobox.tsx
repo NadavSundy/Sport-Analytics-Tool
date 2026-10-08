@@ -210,6 +210,16 @@ export function NameCombobox({
   );
   const activeOption = activeIndex >= 0 ? rankedOptions[activeIndex] : undefined;
   const optionsPending = open && loadedRequestKeyRef.current !== requestKey;
+  const activeOptionId = activeOption ? `${listboxId}-${activeIndex}` : undefined;
+
+  // Keyboard navigation moves the active option with aria-activedescendant
+  // while focus stays on the input, so the browser will not scroll the list on
+  // its own. Bring the active option into view when it would otherwise sit
+  // outside the scrolled list.
+  useEffect(() => {
+    if (!activeOptionId) return;
+    document.getElementById(activeOptionId)?.scrollIntoView?.({ block: 'nearest' });
+  }, [activeOptionId]);
 
   function showOptions() {
     if (disabled) return;
@@ -304,7 +314,7 @@ export function NameCombobox({
       <label htmlFor={inputId}>{label}</label>
       <div className="name-combobox__control">
         <input
-          aria-activedescendant={activeOption ? `${listboxId}-${activeIndex}` : undefined}
+          aria-activedescendant={activeOptionId}
           aria-autocomplete="list"
           aria-controls={listboxId}
           aria-describedby={
@@ -376,7 +386,18 @@ export function NameCombobox({
       </span>
 
       {open ? (
-        <div className="name-combobox__popover">
+        // Pressing anywhere in the popover — an option, the list's scrollbar or
+        // its padding — must not move focus off the input. Without this, a press
+        // on the scrollbar (which belongs to the list, not to an option) sent
+        // focus to the body, the blur handler closed the list and it could only
+        // be scrolled with a wheel or trackpad (#907). Scrollbar dragging is not
+        // a default action of `mousedown`, so it still works.
+        <div
+          className="name-combobox__popover"
+          onMouseDown={(event) => {
+            if (event.button === 0) event.preventDefault();
+          }}
+        >
           {state.status === 'loading' || optionsPending ? (
             <p className="name-combobox__state" role="status">
               {searchQuery
@@ -427,7 +448,6 @@ export function NameCombobox({
                   id={`${listboxId}-${index}`}
                   key={option.value}
                   onClick={() => choose(option)}
-                  onMouseDown={(event) => event.preventDefault()}
                   onMouseEnter={() => setActiveIndex(index)}
                   role="option"
                 >
