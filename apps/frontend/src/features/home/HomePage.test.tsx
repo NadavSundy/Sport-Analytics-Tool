@@ -77,6 +77,14 @@ describe('homepage', () => {
       'fetchpriority',
       'high',
     );
+    expect(screen.getByRole('img', { name: 'Cricket match in progress' })).toHaveAttribute(
+      'loading',
+      'eager',
+    );
+    expect(screen.getByRole('img', { name: 'Cricket match in progress' })).toHaveAttribute(
+      'decoding',
+      'async',
+    );
     expect(screen.getByRole('link', { name: 'Photo: John Oswald / Unsplash' })).toHaveAttribute(
       'href',
       'https://unsplash.com/photos/2-men-playing-cricket-on-green-grass-field-during-daytime-7r6cX6FYNz0',
