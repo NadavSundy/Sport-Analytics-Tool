@@ -284,7 +284,7 @@ npx wrangler pages deploy site --project-name=sports-analytics-tool
 
 ## AI usage
 
-This repository makes use of AI code generation. Reconciliation against the task-level registers records the following tool/model pairs for code-generation or implementation work: ChatGPT-Web[GPT-5.5], ChatGPT-Web[GPT-5.6 Luna], ChatGPT-Web[GPT-5.6 Thinking], ChatGPT-Web[GPT-5.6 Sol], Codex[GPT-5], Codex[GPT-5.6 Sol], Codex[GPT-5.6 Terra], Codex[GPT-6], Claude-Web[Claude Sonnet 5], Claude-Web[Claude Opus 5], Claude-Web[Claude Opus 5.5], Claude-Code[Claude Opus 5], Claude-Code[Claude Opus 5.5] and Claude.ai[Claude Sonnet 5]. Historical register rows use a few spelling variants for the same web/code tools; the task-level CSVs remain authoritative for the exact label recorded for each task.
+This repository makes use of AI code generation. Reconciliation against the task-level registers records the following tool/model pairs for code-generation or implementation work: ChatGPT-Web[GPT-5.5], ChatGPT-Web[GPT-5.6 Luna], ChatGPT-Web[GPT-5.6 Thinking], ChatGPT-Web[GPT-5.6 Sol], Codex[GPT-5], Codex[GPT-5.6 Sol], Codex[GPT-5.6 Terra], Codex[GPT-6], Claude-Web[Claude Sonnet 5], Claude-Web[Claude Opus 5], Claude-Web[Claude Opus 5.5], Claude-Code[Claude Opus 5], Claude-Code[Claude Opus 5 (1M context)], Claude-Code[Claude Opus 5.5] and Claude.ai[Claude Sonnet 5]. Historical register rows use a few spelling variants for the same web/code tools; the task-level CSVs remain authoritative for the exact label recorded for each task.
 
 Sprint 4 user testing for #803 also uses Codex[GPT-6] for local test preparation, evidence documentation and browser technical verification. Its member-register entry distinguishes real assisted participant evidence from AI simulation and pending acceptance/review.
 
@@ -300,3 +300,6 @@ The preceding README was reviewed and edited with the assistance of ChatGPT-Web[
 The documentation information architecture was reorganised and cross-linked with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The asynchronous worker setup and deployment summary were added with the assistance of Codex[GPT-5].
 The Issue #563 backend Container Apps deployment summary was updated with the assistance of Codex[GPT-5].
+The Claude-Code[Claude Opus 5 (1M context)] code-generation declaration was added for issue #817 with
+the assistance of that same tool and model, after reconciling the natural-language query feature's
+register rows against this list.

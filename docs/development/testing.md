@@ -88,6 +88,7 @@ tooling never falls back to the normal `DATABASE_URL`.
 | `npm run test:database:local`  | Provision, prepare, and run only database tests against the repository-managed Docker container | Automatic Docker connection                     | Yes             |
 | `npm run test:e2e`             | Playwright browser and accessibility tests                                                      | No dedicated database workflow                  | No              |
 | `npm run test:coverage`        | Repository-wide V8 coverage for frontend, backend, worker, contracts and batch-processing       | None                                            | No              |
+| `npm run test:scripts`         | Repository script-module tests, including the natural-language evaluation runner and case set   | None                                            | No              |
 | `npm run check`                | Structure, format, lint, types, database-independent tests, OpenAPI, and production builds      | None                                            | No              |
 | `npm run test:ci`              | Normal tests, database integration tests, and browser tests                                     | CI supplies `DATABASE_URL_TEST`                 | No              |
 
@@ -710,6 +711,66 @@ The Sprint 2 Basic audit for Issue #273 is retained in
 Serious or critical product findings discovered during an audit must be fixed within scope or tracked
 as separate issues with an explicit rationale.
 
+## Natural-language query coverage
+
+This feature is the one place in the repository where a correct result cannot be asserted by a test,
+because translation is non-deterministic. Coverage is therefore split in two: everything except the
+translation step is tested offline and gates every merge, and the translation step alone is evaluated
+by hand against the real provider.
+
+### Stubbed-adapter tests
+
+**No test anywhere calls the provider, and no API key exists in the repository or in any test.** The
+adapter is exercised against a stubbed `fetch`, which is what makes the suite free, offline and
+deterministic.
+
+`apps/backend/tests/unit/llm.client.test.ts` and `llm.client.conversation.test.ts` cover:
+
+- success, a timeout, a retryable `5xx` followed by success, two retryable failures, five
+  non-retryable statuses, a malformed body, a response with no text content, non-JSON text, a
+  definition failing the contract, a differently cased enum value, a refusal, a truncated response
+  and the unconfigured case;
+- the request body itself — the endpoint and headers, the system prompt built from the contract
+  description, the delimited question, the constrained schema, the `max_tokens` bound, and the
+  absence of `temperature` and `effort` so the model identifier stays swappable;
+- **the exact field set**, by a test that fails if a sixth request field ever appears; and
+- **the absence of database content**, by running a forbidden-token list over a request built with a
+  maximum-length five-turn conversation. This is the test that holds ADR-017's privacy claim.
+
+The rest of the feature is covered by the ordinary suites, none of which touch the provider:
+`analytics-query-json-schema.test.ts` checks the hand-written JSON Schema against the contract with
+Ajv; `query-definition.evaluator.test.ts` and `query-definition.surname-fallback.test.ts` cover
+evaluation and name resolution; `natural-language-query.limiter.test.ts` and the
+`tests/api/natural-language-*.test.ts` suites cover the limits, headers, outcomes and logging; and
+the frontend `natural-language-query` tests cover how answers, assumptions, suggestions and refusals
+render.
+
+### The manual evaluation script
+
+```bash
+npm run evaluate:natural-language-queries
+```
+
+`scripts/evaluate-natural-language-queries.mjs` runs a fixed set of questions against the configured
+provider and writes a dated record under `evidence/validation/`. Each case accepts one or more
+defensible readings, because two readings of the same question can both be correct; a case passes
+only when the returned definition matches an accepted one. Cases that expect suggestions must also
+receive something answerable, and cases that expect assumptions must report exactly those.
+
+**It is run by hand and is deliberately not in CI**, for two reasons: every run spends money against
+the $10 workspace limit recorded in ADR-017, and a non-deterministic check would make the merge gate
+flaky. It needs `LLM_API_KEY`, and `preevaluate:natural-language-queries` builds the contracts
+workspace first so the case set validates against the current contract.
+
+What **is** in CI is `npm run test:scripts`, which covers the runner and the case set without calling
+the provider: that the case list covers the required behaviours, that a wrong definition fails rather
+than passing quietly, that the rendered record names the model, date and every case, and that the
+record contains no credential-shaped text. These run after `npm ci` in the validation job because
+they need the installed dependencies.
+
+Results are summarised in
+[Natural-Language Query Evidence](../validation/issue-817-natural-language-query-evidence.md).
+
 ## Related reading paths
 
 - [Testing & Quality](../testing/index.md) — testing/quality entry point and progressive-disclosure index.
@@ -723,6 +784,9 @@ Codex[GPT-5.6 Sol]. The submitter interface coverage was documented with the ass
 Codex[GPT-5.6 Sol].
 The current-user submitter status coverage section was generated with the assistance of
 ChatGPT-Web[GPT-5.6 Sol] and updated for issue #166 with the assistance of Codex[GPT-5.6 Sol].
+The natural-language query coverage section was added with the assistance of
+Claude-Code[Claude Opus 5 (1M context)] under issue #817, from the test files it names rather than
+from the implementation.
 The account-deletion testing section was documented with the assistance of Codex[GPT-5].
 The submitter access frontend coverage section and corrected code fences were updated with the
 assistance of Codex[GPT-5].

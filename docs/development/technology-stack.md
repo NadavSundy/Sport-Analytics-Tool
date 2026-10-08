@@ -160,11 +160,51 @@ ADR-005 records the database host and authentication service as separate Supabas
 
 ## External data and integrations
 
-| Source / service | Current use                                       | Notes                                                                                                                                                                                                                          |
-| ---------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Cricsheet        | Historical event-level T20/IT20 JSON data source. | Downloaded by `scripts/download_cricsheet_t20.py`; generated bulk data remains ignored. Cricsheet is a historical file/data source rather than the course-required runtime external API integration.                           |
-| Google OAuth     | Identity provider through Supabase Auth.          | Provides the initial managed OAuth sign-in path. OAuth client secrets remain in provider dashboards and are never committed.                                                                                                   |
-| Open-Meteo       | Runtime external weather API integration.         | Selected in ADR-008 and called server-side by the Express backend through `GET /api/v1/weather`. It requires no API key. Provider failures are isolated to the weather feature through validation, timeout and error handling. |
+| Source / service | Current use                                                                | Notes                                                                                                                                                                                                                                                                                                               |
+| ---------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cricsheet        | Historical event-level T20/IT20 JSON data source.                          | Downloaded by `scripts/download_cricsheet_t20.py`; generated bulk data remains ignored. Cricsheet is a historical file/data source rather than the course-required runtime external API integration.                                                                                                                |
+| Google OAuth     | Identity provider through Supabase Auth.                                   | Provides the initial managed OAuth sign-in path. OAuth client secrets remain in provider dashboards and are never committed.                                                                                                                                                                                        |
+| Open-Meteo       | Runtime external weather API integration.                                  | Selected in ADR-008 and called server-side by the Express backend through `GET /api/v1/weather`. It requires no API key. Provider failures are isolated to the weather feature through validation, timeout and error handling.                                                                                      |
+| Anthropic Claude | Runtime language-model translation for natural-language analytics queries. | Claude Haiku 4.5 (`claude-haiku-4-5-20251001`), selected in ADR-017 and called server-side through `POST /api/v1/natural-language-queries`. It requires a server-only API key held in Key Vault. Provider failures are isolated to this feature: an absent key disables natural-language querying and nothing else. |
+
+### Anthropic Claude: what is sent, what it costs and why it was selected
+
+The natural-language query feature is the project's one language-model integration, and it is the
+only third-party service that receives text a user typed. The complete decision is
+[ADR-017](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-017-llm-provider-integration.md){ target="_blank" rel="noopener" };
+the disclosure below is the summary this document is required to carry.
+
+**Purpose.** Translation only. The model converts a question into a query definition that must
+satisfy a closed contract. It computes no statistic: a validated definition is answered from the
+published statistics by existing hand-written code. The contract, not the provider, decides what the
+platform will act on.
+
+**Data sent.** Exactly four things, asserted by a test that fails if a fifth appears:
+
+- the query-definition contract's own schema description;
+- a fixed sentence framing the next message as data;
+- the reader's question text, between delimiters; and
+- since #868, the caller's earlier questions and the definitions they were read as, as prior context.
+
+**No cricket data, identifier, column name, table name, SQL statement, credential, account detail or
+information about who asked is sent.** A test runs a forbidden-token list over a request built with a
+maximum-length conversation. The question text itself is the one substantive privacy consequence and
+is disclosed to the reader before they submit a question.
+
+**Spending limit.** A dedicated Anthropic Console workspace for this project with a **$10 monthly
+spend limit**, and an API key scoped to that workspace. The limit is the control rather than a
+forecast: it caps the blast radius of a loop, a leaked key or a load test at $10 instead of at the
+account balance. At roughly $0.0060 a question that is about 1,670 questions a month. Both the limit
+and the workspace-scoped key must exist before the feature is enabled in a deployed environment.
+
+**Reason for selection.** Claude Haiku 4.5 at $1/$5 per million tokens was chosen over cheaper
+candidates — Gemini 3.1 Flash-Lite and OpenAI GPT-5 Nano were both priced lower — because cost is not
+the binding constraint against a $10 ceiling, and the alternatives each required a new cloud project,
+billing setup and a second credential path. An existing team member's Anthropic account removed
+payment and account-setup risk, which at this point in the project was a schedule risk rather than a
+cost one. The model supports the native structured-output mode the closed contract needs. Switching
+provider is one environment variable: `LLM_MODEL` carries the identifier and no sampling parameter is
+sent, with Claude Sonnet 5.5 recorded as the named fallback.
 
 ## Type-only support packages
 
@@ -202,7 +242,9 @@ AI usage is governed separately by the course AI policy and the repository AI ev
 
 The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The issue #314 Three.js and self-hosted font dependency records were updated with the assistance of
-Codex[GPT-5.6 Sol].
+Codex[GPT-5.6 Sol]. The Anthropic Claude provider record was added with the assistance of
+Claude-Code[Claude Opus 5 (1M context)] under issue #817, summarising ADR-017 rather than restating
+the integration.
 The Azure Blob Storage and managed-identity dependency records were updated with the assistance of
 Codex[GPT-5].
 The asynchronous worker runtime and Service Bus dependency records were updated with the assistance
