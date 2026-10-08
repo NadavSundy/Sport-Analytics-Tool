@@ -54,9 +54,9 @@ afterEach(() => {
 });
 
 describe('Account overview competition scopes', () => {
-  it.each([[], ['7'], ['7', '8']])(
-    'shows All for administrators with competition IDs %j',
-    async (competitionIds) => {
+  it.each([{ competitionIds: [] }, { competitionIds: ['7'] }, { competitionIds: ['7', '8'] }])(
+    'shows All for administrators with competition IDs $competitionIds',
+    async ({ competitionIds }) => {
       vi.mocked(getCurrentUserProfile).mockResolvedValue(profile('admin', competitionIds));
       renderOverview();
       expect(await scopeValue()).toHaveTextContent('All');
