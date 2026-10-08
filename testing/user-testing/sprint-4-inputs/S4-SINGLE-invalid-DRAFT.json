@@ -1,0 +1,163 @@
+{
+  "contractVersion": "803-invalid",
+  "packageId": "my-club:package:choose-a-label-for-this-upload",
+  "competition": {
+    "context": {
+      "name": "Competition name",
+      "country": "Country or governing body"
+    }
+  },
+  "season": {
+    "context": {
+      "name": "2026"
+    }
+  },
+  "fixtures": [
+    {
+      "context": {
+        "date": "2026-03-14",
+        "teams": [
+          {
+            "context": {
+              "name": "Home team"
+            }
+          },
+          {
+            "context": {
+              "name": "Away team"
+            }
+          }
+        ]
+      },
+      "innings": [
+        {
+          "context": {
+            "ordinal": 0,
+            "battingTeam": {
+              "context": {
+                "name": "Home team"
+              }
+            }
+          },
+          "events": [
+            {
+              "eventId": "my-club:delivery:innings-0-ball-1",
+              "occurrenceSequence": 1,
+              "overNumber": 0,
+              "positionInOver": 0,
+              "ballLabel": "0.1",
+              "striker": {
+                "context": {
+                  "name": "Striker",
+                  "team": {
+                    "context": {
+                      "name": "Home team"
+                    }
+                  }
+                }
+              },
+              "nonStriker": {
+                "context": {
+                  "name": "Non-striker",
+                  "team": {
+                    "context": {
+                      "name": "Home team"
+                    }
+                  }
+                }
+              },
+              "bowler": {
+                "context": {
+                  "name": "Bowler",
+                  "team": {
+                    "context": {
+                      "name": "Away team"
+                    }
+                  }
+                }
+              },
+              "runs": {
+                "offBat": 0,
+                "extras": 0,
+                "total": 0
+              },
+              "extras": {}
+            },
+            {
+              "eventId": "my-club:delivery:innings-0-ball-2",
+              "occurrenceSequence": 2,
+              "overNumber": 0,
+              "positionInOver": 1,
+              "ballLabel": "0.2",
+              "striker": {
+                "context": {
+                  "name": "Striker",
+                  "team": {
+                    "context": {
+                      "name": "Home team"
+                    }
+                  }
+                }
+              },
+              "nonStriker": {
+                "context": {
+                  "name": "Non-striker",
+                  "team": {
+                    "context": {
+                      "name": "Home team"
+                    }
+                  }
+                }
+              },
+              "bowler": {
+                "context": {
+                  "name": "Bowler",
+                  "team": {
+                    "context": {
+                      "name": "Away team"
+                    }
+                  }
+                }
+              },
+              "runs": {
+                "offBat": 0,
+                "extras": 0,
+                "total": 0
+              },
+              "extras": {},
+              "wickets": [
+                {
+                  "kind": "caught",
+                  "playerOut": {
+                    "context": {
+                      "name": "Striker",
+                      "team": {
+                        "context": {
+                          "name": "Home team"
+                        }
+                      }
+                    }
+                  },
+                  "fielders": [
+                    {
+                      "participant": {
+                        "context": {
+                          "name": "Fielder",
+                          "team": {
+                            "context": {
+                              "name": "Away team"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

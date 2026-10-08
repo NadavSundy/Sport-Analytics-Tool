@@ -84,3 +84,9 @@ Issue #418 exercises the reviewer/admin workflow implemented through #283 and #3
 Related engineering defects from the same wider ingestion/review audit include #465, #471, #479, #480, #481, #482, #483, #484, #485, #486, #487 and #488. Those issues are retained as engineering context and are not attributed to P04 unless the participant independently observed them during a recorded task.
 
 The preceding page was planned and drafted with the assistance of Claude[Claude Sonnet 5] and reviewed and edited with ChatGPT-Web[GPT-5.6 Sol], resolving issue #254 and the Sprint 2 user-testing process update.
+
+## Sprint 4 final testing
+
+[Sprint 4 status](../testing/user-testing-sprint-4-summary.md) distinguishes preparation from actual participant evidence for #803. Use the existing protocol; retained Sprint 4 sessions, analysis and retests remain separate from earlier rounds.
+
+The Sprint 4 preparation links were added with the assistance of Codex[GPT-6].

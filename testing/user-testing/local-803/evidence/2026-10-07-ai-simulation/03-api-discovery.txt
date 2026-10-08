@@ -1,0 +1,1169 @@
+- link "Skip to main content":
+  - /url: "#main-content"
+- banner:
+  - link "Stat'sTheGame home":
+    - /url: /
+    - img "Stat'sTheGame"
+  - generic: Theme
+  - checkbox "Switch to Day Match theme" [checked]
+  - generic: Night Match
+  - button "Menu"
+- main:
+  - heading "API Explorer" [level=1]
+  - paragraph: Explore the authoritative Sport Analytics OpenAPI contract and try implemented endpoints directly from the browser.
+  - 'region "Supported API major version: v1"':
+    - paragraph: Public developer interface
+    - 'heading "Supported API major version: v1" [level=2]'
+    - paragraph:
+      - text: Public reads need no credentials. Authenticated application endpoints use a Supabase bearer token, while consumer endpoints use an
+      - code: X-API-Key
+      - text: . Use the explorer's
+      - strong: Authorize
+      - text: control to supply credentials at runtime.
+    - navigation "API supporting resources":
+      - link "API documentation":
+        - /url: https://sports-analytics-tool.pages.dev/api/overview/
+      - link "Dataset downloads":
+        - /url: /dataset-releases
+  - region "Implementation status":
+    - heading "Implementation status" [level=2]
+    - paragraph: Implemented operations are interactive in Swagger. Planned contract entries are hidden by default and, when shown, appear separately as non-executable information.
+    - checkbox "Show planned operations"
+    - generic: Show planned operations
+  - region "OpenAPI v1 PUBLIC":
+    - heading "OpenAPI v1 PUBLIC" [level=2]
+    - text: Servers
+    - combobox:
+      - option "https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io - Deployed development API" [selected]
+      - option "http://127.0.0.1:3000 - Local development API"
+    - button "Authorize":
+      - generic: Authorize
+    - main:
+      - heading "Documentation Public machine-readable API documentation resources. Collapse operation" [level=3]:
+        - link "Documentation":
+          - /url: "#/Documentation"
+        - paragraph: Public machine-readable API documentation resources.
+        - button "Collapse operation" [expanded]:
+      - button "GET /openapi.yaml Download the authoritative OpenAPI specification":
+        - generic: GET
+        - link "/openapi.yaml":
+          - /url: "#/Documentation/getOpenApiSpecification"
+        - generic: Download the authoritative OpenAPI specification
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "get /openapi.yaml":
+      - heading "Health Service health and availability. Collapse operation" [level=3]:
+        - link "Health":
+          - /url: "#/Health"
+        - paragraph: Service health and availability.
+        - button "Collapse operation" [expanded]:
+      - button "GET /api/v1/health Check API health":
+        - generic: GET
+        - link "/api/v1/health":
+          - /url: "#/Health/getHealth"
+          - text: /api
+          - text: /v1
+          - text: /health
+        - generic: Check API health
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "get /api/v1/health":
+      - heading "Authentication and Profile Managed-authentication identity and profile-related operations. Collapse operation" [level=3]:
+        - link "Authentication and Profile":
+          - /url: "#/Authentication%20and%20Profile"
+        - paragraph: Managed-authentication identity and profile-related operations.
+        - button "Collapse operation" [expanded]:
+      - button "GET /api/v1/auth/me Return the current application user profile":
+        - generic: GET
+        - link "/api/v1/auth/me":
+          - /url: "#/Authentication%20and%20Profile/getCurrentUserProfile"
+          - text: /api
+          - text: /v1
+          - text: /auth
+          - text: /me
+        - generic: Return the current application user profile
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - button "get /api/v1/auth/me":
+      - button "DELETE /api/v1/account Permanently delete the authenticated account":
+        - generic: DELETE
+        - link "/api/v1/account":
+          - /url: "#/Authentication%20and%20Profile/deleteCurrentAccount"
+          - text: /api
+          - text: /v1
+          - text: /account
+        - generic: Permanently delete the authenticated account
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - button "delete /api/v1/account":
+      - heading "Public Read Anonymous sport-reference, fixture, accepted-event and statistic reads. Collapse operation" [level=3]:
+        - link "Public Read":
+          - /url: "#/Public%20Read"
+        - paragraph: Anonymous sport-reference, fixture, accepted-event and statistic reads.
+        - button "Collapse operation" [expanded]:
+      - button "GET /api/v1/competitions List competitions":
+        - generic: GET
+        - link "/api/v1/competitions":
+          - /url: "#/Public%20Read/listCompetitions"
+          - text: /api
+          - text: /v1
+          - text: /competitions
+        - generic: List competitions
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "get /api/v1/competitions":
+      - 'button "GET /api/v1/competitions/{competitionId} Get a competition"':
+        - generic: GET
+        - 'link "/api/v1/competitions/{competitionId}"':
+          - /url: "#/Public%20Read/getCompetition"
+          - text: /api
+          - text: /v1
+          - text: /competitions
+          - text: "/{competitionId}"
+        - generic: Get a competition
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - 'button "get /api/v1/competitions/{competitionId}"':
+      - button "GET /api/v1/seasons List seasons":
+        - generic: GET
+        - link "/api/v1/seasons":
+          - /url: "#/Public%20Read/listSeasons"
+          - text: /api
+          - text: /v1
+          - text: /seasons
+        - generic: List seasons
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "get /api/v1/seasons":
+      - 'button "GET /api/v1/seasons/{seasonId} Get a season"':
+        - generic: GET
+        - 'link "/api/v1/seasons/{seasonId}"':
+          - /url: "#/Public%20Read/getSeason"
+          - text: /api
+          - text: /v1
+          - text: /seasons
+          - text: "/{seasonId}"
+        - generic: Get a season
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - 'button "get /api/v1/seasons/{seasonId}"':
+      - button "GET /api/v1/fixtures List fixtures":
+        - generic: GET
+        - link "/api/v1/fixtures":
+          - /url: "#/Public%20Read/listFixtures"
+          - text: /api
+          - text: /v1
+          - text: /fixtures
+        - generic: List fixtures
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "get /api/v1/fixtures":
+      - 'button "GET /api/v1/fixtures/{fixtureId} Get a fixture"':
+        - generic: GET
+        - 'link "/api/v1/fixtures/{fixtureId}"':
+          - /url: "#/Public%20Read/getFixture"
+          - text: /api
+          - text: /v1
+          - text: /fixtures
+          - text: "/{fixtureId}"
+        - generic: Get a fixture
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - 'button "get /api/v1/fixtures/{fixtureId}"':
+      - 'button "GET /api/v1/fixtures/{fixtureId}/events List accepted fixture events"':
+        - generic: GET
+        - 'link "/api/v1/fixtures/{fixtureId}/events"':
+          - /url: "#/Public%20Read/listFixtureEvents"
+          - text: /api
+          - text: /v1
+          - text: /fixtures
+          - text: "/{fixtureId}"
+          - text: /events
+        - generic: List accepted fixture events
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - 'button "get /api/v1/fixtures/{fixtureId}/events"':
+      - 'button "GET /api/v1/fixtures/{fixtureId}/events/{eventId} Get an accepted fixture event"':
+        - generic: GET
+        - 'link "/api/v1/fixtures/{fixtureId}/events/{eventId}"':
+          - /url: "#/Public%20Read/getFixtureEvent"
+          - text: /api
+          - text: /v1
+          - text: /fixtures
+          - text: "/{fixtureId}"
+          - text: /events
+          - text: "/{eventId}"
+        - generic: Get an accepted fixture event
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - 'button "get /api/v1/fixtures/{fixtureId}/events/{eventId}"':
+      - 'button "GET /api/v1/fixtures/{fixtureId}/events/export.json Export accepted fixture events as JSON"':
+        - generic: GET
+        - 'link "/api/v1/fixtures/{fixtureId}/events/export.json"':
+          - /url: "#/Public%20Read/exportFixtureEventsJson"
+          - text: /api
+          - text: /v1
+          - text: /fixtures
+          - text: "/{fixtureId}"
+          - text: /events
+          - text: /export.json
+        - generic: Export accepted fixture events as JSON
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - 'button "get /api/v1/fixtures/{fixtureId}/events/export.json"':
+      - 'button "GET /api/v1/fixtures/{fixtureId}/events/export.csv Export accepted fixture events as CSV"':
+        - generic: GET
+        - 'link "/api/v1/fixtures/{fixtureId}/events/export.csv"':
+          - /url: "#/Public%20Read/exportFixtureEventsCsv"
+          - text: /api
+          - text: /v1
+          - text: /fixtures
+          - text: "/{fixtureId}"
+          - text: /events
+          - text: /export.csv
+        - generic: Export accepted fixture events as CSV
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - 'button "get /api/v1/fixtures/{fixtureId}/events/export.csv"':
+      - 'button "GET /api/v1/fixtures/{fixtureId}/statistics/{statisticId}/events/export.json Export a calculation trace''s accepted events as JSON"':
+        - generic: GET
+        - 'link "/api/v1/fixtures/{fixtureId}/statistics/{statisticId}/events/export.json"':
+          - /url: "#/Public%20Read/exportFixtureStatisticEventsJson"
+          - text: /api
+          - text: /v1
+          - text: /fixtures
+          - text: "/{fixtureId}"
+          - text: /statistics
+          - text: "/{statisticId}"
+          - text: /events
+          - text: /export.json
+        - generic: Export a calculation trace's accepted events as JSON
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - 'button "get /api/v1/fixtures/{fixtureId}/statistics/{statisticId}/events/export.json"':
+      - 'button "GET /api/v1/fixtures/{fixtureId}/statistics/{statisticId}/events/export.csv Export a calculation trace''s accepted events as CSV"':
+        - generic: GET
+        - 'link "/api/v1/fixtures/{fixtureId}/statistics/{statisticId}/events/export.csv"':
+          - /url: "#/Public%20Read/exportFixtureStatisticEventsCsv"
+          - text: /api
+          - text: /v1
+          - text: /fixtures
+          - text: "/{fixtureId}"
+          - text: /statistics
+          - text: "/{statisticId}"
+          - text: /events
+          - text: /export.csv
+        - generic: Export a calculation trace's accepted events as CSV
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - 'button "get /api/v1/fixtures/{fixtureId}/statistics/{statisticId}/events/export.csv"':
+      - 'button "GET /api/v1/fixtures/{fixtureId}/statistics Get derived fixture statistics"':
+        - generic: GET
+        - 'link "/api/v1/fixtures/{fixtureId}/statistics"':
+          - /url: "#/Public%20Read/getFixtureStatistics"
+          - text: /api
+          - text: /v1
+          - text: /fixtures
+          - text: "/{fixtureId}"
+          - text: /statistics
+        - generic: Get derived fixture statistics
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - 'button "get /api/v1/fixtures/{fixtureId}/statistics"':
+      - 'button "GET /api/v1/fixtures/{fixtureId}/statistics/{statisticId} Get one derived fixture statistic resource"':
+        - generic: GET
+        - 'link "/api/v1/fixtures/{fixtureId}/statistics/{statisticId}"':
+          - /url: "#/Public%20Read/getFixtureStatistic"
+          - text: /api
+          - text: /v1
+          - text: /fixtures
+          - text: "/{fixtureId}"
+          - text: /statistics
+          - text: "/{statisticId}"
+        - generic: Get one derived fixture statistic resource
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - 'button "get /api/v1/fixtures/{fixtureId}/statistics/{statisticId}"':
+      - button "GET /api/v1/competitors List competitors":
+        - generic: GET
+        - link "/api/v1/competitors":
+          - /url: "#/Public%20Read/listCompetitors"
+          - text: /api
+          - text: /v1
+          - text: /competitors
+        - generic: List competitors
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "get /api/v1/competitors":
+      - 'button "GET /api/v1/competitors/{competitorId} Get a competitor"':
+        - generic: GET
+        - 'link "/api/v1/competitors/{competitorId}"':
+          - /url: "#/Public%20Read/getCompetitor"
+          - text: /api
+          - text: /v1
+          - text: /competitors
+          - text: "/{competitorId}"
+        - generic: Get a competitor
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - 'button "get /api/v1/competitors/{competitorId}"':
+      - button "GET /api/v1/participants List participants":
+        - generic: GET
+        - link "/api/v1/participants":
+          - /url: "#/Public%20Read/listParticipants"
+          - text: /api
+          - text: /v1
+          - text: /participants
+        - generic: List participants
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "get /api/v1/participants":
+      - 'button "GET /api/v1/participants/{participantId} Get a participant"':
+        - generic: GET
+        - 'link "/api/v1/participants/{participantId}"':
+          - /url: "#/Public%20Read/getParticipant"
+          - text: /api
+          - text: /v1
+          - text: /participants
+          - text: "/{participantId}"
+        - generic: Get a participant
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - 'button "get /api/v1/participants/{participantId}"':
+      - 'button "GET /api/v1/participants/{participantId}/fixtures List a participant''s published fixture history and performance"':
+        - generic: GET
+        - 'link "/api/v1/participants/{participantId}/fixtures"':
+          - /url: "#/Public%20Read/listParticipantFixtures"
+          - text: /api
+          - text: /v1
+          - text: /participants
+          - text: "/{participantId}"
+          - text: /fixtures
+        - generic: List a participant's published fixture history and performance
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - 'button "get /api/v1/participants/{participantId}/fixtures"':
+      - 'button "GET /api/v1/participants/{participantId}/statistics Get a participant''s season, competition and career aggregates"':
+        - generic: GET
+        - 'link "/api/v1/participants/{participantId}/statistics"':
+          - /url: "#/Public%20Read/getParticipantAggregates"
+          - text: /api
+          - text: /v1
+          - text: /participants
+          - text: "/{participantId}"
+          - text: /statistics
+        - generic: Get a participant's season, competition and career aggregates
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - 'button "get /api/v1/participants/{participantId}/statistics"':
+      - 'button "GET /api/v1/participants/{participantId}/statistics/{statisticId} Get one derived participant aggregate resource"':
+        - generic: GET
+        - 'link "/api/v1/participants/{participantId}/statistics/{statisticId}"':
+          - /url: "#/Public%20Read/getParticipantAggregate"
+          - text: /api
+          - text: /v1
+          - text: /participants
+          - text: "/{participantId}"
+          - text: /statistics
+          - text: "/{statisticId}"
+        - generic: Get one derived participant aggregate resource
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - 'button "get /api/v1/participants/{participantId}/statistics/{statisticId}"':
+      - button "GET /api/v1/statistics/leaderboards Get a bounded season or competition participant leaderboard":
+        - generic: GET
+        - link "/api/v1/statistics/leaderboards":
+          - /url: "#/Public%20Read/getStatisticsLeaderboard"
+          - text: /api
+          - text: /v1
+          - text: /statistics
+          - text: /leaderboards
+        - generic: Get a bounded season or competition participant leaderboard
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "get /api/v1/statistics/leaderboards":
+      - heading "Dataset Releases Discoverable immutable published-data snapshots and artefact downloads. Collapse operation" [level=3]:
+        - link "Dataset Releases":
+          - /url: "#/Dataset%20Releases"
+        - paragraph: Discoverable immutable published-data snapshots and artefact downloads.
+        - button "Collapse operation" [expanded]:
+      - button "GET /api/v1/dataset-releases List available dataset releases":
+        - generic: GET
+        - link "/api/v1/dataset-releases":
+          - /url: "#/Dataset%20Releases/listDatasetReleases"
+          - text: /api
+          - text: /v1
+          - text: /dataset-releases
+        - generic: List available dataset releases
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "get /api/v1/dataset-releases":
+      - 'button "GET /api/v1/dataset-releases/{version} Get dataset release metadata"':
+        - generic: GET
+        - 'link "/api/v1/dataset-releases/{version}"':
+          - /url: "#/Dataset%20Releases/getDatasetRelease"
+          - text: /api
+          - text: /v1
+          - text: /dataset-releases
+          - text: "/{version}"
+        - generic: Get dataset release metadata
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - 'button "get /api/v1/dataset-releases/{version}"':
+      - 'button "GET /api/v1/dataset-releases/{version}/artifact.json Download a dataset release artefact"':
+        - generic: GET
+        - 'link "/api/v1/dataset-releases/{version}/artifact.json"':
+          - /url: "#/Dataset%20Releases/downloadDatasetReleaseArtifact"
+          - text: /api
+          - text: /v1
+          - text: /dataset-releases
+          - text: "/{version}"
+          - text: /artifact.json
+        - generic: Download a dataset release artefact
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - 'button "get /api/v1/dataset-releases/{version}/artifact.json"':
+      - button "POST /api/v1/admin/dataset-releases Queue an immutable dataset release":
+        - generic: POST
+        - link "/api/v1/admin/dataset-releases":
+          - /url: "#/Dataset%20Releases/createDatasetRelease"
+          - text: /api
+          - text: /v1
+          - text: /admin
+          - text: /dataset-releases
+        - generic: Queue an immutable dataset release
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - button "post /api/v1/admin/dataset-releases":
+      - 'button "GET /api/v1/admin/dataset-release-jobs/{jobId} Get dataset release generation status"':
+        - generic: GET
+        - 'link "/api/v1/admin/dataset-release-jobs/{jobId}"':
+          - /url: "#/Dataset%20Releases/getDatasetReleaseJob"
+          - text: /api
+          - text: /v1
+          - text: /admin
+          - text: /dataset-release-jobs
+          - text: "/{jobId}"
+        - generic: Get dataset release generation status
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "get /api/v1/admin/dataset-release-jobs/{jobId}"':
+      - heading "Weather Contextual weather lookup for a location and date, backed by the Open-Meteo external API. See ADR-008 for the integration decision. Collapse operation" [level=3]:
+        - link "Weather":
+          - /url: "#/Weather"
+        - paragraph: Contextual weather lookup for a location and date, backed by the Open-Meteo external API. See ADR-008 for the integration decision.
+        - button "Collapse operation" [expanded]:
+      - button "GET /api/v1/weather Get weather for a location and date":
+        - generic: GET
+        - link "/api/v1/weather":
+          - /url: "#/Weather/getWeather"
+          - text: /api
+          - text: /v1
+          - text: /weather
+        - generic: Get weather for a location and date
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "get /api/v1/weather":
+      - 'button "GET /api/v1/fixtures/{fixtureId}/weather Get contextual weather for a fixture"':
+        - generic: GET
+        - 'link "/api/v1/fixtures/{fixtureId}/weather"':
+          - /url: "#/Weather/getFixtureWeather"
+          - text: /api
+          - text: /v1
+          - text: /fixtures
+          - text: "/{fixtureId}"
+          - text: /weather
+        - generic: Get contextual weather for a fixture
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - 'button "get /api/v1/fixtures/{fixtureId}/weather"':
+      - heading "Submissions Approved-submitter event-submission operations. Collapse operation" [level=3]:
+        - link "Submissions":
+          - /url: "#/Submissions"
+        - paragraph: Approved-submitter event-submission operations.
+        - button "Collapse operation" [expanded]:
+      - 'button "PUT /api/v1/submissions/events/{eventId} Correct an accepted fixture event"':
+        - generic: PUT
+        - 'link "/api/v1/submissions/events/{eventId}"':
+          - /url: "#/Submissions/correctSubmissionEvent"
+          - text: /api
+          - text: /v1
+          - text: /submissions
+          - text: /events
+          - text: "/{eventId}"
+        - generic: Correct an accepted fixture event
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "put /api/v1/submissions/events/{eventId}"':
+      - 'button "GET /api/v1/submissions/events/{eventId}/history Retrieve immutable correction history for an accepted event"':
+        - generic: GET
+        - 'link "/api/v1/submissions/events/{eventId}/history"':
+          - /url: "#/Submissions/getSubmissionEventCorrectionHistory"
+          - text: /api
+          - text: /v1
+          - text: /submissions
+          - text: /events
+          - text: "/{eventId}"
+          - text: /history
+        - generic: Retrieve immutable correction history for an accepted event
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "get /api/v1/submissions/events/{eventId}/history"':
+      - button "POST /api/v1/submissions/uploads Upload fixture event data from a JSON or CSV file":
+        - generic: POST
+        - link "/api/v1/submissions/uploads":
+          - /url: "#/Submissions/createSubmissionUpload"
+          - text: /api
+          - text: /v1
+          - text: /submissions
+          - text: /uploads
+        - generic: Upload fixture event data from a JSON or CSV file
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - button "post /api/v1/submissions/uploads":
+      - button "POST /api/v1/submissions Submit fixture event data":
+        - generic: POST
+        - link "/api/v1/submissions":
+          - /url: "#/Submissions/createSubmission"
+          - text: /api
+          - text: /v1
+          - text: /submissions
+        - generic: Submit fixture event data
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - button "post /api/v1/submissions":
+      - heading "Provenance Protected submission, event-revision and derived-statistic provenance. Collapse operation" [level=3]:
+        - link "Provenance":
+          - /url: "#/Provenance"
+        - paragraph: Protected submission, event-revision and derived-statistic provenance.
+        - button "Collapse operation" [expanded]:
+      - button "GET /api/v1/provenance/submissions List protected submission and batch provenance":
+        - generic: GET
+        - link "/api/v1/provenance/submissions":
+          - /url: "#/Provenance/listSubmissionProvenance"
+          - text: /api
+          - text: /v1
+          - text: /provenance
+          - text: /submissions
+        - generic: List protected submission and batch provenance
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - button "get /api/v1/provenance/submissions":
+      - 'button "GET /api/v1/provenance/submissions/{reference} Inspect one direct, file or batch submission provenance record"':
+        - generic: GET
+        - 'link "/api/v1/provenance/submissions/{reference}"':
+          - /url: "#/Provenance/getSubmissionProvenance"
+          - text: /api
+          - text: /v1
+          - text: /provenance
+          - text: /submissions
+          - text: "/{reference}"
+        - generic: Inspect one direct, file or batch submission provenance record
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "get /api/v1/provenance/submissions/{reference}"':
+      - 'button "GET /api/v1/provenance/events/{eventId} Trace an event through its current and superseded revisions"':
+        - generic: GET
+        - 'link "/api/v1/provenance/events/{eventId}"':
+          - /url: "#/Provenance/getEventProvenance"
+          - text: /api
+          - text: /v1
+          - text: /provenance
+          - text: /events
+          - text: "/{eventId}"
+        - generic: Trace an event through its current and superseded revisions
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "get /api/v1/provenance/events/{eventId}"':
+      - 'button "GET /api/v1/provenance/fixtures/{fixtureId}/statistics/{statisticId} Trace a derived statistic to its current contributing event revisions"':
+        - generic: GET
+        - 'link "/api/v1/provenance/fixtures/{fixtureId}/statistics/{statisticId}"':
+          - /url: "#/Provenance/getStatisticProvenance"
+          - text: /api
+          - text: /v1
+          - text: /provenance
+          - text: /fixtures
+          - text: "/{fixtureId}"
+          - text: /statistics
+          - text: "/{statisticId}"
+        - generic: Trace a derived statistic to its current contributing event revisions
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "get /api/v1/provenance/fixtures/{fixtureId}/statistics/{statisticId}"':
+      - 'button "GET /api/v1/provenance/participants/{participantId}/statistics/{statisticId} Trace a published participant aggregate to current source events"':
+        - generic: GET
+        - 'link "/api/v1/provenance/participants/{participantId}/statistics/{statisticId}"':
+          - /url: "#/Provenance/getParticipantAggregateProvenance"
+          - text: /api
+          - text: /v1
+          - text: /provenance
+          - text: /participants
+          - text: "/{participantId}"
+          - text: /statistics
+          - text: "/{statisticId}"
+        - generic: Trace a published participant aggregate to current source events
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "get /api/v1/provenance/participants/{participantId}/statistics/{statisticId}"':
+      - heading "Submitter Access Authenticated submitter-access request operations. Collapse operation" [level=3]:
+        - link "Submitter Access":
+          - /url: "#/Submitter%20Access"
+        - paragraph: Authenticated submitter-access request operations.
+        - button "Collapse operation" [expanded]:
+      - button "POST /api/v1/submitter-access-requests Request submitter access":
+        - generic: POST
+        - link "/api/v1/submitter-access-requests":
+          - /url: "#/Submitter%20Access/requestSubmitterAccess"
+          - text: /api
+          - text: /v1
+          - text: /submitter-access-requests
+        - generic: Request submitter access
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - button "post /api/v1/submitter-access-requests":
+      - button "POST /api/v1/submitter-scope-requests Request an additional competition scope":
+        - generic: POST
+        - link "/api/v1/submitter-scope-requests":
+          - /url: "#/Submitter%20Access/requestAdditionalSubmitterScope"
+          - text: /api
+          - text: /v1
+          - text: /submitter-scope-requests
+        - generic: Request an additional competition scope
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - button "post /api/v1/submitter-scope-requests":
+      - heading "Administration Administrator-only application-account and submitter-scope operations. Collapse operation" [level=3]:
+        - link "Administration":
+          - /url: "#/Administration"
+        - paragraph: Administrator-only application-account and submitter-scope operations.
+        - button "Collapse operation" [expanded]:
+      - button "POST /api/v1/admin/dataset-releases Queue an immutable dataset release":
+        - generic: POST
+        - link "/api/v1/admin/dataset-releases":
+          - /url: "#/Administration/createDatasetRelease"
+          - text: /api
+          - text: /v1
+          - text: /admin
+          - text: /dataset-releases
+        - generic: Queue an immutable dataset release
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - button "post /api/v1/admin/dataset-releases":
+      - 'button "GET /api/v1/admin/dataset-release-jobs/{jobId} Get dataset release generation status"':
+        - generic: GET
+        - 'link "/api/v1/admin/dataset-release-jobs/{jobId}"':
+          - /url: "#/Administration/getDatasetReleaseJob"
+          - text: /api
+          - text: /v1
+          - text: /admin
+          - text: /dataset-release-jobs
+          - text: "/{jobId}"
+        - generic: Get dataset release generation status
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "get /api/v1/admin/dataset-release-jobs/{jobId}"':
+      - button "GET /api/v1/admin/api-consumers List administrator-owned API consumers":
+        - generic: GET
+        - link "/api/v1/admin/api-consumers":
+          - /url: "#/Administration/listApiConsumers"
+          - text: /api
+          - text: /v1
+          - text: /admin
+          - text: /api-consumers
+        - generic: List administrator-owned API consumers
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - button "get /api/v1/admin/api-consumers":
+      - button "POST /api/v1/admin/api-consumers Issue an external consumer API key":
+        - generic: POST
+        - link "/api/v1/admin/api-consumers":
+          - /url: "#/Administration/issueApiConsumer"
+          - text: /api
+          - text: /v1
+          - text: /admin
+          - text: /api-consumers
+        - generic: Issue an external consumer API key
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - button "post /api/v1/admin/api-consumers":
+      - 'button "POST /api/v1/admin/api-consumers/{consumerId}/keys/rotate Rotate an API consumer key"':
+        - generic: POST
+        - 'link "/api/v1/admin/api-consumers/{consumerId}/keys/rotate"':
+          - /url: "#/Administration/rotateApiConsumerKey"
+          - text: /api
+          - text: /v1
+          - text: /admin
+          - text: /api-consumers
+          - text: "/{consumerId}"
+          - text: /keys
+          - text: /rotate
+        - generic: Rotate an API consumer key
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "post /api/v1/admin/api-consumers/{consumerId}/keys/rotate"':
+      - 'button "DELETE /api/v1/admin/api-consumers/{consumerId}/keys/{keyId} Revoke an API consumer key"':
+        - generic: DELETE
+        - 'link "/api/v1/admin/api-consumers/{consumerId}/keys/{keyId}"':
+          - /url: "#/Administration/revokeApiConsumerKey"
+          - text: /api
+          - text: /v1
+          - text: /admin
+          - text: /api-consumers
+          - text: "/{consumerId}"
+          - text: /keys
+          - text: "/{keyId}"
+        - generic: Revoke an API consumer key
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "delete /api/v1/admin/api-consumers/{consumerId}/keys/{keyId}"':
+      - button "GET /api/v1/admin/users List registered users and competition scope choices":
+        - generic: GET
+        - link "/api/v1/admin/users":
+          - /url: "#/Administration/listAdministratorUsers"
+          - text: /api
+          - text: /v1
+          - text: /admin
+          - text: /users
+        - generic: List registered users and competition scope choices
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - button "get /api/v1/admin/users":
+      - 'button "PATCH /api/v1/admin/users/{userId}/role Promote a user to administrator"':
+        - generic: PATCH
+        - 'link "/api/v1/admin/users/{userId}/role"':
+          - /url: "#/Administration/updateAdministratorUserRole"
+          - text: /api
+          - text: /v1
+          - text: /admin
+          - text: /users
+          - text: "/{userId}"
+          - text: /role
+        - generic: Promote a user to administrator
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "patch /api/v1/admin/users/{userId}/role"':
+      - 'button "PATCH /api/v1/admin/users/{userId}/submitter-access Approve, re-scope, or revoke a submitter"':
+        - generic: PATCH
+        - 'link "/api/v1/admin/users/{userId}/submitter-access"':
+          - /url: "#/Administration/updateAdministratorSubmitterAccess"
+          - text: /api
+          - text: /v1
+          - text: /admin
+          - text: /users
+          - text: "/{userId}"
+          - text: /submitter-access
+        - generic: Approve, re-scope, or revoke a submitter
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "patch /api/v1/admin/users/{userId}/submitter-access"':
+      - 'button "POST /api/v1/admin/users/{userId}/submitter-access/rejection Reject a pending submitter-access or additional-scope request"':
+        - generic: POST
+        - 'link "/api/v1/admin/users/{userId}/submitter-access/rejection"':
+          - /url: "#/Administration/rejectAdministratorSubmitterAccessRequest"
+          - text: /api
+          - text: /v1
+          - text: /admin
+          - text: /users
+          - text: "/{userId}"
+          - text: /submitter-access
+          - text: /rejection
+        - generic: Reject a pending submitter-access or additional-scope request
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "post /api/v1/admin/users/{userId}/submitter-access/rejection"':
+      - heading "Consumer API API-key authenticated external consumer reads with per-consumer protections. The complete protected fixture, event, statistic and export surface is documented in docs/api/consumer-keys.md. Collapse operation" [level=3]:
+        - link "Consumer API":
+          - /url: "#/Consumer%20API"
+        - paragraph:
+          - text: API-key authenticated external consumer reads with per-consumer protections. The complete protected fixture, event, statistic and export surface is documented in
+          - code: docs/api/consumer-keys.md
+          - text: .
+        - button "Collapse operation" [expanded]:
+      - button "GET /api/v1/consumer/competitions List competitions with a consumer API key":
+        - generic: GET
+        - link "/api/v1/consumer/competitions":
+          - /url: "#/Consumer%20API/listConsumerCompetitions"
+          - text: /api
+          - text: /v1
+          - text: /consumer
+          - text: /competitions
+        - generic: List competitions with a consumer API key
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - button "get /api/v1/consumer/competitions":
+      - button "GET /api/v1/consumer/fixtures List fixtures with a consumer API key":
+        - generic: GET
+        - link "/api/v1/consumer/fixtures":
+          - /url: "#/Consumer%20API/listConsumerFixtures"
+          - text: /api
+          - text: /v1
+          - text: /consumer
+          - text: /fixtures
+        - generic: List fixtures with a consumer API key
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - button "get /api/v1/consumer/fixtures":
+      - 'button "GET /api/v1/consumer/fixtures/{fixtureId} Get a fixture with a consumer API key"':
+        - generic: GET
+        - 'link "/api/v1/consumer/fixtures/{fixtureId}"':
+          - /url: "#/Consumer%20API/getConsumerFixture"
+          - text: /api
+          - text: /v1
+          - text: /consumer
+          - text: /fixtures
+          - text: "/{fixtureId}"
+        - generic: Get a fixture with a consumer API key
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "get /api/v1/consumer/fixtures/{fixtureId}"':
+      - 'button "GET /api/v1/consumer/fixtures/{fixtureId}/events List accepted fixture events with a consumer API key"':
+        - generic: GET
+        - 'link "/api/v1/consumer/fixtures/{fixtureId}/events"':
+          - /url: "#/Consumer%20API/listConsumerFixtureEvents"
+          - text: /api
+          - text: /v1
+          - text: /consumer
+          - text: /fixtures
+          - text: "/{fixtureId}"
+          - text: /events
+        - generic: List accepted fixture events with a consumer API key
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "get /api/v1/consumer/fixtures/{fixtureId}/events"':
+      - 'button "GET /api/v1/consumer/fixtures/{fixtureId}/events/export.json Export accepted fixture events as JSON with a consumer API key"':
+        - generic: GET
+        - 'link "/api/v1/consumer/fixtures/{fixtureId}/events/export.json"':
+          - /url: "#/Consumer%20API/exportConsumerFixtureEventsJson"
+          - text: /api
+          - text: /v1
+          - text: /consumer
+          - text: /fixtures
+          - text: "/{fixtureId}"
+          - text: /events
+          - text: /export.json
+        - generic: Export accepted fixture events as JSON with a consumer API key
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "get /api/v1/consumer/fixtures/{fixtureId}/events/export.json"':
+      - 'button "GET /api/v1/consumer/fixtures/{fixtureId}/events/export.csv Export accepted fixture events as CSV with a consumer API key"':
+        - generic: GET
+        - 'link "/api/v1/consumer/fixtures/{fixtureId}/events/export.csv"':
+          - /url: "#/Consumer%20API/exportConsumerFixtureEventsCsv"
+          - text: /api
+          - text: /v1
+          - text: /consumer
+          - text: /fixtures
+          - text: "/{fixtureId}"
+          - text: /events
+          - text: /export.csv
+        - generic: Export accepted fixture events as CSV with a consumer API key
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "get /api/v1/consumer/fixtures/{fixtureId}/events/export.csv"':
+      - 'button "GET /api/v1/consumer/fixtures/{fixtureId}/events/{eventId} Get an accepted fixture event with a consumer API key"':
+        - generic: GET
+        - 'link "/api/v1/consumer/fixtures/{fixtureId}/events/{eventId}"':
+          - /url: "#/Consumer%20API/getConsumerFixtureEvent"
+          - text: /api
+          - text: /v1
+          - text: /consumer
+          - text: /fixtures
+          - text: "/{fixtureId}"
+          - text: /events
+          - text: "/{eventId}"
+        - generic: Get an accepted fixture event with a consumer API key
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "get /api/v1/consumer/fixtures/{fixtureId}/events/{eventId}"':
+      - 'button "GET /api/v1/consumer/fixtures/{fixtureId}/statistics Get fixture statistics with a consumer API key"':
+        - generic: GET
+        - 'link "/api/v1/consumer/fixtures/{fixtureId}/statistics"':
+          - /url: "#/Consumer%20API/getConsumerFixtureStatistics"
+          - text: /api
+          - text: /v1
+          - text: /consumer
+          - text: /fixtures
+          - text: "/{fixtureId}"
+          - text: /statistics
+        - generic: Get fixture statistics with a consumer API key
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "get /api/v1/consumer/fixtures/{fixtureId}/statistics"':
+      - 'button "GET /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId} Get one fixture statistic with a consumer API key"':
+        - generic: GET
+        - 'link "/api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}"':
+          - /url: "#/Consumer%20API/getConsumerFixtureStatistic"
+          - text: /api
+          - text: /v1
+          - text: /consumer
+          - text: /fixtures
+          - text: "/{fixtureId}"
+          - text: /statistics
+          - text: "/{statisticId}"
+        - generic: Get one fixture statistic with a consumer API key
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "get /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}"':
+      - 'button "GET /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}/events/export.json Export a fixture statistic trace as JSON with a consumer API key"':
+        - generic: GET
+        - 'link "/api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}/events/export.json"':
+          - /url: "#/Consumer%20API/exportConsumerFixtureStatisticEventsJson"
+          - text: /api
+          - text: /v1
+          - text: /consumer
+          - text: /fixtures
+          - text: "/{fixtureId}"
+          - text: /statistics
+          - text: "/{statisticId}"
+          - text: /events
+          - text: /export.json
+        - generic: Export a fixture statistic trace as JSON with a consumer API key
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "get /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}/events/export.json"':
+      - 'button "GET /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}/events/export.csv Export a fixture statistic trace as CSV with a consumer API key"':
+        - generic: GET
+        - 'link "/api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}/events/export.csv"':
+          - /url: "#/Consumer%20API/exportConsumerFixtureStatisticEventsCsv"
+          - text: /api
+          - text: /v1
+          - text: /consumer
+          - text: /fixtures
+          - text: "/{fixtureId}"
+          - text: /statistics
+          - text: "/{statisticId}"
+          - text: /events
+          - text: /export.csv
+        - generic: Export a fixture statistic trace as CSV with a consumer API key
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "get /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}/events/export.csv"':
+      - 'button "GET /api/v1/consumer/participants/{participantId}/statistics Get participant aggregates with a consumer API key"':
+        - generic: GET
+        - 'link "/api/v1/consumer/participants/{participantId}/statistics"':
+          - /url: "#/Consumer%20API/getConsumerParticipantStatistics"
+          - text: /api
+          - text: /v1
+          - text: /consumer
+          - text: /participants
+          - text: "/{participantId}"
+          - text: /statistics
+        - generic: Get participant aggregates with a consumer API key
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "get /api/v1/consumer/participants/{participantId}/statistics"':
+      - 'button "GET /api/v1/consumer/participants/{participantId}/statistics/{statisticId} Get one participant aggregate with a consumer API key"':
+        - generic: GET
+        - 'link "/api/v1/consumer/participants/{participantId}/statistics/{statisticId}"':
+          - /url: "#/Consumer%20API/getConsumerParticipantStatistic"
+          - text: /api
+          - text: /v1
+          - text: /consumer
+          - text: /participants
+          - text: "/{participantId}"
+          - text: /statistics
+          - text: "/{statisticId}"
+        - generic: Get one participant aggregate with a consumer API key
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "get /api/v1/consumer/participants/{participantId}/statistics/{statisticId}"':
+      - heading "Batches Collapse operation" [level=3]:
+        - link "Batches":
+          - /url: "#/Batches"
+        - button "Collapse operation" [expanded]:
+      - button "GET /api/v1/admin/batches List global batch history for administrators":
+        - generic: GET
+        - link "/api/v1/admin/batches":
+          - /url: "#/Batches/listAdminBatches"
+          - text: /api
+          - text: /v1
+          - text: /admin
+          - text: /batches
+        - generic: List global batch history for administrators
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - button "get /api/v1/admin/batches":
+      - button "GET /api/v1/batches List batches visible to the authenticated submitter or reviewer":
+        - generic: GET
+        - link "/api/v1/batches":
+          - /url: "#/Batches/listBatches"
+          - text: /api
+          - text: /v1
+          - text: /batches
+        - generic: List batches visible to the authenticated submitter or reviewer
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - button "get /api/v1/batches":
+      - button "POST /api/v1/batches Stream a whole-season package into durable private staging":
+        - generic: POST
+        - link "/api/v1/batches":
+          - /url: "#/Batches/createBatchReceipt"
+          - text: /api
+          - text: /v1
+          - text: /batches
+        - generic: Stream a whole-season package into durable private staging
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - button "post /api/v1/batches":
+      - 'button "GET /api/v1/batches/{batchReference} Retrieve asynchronous batch validation status and progress"':
+        - generic: GET
+        - 'link "/api/v1/batches/{batchReference}"':
+          - /url: "#/Batches/getBatchStatus"
+          - text: /api
+          - text: /v1
+          - text: /batches
+          - text: "/{batchReference}"
+        - generic: Retrieve asynchronous batch validation status and progress
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "get /api/v1/batches/{batchReference}"':
+      - 'button "GET /api/v1/batches/{batchReference}/report Retrieve a paginated item-level batch result report"':
+        - generic: GET
+        - 'link "/api/v1/batches/{batchReference}/report"':
+          - /url: "#/Batches/getBatchReport"
+          - text: /api
+          - text: /v1
+          - text: /batches
+          - text: "/{batchReference}"
+          - text: /report
+        - generic: Retrieve a paginated item-level batch result report
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "get /api/v1/batches/{batchReference}/report"':
+      - 'button "GET /api/v1/batches/{batchReference}/report/download Download the complete machine-readable batch report"':
+        - generic: GET
+        - 'link "/api/v1/batches/{batchReference}/report/download"':
+          - /url: "#/Batches/downloadBatchReport"
+          - text: /api
+          - text: /v1
+          - text: /batches
+          - text: "/{batchReference}"
+          - text: /report
+          - text: /download
+        - generic: Download the complete machine-readable batch report
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "get /api/v1/batches/{batchReference}/report/download"':
+      - 'button "POST /api/v1/batches/{batchReference}/review Decide and, on approval, publish a validated staged batch"':
+        - generic: POST
+        - 'link "/api/v1/batches/{batchReference}/review"':
+          - /url: "#/Batches/reviewBatch"
+          - text: /api
+          - text: /v1
+          - text: /batches
+          - text: "/{batchReference}"
+          - text: /review
+        - generic: Decide and, on approval, publish a validated staged batch
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "post /api/v1/batches/{batchReference}/review"':
+      - 'button "POST /api/v1/batches/{batchReference}/conflicts/resolve Resolve one published-delivery conflict"':
+        - generic: POST
+        - 'link "/api/v1/batches/{batchReference}/conflicts/resolve"':
+          - /url: "#/Batches/resolveBatchPublishedConflict"
+          - text: /api
+          - text: /v1
+          - text: /batches
+          - text: "/{batchReference}"
+          - text: /conflicts
+          - text: /resolve
+        - generic: Resolve one published-delivery conflict
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "post /api/v1/batches/{batchReference}/conflicts/resolve"':
+      - 'button "POST /api/v1/batches/{batchReference}/reference-mappings Map an ambiguous staged reference to a labeled candidate"':
+        - generic: POST
+        - 'link "/api/v1/batches/{batchReference}/reference-mappings"':
+          - /url: "#/Batches/mapBatchReference"
+          - text: /api
+          - text: /v1
+          - text: /batches
+          - text: "/{batchReference}"
+          - text: /reference-mappings
+        - generic: Map an ambiguous staged reference to a labeled candidate
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "post /api/v1/batches/{batchReference}/reference-mappings"':
+      - 'button "POST /api/v1/batches/{batchReference}/participants Settle outstanding participant onboarding tasks for a batch"':
+        - generic: POST
+        - 'link "/api/v1/batches/{batchReference}/participants"':
+          - /url: "#/Batches/createBatchParticipantOnboardingDecisions"
+          - text: /api
+          - text: /v1
+          - text: /batches
+          - text: "/{batchReference}"
+          - text: /participants
+        - generic: Settle outstanding participant onboarding tasks for a batch
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "post /api/v1/batches/{batchReference}/participants"':
+      - 'button "POST /api/v1/batches/{batchReference}/canonical-fixtures Create a canonical fixture from a staged fixture proposal"':
+        - generic: POST
+        - 'link "/api/v1/batches/{batchReference}/canonical-fixtures"':
+          - /url: "#/Batches/createBatchCanonicalFixture"
+          - text: /api
+          - text: /v1
+          - text: /batches
+          - text: "/{batchReference}"
+          - text: /canonical-fixtures
+        - generic: Create a canonical fixture from a staged fixture proposal
+      - generic "Copy path to clipboard":
+        - button "Copy path to clipboard"
+      - button "authorization button unlocked":
+      - 'button "post /api/v1/batches/{batchReference}/canonical-fixtures"':
+- contentinfo:
+  - img "Stat'sTheGame"
+  - navigation "API resources":
+    - link "API Explorer":
+      - /url: /api
+    - link "API Documentation":
+      - /url: https://sports-analytics-tool.pages.dev/api/overview/
+  - paragraph: The game, measured ball by ball.
