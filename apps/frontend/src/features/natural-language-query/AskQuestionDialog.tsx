@@ -31,6 +31,11 @@ interface Answer {
   question: string;
   evaluation: QueryDefinitionEvaluation;
   suggestions: QuerySuggestion[];
+  /**
+   * Which reference the translation filled in, when the reader named none. Absent
+   * on a suggestion, which the reader chose with its scope already shown.
+   */
+  assumptions?: NaturalLanguageQueryResult['assumptions'];
 }
 
 interface AskState {
@@ -44,6 +49,7 @@ function answerFrom(result: NaturalLanguageQueryResult): Answer {
     question: result.question,
     evaluation: result.evaluation,
     suggestions: result.suggestions ?? [],
+    ...(result.assumptions ? { assumptions: result.assumptions } : {}),
   };
 }
 
@@ -114,7 +120,13 @@ function FailureMessage({ failure }: { failure: AskFailure }) {
   );
 }
 
-function Outcome({ evaluation }: { evaluation: QueryDefinitionEvaluation }) {
+function Outcome({
+  evaluation,
+  assumptions,
+}: {
+  evaluation: QueryDefinitionEvaluation;
+  assumptions?: NaturalLanguageQueryResult['assumptions'];
+}) {
   if (evaluation.outcome === 'unsupported') {
     return (
       <div className="ask-question__message">
@@ -135,11 +147,26 @@ function Outcome({ evaluation }: { evaluation: QueryDefinitionEvaluation }) {
   }
 
   if (evaluation.outcome === 'entity_ambiguous') {
+    // One candidate is a real outcome since issue #868: a name resolved by
+    // surname alone, whose initial does not agree with what the reader wrote, is
+    // offered for confirmation rather than answered. "More than one entry
+    // matches" would be untrue there, so the wording follows the count.
+    const single = evaluation.candidates.length === 1;
+
     return (
       <div className="ask-question__message">
         <p>
-          More than one entry matches <strong>{evaluation.nameHint}</strong>. Choose the one you
-          meant:
+          {single ? (
+            <>
+              Nothing published here is spelled <strong>{evaluation.nameHint}</strong>. Did you
+              mean:
+            </>
+          ) : (
+            <>
+              More than one entry matches <strong>{evaluation.nameHint}</strong>. Choose the one you
+              meant:
+            </>
+          )}
         </p>
         <ul className="ask-question__candidates">
           {evaluation.candidates.map((candidate) => (
@@ -160,7 +187,7 @@ function Outcome({ evaluation }: { evaluation: QueryDefinitionEvaluation }) {
     );
   }
 
-  return <AnsweredResult evaluation={evaluation} />;
+  return <AnsweredResult evaluation={evaluation} assumptions={assumptions} />;
 }
 
 /**
@@ -343,7 +370,10 @@ export function AskQuestionDialog({ onClose }: { onClose: () => void }) {
               <p className="ask-question__interpretation">
                 Read as: <strong>{describeDefinition(state.answer.evaluation.definition)}</strong>
               </p>
-              <Outcome evaluation={state.answer.evaluation} />
+              <Outcome
+                evaluation={state.answer.evaluation}
+                assumptions={state.answer.assumptions}
+              />
               <Suggestions suggestions={state.answer.suggestions} onChoose={handleSuggestion} />
             </>
           ) : null}

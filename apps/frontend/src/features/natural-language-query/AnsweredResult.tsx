@@ -68,16 +68,55 @@ function PublishedLinks({ evaluation }: { evaluation: NaturalLanguageQueryResult
   );
 }
 
+/**
+ * Says so when the answer is scoped to a competition the reader did not name.
+ *
+ * Without this, a question like "Who has the most sixes?" would come back as an
+ * Indian Premier League ranking with nothing to show that the competition was
+ * filled in by configuration rather than read from the question — an answer to a
+ * narrower question than the one asked. The name comes from the definition, which
+ * is what was actually queried; `assumptions` only says which reference the
+ * reader left out.
+ */
+function AssumptionNote({
+  assumptions,
+  definition,
+}: {
+  assumptions: NaturalLanguageQueryResult['assumptions'];
+  definition: NaturalLanguageQueryResult['evaluation']['definition'];
+}) {
+  if (!assumptions?.includes('competition') || definition.kind === 'unsupported') {
+    return null;
+  }
+
+  const name =
+    definition.scope === 'season'
+      ? definition.season?.competitionName
+      : definition.competition?.name;
+
+  if (name === undefined) {
+    return null;
+  }
+
+  return (
+    <p className="statistics-note">You did not say which competition, so this assumes {name}.</p>
+  );
+}
+
 export function AnsweredResult({
   evaluation,
+  assumptions,
 }: {
   evaluation: NaturalLanguageQueryResult['evaluation'];
+  /** Absent when the reader named everything themselves. */
+  assumptions?: NaturalLanguageQueryResult['assumptions'];
 }) {
   if (evaluation.outcome !== 'answered') {
     return null;
   }
 
   const { definition } = evaluation;
+  const assumption = <AssumptionNote assumptions={assumptions} definition={definition} />;
 
   if (definition.kind === 'leaderboard') {
     const leaderboard = evaluation.result as Extract<
@@ -95,6 +134,7 @@ export function AnsweredResult({
         {leaderboard.qualification ? (
           <p className="statistics-note">{leaderboard.qualification.rationale}</p>
         ) : null}
+        {assumption}
         <PublishedLinks evaluation={evaluation} />
       </div>
     );
@@ -107,6 +147,7 @@ export function AnsweredResult({
           aggregates={evaluation.result as ParticipantAggregates}
           statisticIds={evaluation.sources[0]?.statisticIds ?? []}
         />
+        {assumption}
         <PublishedLinks evaluation={evaluation} />
       </div>
     );
@@ -129,6 +170,7 @@ export function AnsweredResult({
           statisticIds: evaluation.sources[1]?.statisticIds ?? [],
         }}
       />
+      {assumption}
       <PublishedLinks evaluation={evaluation} />
     </div>
   );

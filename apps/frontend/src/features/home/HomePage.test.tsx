@@ -71,7 +71,25 @@ describe('homepage', () => {
     expect(screen.getByTestId('hero-scene-fallback')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Cricket match in progress' })).toHaveAttribute(
       'src',
-      '/images/cricket-match-john-oswald-unsplash.webp',
+      '/images/cricket-match-john-oswald-unsplash.jpg',
+    );
+    expect(screen.getByRole('img', { name: 'Cricket match in progress' })).toHaveAttribute(
+      'fetchpriority',
+      'high',
+    );
+    expect(
+      screen
+        .getByRole('img', { name: 'Cricket match in progress' })
+        .closest('picture')
+        ?.querySelector('source'),
+    ).toHaveAttribute('type', 'image/webp');
+    expect(screen.getByRole('img', { name: 'Cricket match in progress' })).toHaveAttribute(
+      'loading',
+      'eager',
+    );
+    expect(screen.getByRole('img', { name: 'Cricket match in progress' })).toHaveAttribute(
+      'decoding',
+      'async',
     );
     expect(screen.getByRole('link', { name: 'Photo: John Oswald / Unsplash' })).toHaveAttribute(
       'href',

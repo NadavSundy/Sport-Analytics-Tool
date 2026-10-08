@@ -107,7 +107,13 @@ export async function requestPublicApi<ResponseBody>(
   if (!response.ok) {
     const errorResponse = apiErrorResponseSchema.safeParse(body);
     const message = errorResponse.success ? errorResponse.data.error.message : undefined;
-    throw new ApiResponseError(response.status, message);
+    // The code and `Retry-After` let a caller tell the anonymous read limit
+    // (issue #821) apart from other failures and say how long to wait.
+    const retryAfter = retryAfterSeconds(response);
+    throw new ApiResponseError(response.status, message, {
+      ...(errorResponse.success ? { code: errorResponse.data.error.code } : {}),
+      ...(retryAfter !== undefined ? { retryAfterSeconds: retryAfter } : {}),
+    });
   }
 
   try {

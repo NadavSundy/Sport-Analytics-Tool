@@ -30,10 +30,15 @@ test(
     await expect(
       page.getByRole('heading', { level: 1, name: 'The game, measured ball by ball.' }),
     ).toBeVisible();
-    await expect(page.getByRole('img', { name: 'Cricket match in progress' })).toHaveAttribute(
-      'src',
-      '/images/cricket-match-john-oswald-unsplash.webp',
-    );
+    const heroImage = page.getByRole('img', { name: 'Cricket match in progress' });
+    await expect
+      .poll(() =>
+        heroImage.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0),
+      )
+      .toBe(true);
+    await expect
+      .poll(() => heroImage.evaluate((image: HTMLImageElement) => image.currentSrc))
+      .toMatch(/\/images\/cricket-match-john-oswald-(640|1280)\.webp$/);
     await expect(page.getByRole('link', { name: 'Photo: John Oswald / Unsplash' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Browse fixtures' }).first()).toHaveAttribute(
       'href',

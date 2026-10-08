@@ -377,10 +377,10 @@ function AccountOverview({ identityEmail }: { identityEmail: string | undefined 
               <dt>Submission access</dt>
               <dd>{profile.approvalState.replaceAll('_', ' ')}</dd>
             </div>
-            {profile.competitionIds.length > 0 ? (
+            {profile.role === 'admin' || profile.competitionIds.length > 0 ? (
               <div>
                 <dt>Competition scopes</dt>
-                <dd>{profile.competitionIds.length}</dd>
+                <dd>{profile.role === 'admin' ? 'All' : profile.competitionIds.length}</dd>
                 {profile.role === 'submitter' && profile.approvalState === 'approved' ? (
                   <button
                     ref={scopeTriggerRef}

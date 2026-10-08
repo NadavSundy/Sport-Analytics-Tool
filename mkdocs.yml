@@ -147,6 +147,7 @@ nav:
               - Brand Guidelines: design/brand-guidelines.md
               - Frontend Component Baseline: design/frontend-component-baseline.md
               - Information Architecture & Wireframes: design/information-architecture-and-wireframes.md
+              - Final Frontend UX Audit: design/final-frontend-ux-audit.md
 
           - Deployment & Operations History:
               - Azure Application Hosting: deployment/azure.md

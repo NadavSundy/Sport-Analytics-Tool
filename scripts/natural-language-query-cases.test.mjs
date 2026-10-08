@@ -183,8 +183,8 @@ test('the rendered record names the model, the date and every case', () => {
   assert.match(rendered, /\| Date \| 2026-10-01 \|/);
   assert.match(rendered, /\| Passed \| 1 \|/);
   assert.match(rendered, /\| Failed \| 1 \|/);
-  assert.match(rendered, /\| leaderboard-runs-season \| pass \|/);
-  assert.match(rendered, /\| unsupported-venue \| FAIL \|/);
+  assert.match(rendered, /\| leaderboard-runs-season \| 0 \| pass \|/);
+  assert.match(rendered, /\| unsupported-venue \| 0 \| FAIL \|/);
   // A detail containing a pipe would otherwise break the table it sits in.
   assert.match(rendered, /expected a \\\| b; got c/);
 });

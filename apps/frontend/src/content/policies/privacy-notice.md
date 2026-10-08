@@ -25,7 +25,8 @@ This Privacy Notice applies to personal information processed through:
 - submitter and administrator workflows;
 - Stat’sTheGame API-consumer accounts and API credentials where linked to an identifiable person;
 - communications sent to statsthegame@gmail.com;
-- the text of natural-language statistics questions asked through the site; and
+- the text of natural-language statistics questions asked through the site, including earlier
+  questions in the same conversation when you ask a follow-up; and
 - supporting infrastructure used to operate the service.
 
 Public cricket statistics, fixtures, events, datasets and other information about professional cricket are not necessarily personal information about a user of Stat’sTheGame. This notice focuses on personal information relating to people who use, administer or communicate with the service.
@@ -167,11 +168,16 @@ To operate Stat’sTheGame, the project uses third-party technology providers. P
 - **Cloudflare**, for frontend hosting and delivery.
 
 When you ask a statistics question in your own words, the text of that question is sent to Anthropic
-so that it can be turned into a structured query over the statistics published here. Only the
-question text is sent: no account information, no cricket data and no identifier for you accompanies
-it. The question is answered from statistics this project already publishes, and the answer is
-produced by Stat’sTheGame rather than by Anthropic. Asking a question is optional, and every
-statistic a question can reach is also available by browsing the site.
+so that it can be turned into a structured query over the statistics published here. If you ask a
+follow-up question, such as “what about his strike rate?”, the earlier questions in that
+conversation are sent with it, together with the structured reading of each, so that the follow-up
+can be understood. At most five earlier questions are sent.
+
+Only that question text is sent: no account information, no cricket data and no identifier for you
+accompanies it. The question is answered from statistics this project already publishes, and the
+answer is produced by Stat’sTheGame rather than by Anthropic. Asking a question is optional, and
+every statistic a question can reach is also available by browsing the site. Question text is not
+written to our logs.
 
 These providers process information according to their own service terms, privacy commitments and the configuration selected by the project team.
 
@@ -285,5 +291,7 @@ For privacy questions, access or correction requests, account-deletion assistanc
 The preceding document was planned and generated with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The saved fixture-context browser-storage disclosure was updated with the assistance of Codex[GPT-5].
 The pinned-shortcuts browser-storage disclosure was updated with the assistance of Codex[GPT-5].
+The issue #868 follow-up question disclosure was added with the assistance of
+Claude-Code[Claude Opus 5 (1M context)].
 The issue #816 natural-language question disclosure was added with the assistance of
 Claude-Code[Claude Opus 5 (1M context)].

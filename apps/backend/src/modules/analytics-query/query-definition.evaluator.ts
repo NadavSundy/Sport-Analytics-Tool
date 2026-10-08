@@ -48,6 +48,17 @@ const SEARCH_LIMIT = 25;
 /** How many candidates an ambiguous outcome offers. */
 const CANDIDATE_LIMIT = 5;
 
+/**
+ * The shortest surname worth searching on (issue #868).
+ *
+ * Below this the search stops being a surname search and becomes a substring
+ * that matches most of the corpus: `"V K"` would fall back to `%K%`, match
+ * thousands of people, and report five arbitrary candidates. Three characters
+ * keeps "Kock", "Kohli" and "Dhoni" and rejects "K" and "de", and an honest
+ * `entity_not_found` is better than five names picked at random.
+ */
+const MINIMUM_SURNAME_LENGTH = 3;
+
 export interface QueryDefinitionNameResolver {
   findParticipantsByName(
     name: string,
@@ -127,25 +138,122 @@ function unnarrowable<T>(
   return { status: 'ambiguous', candidates: records.slice(0, CANDIDATE_LIMIT).map(candidateOf) };
 }
 
+/**
+ * The surname to fall back to, or null when there is nothing worth searching.
+ *
+ * Returns null for a single-token hint, because the first search already *was*
+ * that token and repeating it would be a second round trip for the same rows,
+ * and for a surname below the length floor.
+ *
+ * The last whitespace-separated token is the surname, which is also what makes
+ * the lowercase particles work without special-casing them: the search is a
+ * substring, so `"Quinton de Kock"` falls back to `"Kock"` and still matches
+ * `"Q de Kock"`.
+ */
+function surnameOf(hint: string): string | null {
+  const tokens = hint.trim().split(/\s+/);
+  if (tokens.length < 2) {
+    return null;
+  }
+
+  const surname = tokens[tokens.length - 1]!;
+  return surname.length >= MINIMUM_SURNAME_LENGTH ? surname : null;
+}
+
+/**
+ * Whether a display name could be the person the hint named.
+ *
+ * A surname search is a weaker claim than a name search, and this is what stops
+ * it becoming a guess. `"Virat Kohli"` falling back to `"Kohli"` and finding one
+ * `"V Kohli"` is almost certainly right, because the initial agrees.
+ * `"Suresh Kohli"` finding the same row is almost certainly wrong, and without
+ * this check it would be returned as the answer with nothing to show it was a
+ * substitution.
+ *
+ * The comparison is the first letter of each and nothing more, because the hint
+ * is a full name and the match is a scorecard name: the given name's initial is
+ * the only part reliably comparable between the two. `"Mahendra Dhoni"` against
+ * `"MS Dhoni"` agrees; `"Sachin Dhoni"` does not, because `S` is a middle
+ * initial and matching it would resolve a different person's question.
+ *
+ * It is deliberately the leading initial rather than any of them, so both kinds
+ * of mistake land on the safe outcome. A scorecard that orders initials
+ * differently from the spoken name — `"Dinesh Karthik"` against `"KD Karthik"` —
+ * disagrees here, and that is accepted: a disagreement is not treated as proof
+ * of a wrong match, because the caller reports it as a single candidate to
+ * confirm rather than as a miss. One extra confirmation is the right price for
+ * never answering as somebody else.
+ */
+function initialAgrees(hint: string, displayName: string): boolean {
+  const given = hint.trim().charAt(0).toLowerCase();
+
+  return given !== '' && displayName.trim().charAt(0).toLowerCase() === given;
+}
+
 export function createQueryDefinitionEvaluator(
   dependencies: QueryDefinitionEvaluatorDependencies,
 ): QueryDefinitionEvaluator {
   const names = dependencies.names ?? databaseNameResolver;
 
+  const participantCandidateOf = (record: { participantId: string; displayName: string }) => ({
+    id: record.participantId,
+    displayName: record.displayName,
+  });
+
+  /** One search for a participant name, narrowed the usual way. */
+  async function searchParticipants(
+    searched: string,
+    hint: string,
+  ): Promise<Resolution<{ participantId: string; displayName: string }>> {
+    const page = await names.findParticipantsByName(searched, SEARCH_LIMIT);
+
+    if (page.totalRecords > SEARCH_LIMIT) {
+      return unnarrowable(page.records, participantCandidateOf);
+    }
+
+    return narrow(page.records, hint, (record) => record.displayName, participantCandidateOf);
+  }
+
+  /**
+   * Resolves a player name, falling back to the surname when the name itself
+   * finds nothing (issue #868).
+   *
+   * The prompt asks for scorecard names, so the first search usually succeeds.
+   * The fallback is for when it does not: `"Virat Kohli"` searched whole matches
+   * nothing, because the scorecard says `"V Kohli"`.
+   *
+   * It is the same parameterised read with a different bound value — no new SQL,
+   * and `SEARCH_LIMIT` and `CANDIDATE_LIMIT` still govern — and it only ever runs
+   * on the path that would otherwise have returned `entity_not_found`, so it
+   * costs one extra round trip and only on a miss.
+   *
+   * A surname search that lands on exactly one person whose initial disagrees
+   * with the hint is reported as a single candidate rather than resolved. That is
+   * the whole point of the fallback being a fallback: it is allowed to suggest,
+   * never to decide, so the reader is asked "did you mean this one" instead of
+   * being handed figures for somebody else.
+   */
   async function resolveParticipant(
     hint: string,
   ): Promise<Resolution<{ participantId: string; displayName: string }>> {
-    const page = await names.findParticipantsByName(hint, SEARCH_LIMIT);
-    const candidateOf = (record: { participantId: string; displayName: string }) => ({
-      id: record.participantId,
-      displayName: record.displayName,
-    });
-
-    if (page.totalRecords > SEARCH_LIMIT) {
-      return unnarrowable(page.records, candidateOf);
+    const direct = await searchParticipants(hint, hint);
+    if (direct.status !== 'not_found') {
+      return direct;
     }
 
-    return narrow(page.records, hint, (record) => record.displayName, candidateOf);
+    const surname = surnameOf(hint);
+    if (surname === null) {
+      return direct;
+    }
+
+    const fallback = await searchParticipants(surname, surname);
+    if (fallback.status !== 'resolved') {
+      return fallback;
+    }
+
+    return initialAgrees(hint, fallback.value.displayName)
+      ? fallback
+      : { status: 'ambiguous', candidates: [participantCandidateOf(fallback.value)] };
   }
 
   async function resolveCompetition(

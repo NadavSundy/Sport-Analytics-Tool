@@ -2,7 +2,6 @@ import { lazy, Suspense, type ComponentType } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { PublicShell } from './components/PublicShell';
 import { HomePage } from './features/home/HomePage';
-import { ApiExplorerLoadingIndicator } from './features/api-explorer/ApiExplorerLoadingIndicator';
 import { ApiExplorerRouteFrame } from './features/api-explorer/ApiExplorerRouteFrame';
 import {
   AccessibilityStatementPage,
@@ -95,7 +94,6 @@ export function PublicApp() {
                   <Suspense
                     fallback={
                       <div className="api-explorer-route-loading" role="status">
-                        <ApiExplorerLoadingIndicator label="Loading API Explorer" />
                         Loading API Explorer…
                       </div>
                     }
