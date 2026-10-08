@@ -38,8 +38,10 @@ Use `execution-record-template.md` for new lane records.
 - `issue-874-api-integration.md`
 - `issue-875-database-worker.md`
 - `issue-876-non-functional.md`
-- `issue-877-automated-coverage-ci.md`
+- `issue-877-automated-quality-audit.md`
 
 ## AI Declaration
 
 The preceding document was planned and generated with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The Issue #887 final automated-audit filename correction was completed with the assistance of
+Codex[GPT-5].
