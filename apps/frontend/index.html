@@ -7,6 +7,22 @@
     <link rel="icon" href="/brand/statsthegame-favicon.svg" type="image/svg+xml" />
     <link rel="alternate icon" href="/favicon.ico" />
     <title>Stat'sTheGame</title>
+    <!-- The homepage hero is the mobile LCP image. Discover it before React starts,
+         without fetching it on other routes that share this SPA document. -->
+    <script>
+      if (window.location.pathname === '/') {
+        const heroPreload = document.createElement('link');
+        heroPreload.rel = 'preload';
+        heroPreload.as = 'image';
+        heroPreload.href = '/images/cricket-match-john-oswald-1280.webp';
+        heroPreload.type = 'image/webp';
+        heroPreload.imageSrcset =
+          '/images/cricket-match-john-oswald-640.webp 640w, /images/cricket-match-john-oswald-1280.webp 1280w';
+        heroPreload.imageSizes = '(max-width: 639px) 100vw, (max-width: 1023px) 80vw, 50vw';
+        heroPreload.fetchPriority = 'high';
+        document.head.appendChild(heroPreload);
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
