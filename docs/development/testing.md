@@ -155,8 +155,9 @@ runner has a warm cache; local `npm run test:e2e` still builds automatically whe
 provided.
 
 Coverage does not currently enforce a repository-wide threshold and duplicates already-executed unit
-suites. It therefore runs only for deliberate manual full validation rather than duplicating work on
-every Pull Request or repeating the suite after merge.
+suites. It runs as a late, non-blocking evidence lane only when the change planner selects it: for
+covered production or coverage-infrastructure changes, a deliberate `workflow_dispatch` full
+validation, and every push to `main`. It is not repeated for unrelated Pull Requests.
 
 The detailed routing matrix, job graph, branch-protection contract, runner policy, failure semantics
 and local parity commands are documented in [CI/CD and quality gates](ci-cd.md).
@@ -824,3 +825,4 @@ The issue #775 administrator API-consumer coverage was documented with the assis
 Codex[GPT-5.6 Sol].
 The issue #776 administrator consumer-usage coverage was documented with the assistance of
 Codex[GPT-5.6 Sol].
+The Issue #887 coverage-lane routing correction was completed with the assistance of Codex[GPT-5].
