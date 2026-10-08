@@ -92,4 +92,11 @@
 <text x="450" y="794.0" font-size="11" font-weight="bold" font-style="normal" fill="#627078" text-anchor="start">Empty: “No published fixtures match the current filters.”</text>
 <rect x="852" y="760" width="404" height="60" rx="4" fill="#FBE3E5" stroke="#D64251" stroke-width="1.5"/>
 <text x="864" y="794.0" font-size="11" font-weight="bold" font-style="normal" fill="#D64251" text-anchor="start">Error: “Fixtures could not be loaded. Retry.” + Retry button</text>
+
+  <!-- Issue #894: historical label added when archived; original drawing above is unchanged (see README). -->
+  <title>HISTORICAL / SUPERSEDED issue #56 wireframe (fixtures-desktop) - not the final product design</title>
+  <g pointer-events="none" transform="rotate(-28 640 450)" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="700">
+    <text x="640" y="450" font-size="64" fill="#B42318" fill-opacity="0.22">HISTORICAL · SUPERSEDED</text>
+    <text x="640" y="498" font-size="22" fill="#B42318" fill-opacity="0.35">Sprint 1 wireframe (#56) · archived by #894 · not the final design</text>
+  </g>
 </svg>
