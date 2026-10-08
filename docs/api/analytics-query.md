@@ -502,6 +502,16 @@ hash is not logged either, because nothing in a log needs it.
 These are current, accepted limitations rather than defects awaiting a fix. Each is a consequence of
 a decision recorded above or in ADR-017.
 
+Accepted does not mean closed. Several of them are being followed up as entries on
+[issue #924](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/924){ target="_blank" rel="noopener" },
+"Natural-language query follow-up work": the one-question-at-a-time widget (the floating chat
+assistant the 6 October demonstration asked for), a refusal that carries nothing to ask instead, a
+pronoun follow-up after a leaderboard, the refusal reason label on a delimiter-escape attempt, and
+the prompt size behind the per-request cost and the cold-start latency. The rest — a season never
+being assumed, translation not being deterministic, identical-looking candidates and a leaderboard
+carrying no `statisticIds` — are consequences of the design or of the published data and are not
+expected to change.
+
 **A follow-up resolves only against what an earlier _question_ named.** The model never sees an
 answer. Only the earlier questions and the definitions they were read as are sent, because no
 database content and no evaluation result reaches the provider — that is the privacy property the

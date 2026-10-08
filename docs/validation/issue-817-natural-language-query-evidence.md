@@ -125,8 +125,9 @@ it is why a client must render a refusal that carries nothing to ask instead.
 The delimiter-escape injection case has failed in all five runs. The attempt is **refused in every
 run** — nothing is executed, no prompt content and no data is disclosed — but the refusal carries the
 reason `ambiguous` instead of `outside_cricket_statistics` or `other`. It is a reporting inaccuracy in
-a refusal rather than a security finding, and it is held as a backlog item rather than fixed under
-#868 or #817.
+a refusal rather than a security finding, and it is tracked as the injection reason-label entry on
+[issue #924](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/924){ target="_blank" rel="noopener" }
+rather than fixed under #868 or #817.
 
 ## Automated evidence beside the evaluation
 
@@ -149,9 +150,12 @@ ordinary suites, which do not call the provider:
 Four pieces of work were identified while building this feature and deliberately left out of it.
 They are recorded here so the reason survives independently of whoever remembers the conversation.
 
-> **Issue numbers pending.** Each item below must carry its Gitea issue number. They are recorded
-> with reasons first because the reason is the part that gets lost; the numbers are to be filled in
-> once the issues are filed.
+> **All of this is tracked by [issue #924](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/924){ target="\_blank" rel="noopener" },
+> "Natural-language query follow-up work"**, which holds the feature's remaining work as a single
+> checklist rather than as scattered issues. One issue keeps the items that depend on each other
+> together: the floating chat assistant the 6 October demonstration asked for needs follow-up
+> resolution after a leaderboard and the empty-suggestions fallback to be useful, and those are
+> separate entries on the same list.
 
 ### Rate limiting for the free definition-evaluation path
 
