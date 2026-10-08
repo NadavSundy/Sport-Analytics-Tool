@@ -77,6 +77,12 @@ describe('homepage', () => {
       'fetchpriority',
       'high',
     );
+    expect(
+      screen
+        .getByRole('img', { name: 'Cricket match in progress' })
+        .closest('picture')
+        ?.querySelector('source'),
+    ).toHaveAttribute('type', 'image/webp');
     expect(screen.getByRole('img', { name: 'Cricket match in progress' })).toHaveAttribute(
       'loading',
       'eager',

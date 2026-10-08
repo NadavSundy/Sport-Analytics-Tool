@@ -111,14 +111,23 @@ export function HomeHero() {
   return (
     <section className="home-hero" aria-labelledby="home-title">
       <div className="home-hero__crease" aria-hidden="true" />
-      <img
-        className="home-hero__lead-image"
-        src="/images/cricket-match-john-oswald-unsplash.jpg"
-        alt="Cricket match in progress"
-        fetchPriority="high"
-        loading="eager"
-        decoding="async"
-      />
+      <picture>
+        <source
+          type="image/webp"
+          srcSet="/images/cricket-match-john-oswald-640.webp 640w, /images/cricket-match-john-oswald-1280.webp 1280w"
+          sizes="(max-width: 639px) 100vw, (max-width: 1023px) 80vw, 50vw"
+        />
+        <img
+          className="home-hero__lead-image"
+          src="/images/cricket-match-john-oswald-unsplash.jpg"
+          alt="Cricket match in progress"
+          width={1800}
+          height={1140}
+          fetchPriority="high"
+          loading="eager"
+          decoding="async"
+        />
+      </picture>
       <div className="content-boundary home-hero__layout">
         <div className="home-hero__content">
           <p className="eyebrow">T20 cricket analytics</p>
