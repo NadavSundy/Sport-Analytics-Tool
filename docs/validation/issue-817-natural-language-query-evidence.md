@@ -9,7 +9,7 @@ provider decision in
 ## Demonstration feedback, 6 October 2026
 
 The feature was demonstrated on 6 October 2026, after issues #815, #816 and #851 had delivered the
-endpoint, the home-page widget and the suggestions. Two observations were recorded:
+endpoint, the home-page widget and the suggestions. Three observations were recorded:
 
 - **Answers were hard to get with casual phrasing.** A question had to be worded close to the shape
   of a published metric to be answered. Ordinary wording for the same figure — "who smashes the most
@@ -17,9 +17,14 @@ endpoint, the home-page widget and the suggestions. Two observations were record
 - **Follow-up questions were not understood.** Having asked about a player, asking a second question
   about the same player did not work: each question was translated with no knowledge of the one
   before it.
+- **The assistant should be reachable from every page.** Testers asked for a floating chat bubble
+  fixed to the bottom-right corner of every page, replacing the home-page widget and supporting
+  follow-ups within the conversation it holds. This one is **not yet built**: it is the floating
+  chat assistant entry on
+  [issue #924](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/924){ target="_blank" rel="noopener" }.
 
-**Issue #868 was the response**, and it is what the final behaviour on this page describes. It
-added:
+**Issue #868 was the response to the first two**, and it is what the final behaviour on this page
+describes. It added:
 
 - a casual-wording map generated from the metric enum itself, so wording for a published measure
   reaches that measure while a superlative naming no published measure stays a refusal with
@@ -31,7 +36,7 @@ added:
 - the configured default competition, reported in `assumptions` so an assumed answer is never shown
   as an exact one.
 
-The three #868 evaluation runs below are the verification of that response. The meeting record, with the disposition of each feedback
+The three #868 evaluation runs below are the verification of that response, and item three remains outstanding. The meeting record, with the disposition of each feedback
 item, is retained at
 [`evidence/stakeholder-meetings/2026-10-06-natural-language-query-demonstration.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/stakeholder-meetings/2026-10-06-natural-language-query-demonstration.md){ target="_blank" rel="noopener" }.
 The feedback was

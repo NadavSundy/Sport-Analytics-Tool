@@ -54,7 +54,7 @@ These are deliberately separate from the formal participant-based user testing b
 demonstration produces behavioural feedback rather than scored task attempts, so it is not counted
 as a task attempt under ADR-013.
 
-- 6 October 2026 — natural-language query feature - [Source record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/stakeholder-meetings/2026-10-06-natural-language-query-demonstration.md){ target="_blank" rel="noopener" } — two items, both converted into issue #868 and verified by three evaluation runs; summarised in [Natural-Language Query Evidence](../validation/issue-817-natural-language-query-evidence.md).
+- 6 October 2026 — natural-language query feature - [Source record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/stakeholder-meetings/2026-10-06-natural-language-query-demonstration.md){ target="_blank" rel="noopener" } — three items: two converted into issue #868 and verified by three evaluation runs, and a floating chat assistant tracked on issue #924; summarised in [Natural-Language Query Evidence](../validation/issue-817-natural-language-query-evidence.md).
 
 ## Formal user testing
 
