@@ -97,12 +97,21 @@ Examples of work that requires an issue include:
 
 Very small corrections, such as correcting a spelling error, may be included in an existing relevant issue.
 
-Each significant change will follow the traceability chain below:
+Each significant change will remain traceable from its Gitea issue through the branches,
+commits and Pull Requests used to implement it.
 
-```text
+A small issue will normally follow:
+
 Gitea issue → branch → commits → Pull Request → merge
-```
 
+A larger issue may be implemented through multiple reviewable Pull Requests:
+
+Gitea issue
+├── branch → commits → Pull Request → merge
+└── branch → commits → Pull Request → merge
+
+In that case, each Pull Request must reference the same parent issue, and the issue remains open
+until all acceptance criteria have been satisfied.
 For example, work related to issue `#12` would be recorded as follows:
 
 ```text
@@ -142,7 +151,9 @@ Where two issues cannot reasonably be separated, both issue numbers must be iden
 
 Branches must be short-lived. A normal branch should be completed within five working days. A branch may not remain open beyond the sprint in which it was created unless the delay and reason are recorded in the related issue.
 
-If a branch becomes too large to review effectively, the work must be divided into smaller issues and branches.
+If a branch becomes too large to review effectively, the work should be divided into smaller
+reviewable branches and Pull Requests. Where those parts represent independently trackable work,
+separate child or follow-up issues may also be created.
 
 ## 6. How to Name Branches
 
@@ -350,6 +361,18 @@ List any remaining limitations, or state that none are known.
 Closes #12
 ```
 
+Where the Pull Request represents only part of a larger issue, use:
+
+```markdown
+## Related Issue
+
+Refs #12
+```
+
+`Closes #<issue-number>` should only be used where that Pull Request completes the issue.
+Where additional Pull Requests are still required, use `Refs #<issue-number>` so that the
+parent issue remains open.
+
 ## 10. When to Merge
 
 A branch may only be merged after its Pull Request has completed the required review and verification process.
@@ -367,10 +390,13 @@ Merge commits were selected because they preserve:
 
 After a Pull Request has been merged:
 
-1. The related Gitea issue must be closed.
+1. The related Gitea issue must be closed if the merged Pull Request satisfies all remaining
+   acceptance criteria. If the issue requires additional Pull Requests, it remains open until the
+   complete issue scope is finished.
 2. The completed branch must be deleted from Gitea.
-3. The associated Project board item must be moved to `Done`.
-4. Any incomplete or follow-up work must be recorded as a new issue.
+3. The associated Project board item must be moved to `Done` only when the parent issue is complete.
+4. Any incomplete or follow-up work outside the parent issue's acceptance criteria must be recorded
+   as a new issue.
 
 ## 11. Requirements for Merging
 
@@ -389,7 +415,8 @@ A Pull Request may be merged only when all the following requirements have been 
 - The main implementation changes are summarised.
 - The testing process is described.
 - Known limitations are documented.
-- The related issue is identified using `Closes #<issue-number>`.
+- The related issue is identified using `Closes #<issue-number>` when the Pull Request completes
+  the issue, or `Refs #<issue-number>` when additional Pull Requests remain.
 
 ### 11.3 Review
 
@@ -486,9 +513,9 @@ All significant work must follow the process below:
 11. Resolve all review comments.
 12. Ensure all required checks pass.
 13. Merge the Pull Request into `main` using a merge commit.
-14. Close the issue.
+14. Close the issue once all Pull Requests required to satisfy its acceptance criteria have been merged.
 15. Delete the completed branch.
-16. Move the Project board item to `Done`.
+16. Move the Project board item to `Done` once the issue is complete.
 17. Create a version tag when the relevant milestone is complete.
 
 ## 15. Methodology Review and Change Control
@@ -522,4 +549,8 @@ Minor wording corrections that do not alter the actual development process may b
 
 ## AI Declaration
 
-The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Thinking].
+The preceding document was originally planned, generated, reviewed and edited with the assistance
+of ChatGPT-Web[GPT-5.6 Thinking].
+
+The Issue #881 Git methodology review and multi-Pull-Request traceability clarification were reviewed
+and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].

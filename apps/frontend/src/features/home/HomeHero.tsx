@@ -115,6 +115,7 @@ export function HomeHero() {
         className="home-hero__lead-image"
         src="/images/cricket-match-john-oswald-unsplash.jpg"
         alt="Cricket match in progress"
+        fetchPriority="high"
       />
       <div className="content-boundary home-hero__layout">
         <div className="home-hero__content">
