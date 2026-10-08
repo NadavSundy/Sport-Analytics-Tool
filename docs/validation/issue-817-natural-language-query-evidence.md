@@ -144,6 +144,67 @@ ordinary suites, which do not call the provider:
 
 **No test anywhere calls the provider, and no API key exists in the repository.**
 
+## Deferred work and why
+
+Four pieces of work were identified while building this feature and deliberately left out of it.
+They are recorded here so the reason survives independently of whoever remembers the conversation.
+
+> **Issue numbers pending.** Each item below must carry its Gitea issue number. They are recorded
+> with reasons first because the reason is the part that gets lost; the numbers are to be filled in
+> once the issues are filed.
+
+### Rate limiting for the free definition-evaluation path
+
+`POST /api/v1/query-definitions/evaluate` is mounted with **no limiter at all**. It is not one of the
+canonical-read paths that carry the anonymous HMAC-pseudonymised bounds, and the natural-language
+limiter does not cover it because it makes no provider call.
+
+**Why it was deferred.** The limits built for this feature were sized to protect a _paid_ provider,
+and this path spends nothing, so it was not the urgent case. **Why it still matters:** it is not
+free of cost, only free of provider cost. It resolves names and calls the published statistics
+services, so it does real database work, and the documentation actively encourages traffic to it by
+telling clients that following a suggestion costs a reader nothing. An unmetered anonymous POST that
+does database work is the gap, not the absence of a token bill.
+
+### A lint rule for SQL interpolation
+
+The platform's central security property is that a value derived from a question reaches the database
+only as a bound parameter of an existing parameterised read. Nothing enforces that automatically:
+there is no ESLint rule forbidding an interpolated SQL template literal.
+
+**Why it was deferred.** The property is currently held by code review, by the architecture's own
+shape — the adapter never produces a statement, only a definition — and by the dependency-cruiser
+boundary checks. A lint rule is defence in depth rather than the primary control. **Why it still
+matters:** every other security property in this feature has an automated test, and this one has a
+convention. The rule would catch the regression that review is most likely to miss.
+
+### Token metering against the spending limit
+
+Token counts are written to the request log, one line per request. Nothing aggregates them, compares
+them to the $10 workspace limit, or raises anything as the limit is approached.
+
+**Why it was deferred.** The workspace spend limit is a hard provider-side ceiling, so the failure
+mode is a refused request rather than an unbounded bill — the control works without the metering.
+**Why it still matters:** the first symptom of approaching the limit is the feature failing, with no
+warning beforehand, and ADR-017 records that the margin narrowed from about 3,000 questions a month
+to about 1,670 after #868. The cheap version is a periodic sum over the existing log lines; the
+numbers are already being recorded.
+
+### A cache for repeated questions
+
+An identical question asked twice costs two provider calls. There is no cache keyed on the question
+text.
+
+**Why it was deferred.** `definitionVersion` already makes the _answer_ reproducible, and prompt
+caching was separately considered and rejected in ADR-017 — the stable prefix only just cleared the
+model's minimum cacheable length and requests are sporadic against a five-minute TTL. A question
+cache is a different mechanism from prompt caching and was not evaluated. **Why it still matters:**
+a demonstration asks the same handful of questions repeatedly, and the home-page widget offers four
+example questions that every visitor is likely to click. Those are exactly the repeated questions a
+cache would absorb. Translation is also non-deterministic, so a cache would additionally make a
+demonstrated question answer the same way twice — which is a correctness benefit, not only a cost
+one.
+
 ## Related reading
 
 - [Analytics Query](../api/analytics-query.md) — the documented behaviour and its known limitations.
@@ -159,4 +220,6 @@ issue #817. The run figures and per-run findings were read from the five evaluat
 `evidence/validation/` rather than restated from memory, and the run 2 against run 3 suggestion
 comparison was taken by diffing those two records. The evaluation runs themselves were performed by
 Ben Swartz, and the 6 October demonstration feedback is his own record of that session rather than
-anything the tool observed.
+anything the tool observed. The deferred-work reasons were recorded with the same assistance under
+issue #817; each was checked against the repository rather than taken on trust, which is how the
+unlimited definition-evaluation path was confirmed.
