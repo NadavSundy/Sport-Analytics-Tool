@@ -1,0 +1,345 @@
+﻿"Commit","Date","Author","Email","Subject","CandidateKind","IssueRefs","CommitMessage","Files","ReconciliationClass","HumanConfirmationRequired","ReconciliationEvidence"
+"7efd8c3c538d4d97971d73bca98be9be500779ae","2026-10-01","BenSwartz","2434490@students.wits.ac.za","fix(ci): remove the language-model secret check from the rollback workflow","ai-mentioned-without-assisted-by","#831","fix(ci): remove the language-model secret check from the rollback workflow
+
+Refs #831
+
+     Assisted-by: Claude-Web[Claude Opus 5.5]",".gitea/workflows/deploy-backend.yml","confirmed-malformed-attribution-syntax","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"f23add1d9c55d034943195ab247990c6eb02ef43","2026-10-01","BenSwartz","2434490@students.wits.ac.za","fix(ci): pass the language-model secret to the backend deployment","ai-mentioned-without-assisted-by","#831","fix(ci): pass the language-model secret to the backend deployment
+
+Refs #831
+
+     Assisted-by: Claude-Web[Claude Opus 5.5]",".gitea/workflows/ci.yml","confirmed-malformed-attribution-syntax","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"702f422ce2650cdb9618e0ea0d5aa507c13997db","2026-09-28","Ben Swartz","2434490@students.wits.ac.za","test(testing): settle fixture 10266 as the #605 COR-01 target","ai-mentioned-without-assisted-by","#605","test(testing): settle fixture 10266 as the #605 COR-01 target
+
+Fill the target identifiers into the package: fixture 10266, innings 20540,
+striker 56, non-striker 168873, bowler 136492, all read off one real delivery so
+squad and team membership hold. Both gates pass with fixtureId 10266, the
+correction payload passes correctionRequestSchema, and the eight adversarial
+controls are still rejected.
+
+10266 is a real historical T20 international, so record that the four synthetic
+deliveries at over 900 are permanent and its scorecard stops matching the
+published record.
+
+Drop the 8937 target note now the question is settled, and keep 8937 in the
+ruled-out table with its competitionId null reason.
+
+Let validate.js take the fixture id so the payload is checked exactly as the
+frontend builds it, defaulting to the target.
+
+Refs #605
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>","evidence/user-testing/sprint-3/cor-01-correction-package/README.md;evidence/user-testing/sprint-3/cor-01-correction-package/events.json;evidence/user-testing/sprint-3/cor-01-correction-package/validate.js","explicit-ai-assistance-without-valid-trailer","yes","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"ea422f777dd3ed97374f5f983eacf2335105d3fe","2026-09-28","Ben Swartz","2434490@students.wits.ac.za","test(testing): add COR-01 correction package for #605","ai-mentioned-without-assisted-by","#605","test(testing): add COR-01 correction package for #605
+
+Prepare the direct-submission package the COR-01 user-testing task needs, so
+the correction workspace renders in the same page session.
+
+The workspace is gated on an accepted direct submission, and only an admin
+account reaches that path: a submitter's identical JSON is wrapped into a
+technical batch and staged for review instead. Record that, and the
+identifier-discovery procedure, because the innings and participant IDs are
+environment-specific and no repository file holds the deployed values.
+
+Four deliveries carry off-bat runs 1, 2, 6, 3 so the correction target is
+unmistakable, and sit at over 900 sequences 9001-9004 to clear the live
+uniqueness indexes on any real innings.
+
+validate.js runs both server-side gates, submissionRequestSchema and
+validateCricketBusinessRules, and exits non-zero on a violation.
+
+Refs #605
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>","evidence/user-testing/sprint-3/README.md;evidence/user-testing/sprint-3/cor-01-correction-package/README.md;evidence/user-testing/sprint-3/cor-01-correction-package/events.json;evidence/user-testing/sprint-3/cor-01-correction-package/validate.js","explicit-ai-assistance-without-valid-trailer","yes","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"d4fad446139a5df12c5f4e28956ab2281623610a","2026-09-28","liorarosenberg","liorarosenberg2004@gmail.com","duplication and incorrect placement","ai-mentioned-without-assisted-by","","duplication and incorrect placement
+
+Assisted by Claude Sonnet 5","apps/frontend/src/api/public-read.ts;docs/api/openapi.yaml","explicit-ai-assistance-without-valid-trailer","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"04bac9ad166b5db9ee4565ca43de4a52d13acf0f","2026-09-27","liorarosenberg","liorarosenberg2004@gmail.com","feat: add pagination status to Players and Seasons views","ai-mentioned-without-assisted-by","","feat: add pagination status to Players and Seasons views
+
+Assisted by Claude Sonnet 5","apps/backend/src/modules/participants/participant.repository.ts;apps/backend/src/modules/public-read/public-read.service.ts;apps/backend/src/modules/seasons/season.repository.ts;packages/contracts/src/public-read.ts","explicit-ai-assistance-without-valid-trailer","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"f9cc9f8694de2751260e9fd1efabcb9db5193924","2026-09-25","liorarosenberg","liorarosenberg2004@gmail.com","docs: add hosting capacity and Azure recovery strategy","ai-mentioned-without-assisted-by","","docs: add hosting capacity and Azure recovery strategy
+
+Assisted by Claude Sonnet 5","docs/deployment/hosting-capacity-and-recovery-strategy.md;mkdocs.yml","explicit-ai-assistance-without-valid-trailer","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"72c6e9d0888535f585c3c690d77deff53b59dae0","2026-09-20","Dean Feldman","DeanFeldman@example.com","fix: stabilise backend Docker networking in CI","malformed-assisted-by","#563","fix: stabilise backend Docker networking in CI
+
+Refs #563
+
+Assisted-by: Codex[GPT-5.6], ChatGPT-Web[GPT-5.6 Thinking]",".gitea/workflows/ci.yml;evidence/ai/registers/dean-feldman.csv;evidence/ai/transcripts/dean-feldman/2026-09-20_AI-Implementation_Fix-backend-Docker-npm-CI-blocker.jsonl;tests/deployment/backend-workflow.test.mjs","valid-attribution-audit-false-positive","yes","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"ef6c74b54ee80e6ae8f8ea26ec19011d9767d6ca","2026-09-19","liorarosenberg","liorarosenberg2004@gmail.com","Move frontend to Cloudflare Pages (#564)","ai-mentioned-without-assisted-by","#564","Move frontend to Cloudflare Pages (#564)
+
+Assisted by Claude Sonnet 5",".gitea/workflows/ci.yml;.gitea/workflows/deploy-frontend.yml;README.md;apps/frontend/README.md;apps/frontend/public/_redirects;docs/adr/0003-azure-hosting.md;docs/api/season-upload-contract.md;docs/deployment/azure-app-service-recovery.md;docs/deployment/azure-fronted.md;docs/deployment/azure.md;docs/deployment/frontend-cloudflare-pages.md;docs/deployment/overview.md;docs/development/ci-cd.md;infra/README.md;mkdocs.yml;scripts/check-frontend-bundle-secrets.mjs;tests/deployment/frontend-bundle-secrets.test.mjs;tests/deployment/frontend-spa-routing.test.mjs;tests/deployment/frontend-workflow.test.mjs","explicit-ai-assistance-without-valid-trailer","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"bc3f7fcbeef72de29a1c718417ebc4d7913336c1","2026-09-18","Dean Feldman","DeanFeldman@example.com","fix: make backend container smoke check CI-portable","malformed-assisted-by","#563","fix: make backend container smoke check CI-portable
+
+Refs #563
+
+Assisted-by: Codex[GPT-5.6], ChatGPT-Web[GPT-5.6 Thinking]","scripts/smoke-check-backend-container.mjs;tests/deployment/backend-container.test.mjs","valid-attribution-audit-false-positive","yes","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"3a04f74d111ffbe949168b7e9acb3e220f92f290","2026-09-18","Dean Feldman","DeanFeldman@example.com","fix: register backend container smoke command","malformed-assisted-by","","fix: register backend container smoke command
+
+Assisted-by: Codex[YOUR-ACTUAL-CODEX-MODEL], ChatGPT-Web[GPT-5.6 Thinking]",".gitea/workflows/ci.yml;package.json;tests/deployment/backend-workflow.test.mjs","confirmed-malformed-attribution-syntax","yes","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"3f97682e69b0274e265cba45481ae20319114210","2026-09-18","Dean Feldman","DeanFeldman@example.com","infra: migrate backend API to Azure Container Apps","malformed-assisted-by","","infra: migrate backend API to Azure Container Apps
+
+Assisted-by: Codex[ACTUAL-CODEX-MODEL], ChatGPT-Web[GPT-5.6 Thinking]",".gitea/workflows/ci.yml;.gitea/workflows/deploy-backend.yml;README.md;apps/backend/Dockerfile;apps/backend/README.md;docs/deployment/azure-backend.md;docs/deployment/azure.md;docs/deployment/overview.md;docs/environment.md;evidence/ai/registers/dean-feldman.csv;evidence/ai/transcripts/dean-feldman/2026-09-18_AI-Implementation_Inspect-backend-Container-Apps.jsonl;infra/azure/backend/main.bicep;scripts/ci-change-plan.mjs;scripts/smoke-check-backend-container.mjs;tests/ci/change-plan.test.mjs;tests/deployment/backend-container-app-infrastructure.test.mjs;tests/deployment/backend-container.test.mjs;tests/deployment/backend-workflow.test.mjs","confirmed-malformed-attribution-syntax","yes","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"c69d97359e2a09198614661c0143369f2bbf6c52","2026-09-18","liorarosenberg","liorarosenberg2004@gmail.com","fix(submissions): drop unused export on fixture-onboarding internal types","ai-mentioned-without-assisted-by","","fix(submissions): drop unused export on fixture-onboarding internal types
+
+Assisted by Claude Sonnet 5","apps/backend/src/modules/batches/batch.repository.ts;apps/backend/src/modules/batches/reference-outcomes.ts","explicit-ai-assistance-without-valid-trailer","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"ba656ec99c9453f3610cff23af73bf10653c221c","2026-09-18","liorarosenberg","liorarosenberg2004@gmail.com","fix(submissions): onboard innings, squad and provenance for reviewer-approved new fixtures (#584)","ai-mentioned-without-assisted-by","#584","fix(submissions): onboard innings, squad and provenance for reviewer-approved new fixtures (#584)
+
+Assisted by Claude Sonnet 5","apps/backend/src/modules/batches/batch.repository.ts;apps/backend/src/modules/batches/batch.service.ts;apps/backend/src/modules/batches/fixture-onboarding.ts;apps/backend/src/modules/batches/reference-outcomes.ts;apps/backend/tests/database/batch.repository.database.test.ts;apps/backend/tests/database/reference-resolver.database.test.ts;apps/backend/tests/unit/batch.service.test.ts;apps/backend/tests/unit/fixture-onboarding.test.ts;packages/contracts/src/batches.ts","explicit-ai-assistance-without-valid-trailer","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"7797d69d0af3a2b44570a259f4bbcc6c0728fcd9","2026-09-17","liorarosenberg","liorarosenberg2004@gmail.com","Updated failing tests","ai-mentioned-without-assisted-by","","Updated failing tests
+
+Claude Sonnet 5","apps/worker/src/batch-validation-job.ts","explicit-ai-assistance-without-valid-trailer","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"5702402bf02360045a1cc7df5fdcf06b5af04931","2026-09-16","liorarosenberg","liorarosenberg2004@gmail.com","fix(worker): order batch validation and coordinates by occurrenceSequence","ai-mentioned-without-assisted-by","","fix(worker): order batch validation and coordinates by occurrenceSequence
+
+Assisted by Claude Sonnet 5","apps/worker/src/batch-package.ts;apps/worker/src/batch-validation-job.ts","explicit-ai-assistance-without-valid-trailer","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"7aa9f6318e94479c45f13625f2db2ac58fa18d0c","2026-09-16","liorarosenberg","liorarosenberg2004@gmail.com","test(worker): assert canonical event order is occurrenceSequence, not arrival order","ai-mentioned-without-assisted-by","","test(worker): assert canonical event order is occurrenceSequence, not arrival order
+
+Assisted by Claude Sonnet 5","apps/worker/tests/batch-package.test.ts","explicit-ai-assistance-without-valid-trailer","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"847da08fee525045d6b5e004d6f266c6821fbc69","2026-09-15","Dean Feldman","DeanFeldman@example.com","fix(weather): improve fixture weather location resolution","malformed-assisted-by","","fix(weather): improve fixture weather location resolution
+
+Persist and reuse venue coordinates, add venue/city and POI geocoding fallbacks, deduplicate concurrent weather requests, and improve transient provider handling.
+
+Add regression coverage for coordinate reuse, geocoding fallbacks, StrictMode request deduplication, provider retries, and venue coordinate invalidation.
+
+Assisted-by: Codex[GPT-5], ChatGPT-Web[GPT-5.6 Sol]","apps/backend/src/modules/fixtures/fixture.repository.ts;apps/backend/src/modules/weather/fixture-weather.service.ts;apps/backend/src/modules/weather/location-geocoding.service.ts;apps/backend/src/modules/weather/weather.service.ts;apps/backend/tests/database/public-read.database.test.ts;apps/backend/tests/unit/fixture-weather.service.test.ts;apps/backend/tests/unit/fixture.repository.test.ts;apps/backend/tests/unit/location-geocoding.service.test.ts;apps/backend/tests/unit/weather.service.test.ts;apps/frontend/src/features/browse/usePublicData.test.tsx;apps/frontend/src/features/browse/usePublicData.ts;apps/frontend/src/pages/PublicBrowsePages.test.tsx;database/migrations/20260915100000000_invalidate-venue-coordinates.sql;docs/api/openapi.yaml;docs/api/weather.md;evidence/ai/registers/dean-feldman.csv;evidence/ai/transcripts/dean-feldman/2026-09-14_AI_Debugging_CI-and-Frontend-Fixes.md;evidence/ai/transcripts/dean-feldman/2026-09-15_AI-Implementation_Fix-weather-coordinate-caching.jsonl;evidence/ai/transcripts/dean-feldman/2026-09-15_AI_Debugging_Fixture-Weather-Reliability.md;evidence/decisions/ADR-008-external-weather-api-integration.md","valid-attribution-audit-false-positive","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"17a392a8b73527b1608944cbfbdb3fe8697b91fc","2026-09-15","Ben Swartz","2434490@students.wits.ac.za","fix(public): group player cards by team and order them by batting position","malformed-assisted-by","#416; #475","fix(public): group player cards by team and order them by batting position
+
+Addresses the fourth and last finding on issue #475. P01-F09 and P02-F06 recorded
+that the player cards on a fixture page interleave both sides in no discernible
+order. P01, who reads scorecards fluently, called them ""a pile of cards""; P02,
+with no cricket background, could not see one team's players together. Both said
+they would use the browser's find-in-page instead.
+
+The cards are now grouped by competitor, the groups are ordered by the innings
+each competitor batted in, and within a group the cards are ordered by batting
+position. Players who were selected but did not bat follow the numbered players
+in their own group, ordered by name.
+
+No backend change was required. battingPosition has been derived and returned
+since fbc4e33; the interface was ignoring it and rendering in person-identifier
+order. The innings ordinal for each competitor is taken from the innings
+statistics already present in the same response, so nothing further is fetched.
+
+Also adds battingPosition, battingParticipation and dismissal to
+ParticipantFixtureStatistic in the OpenAPI document. The contract has required
+them since fbc4e33 and the document had not been updated.
+
+Refs #475
+Refs #416
+
+Assisted-by: Claude-Code[Claude Opus 5], Claude-Web[Claude Opus 5]","apps/frontend/src/features/statistics/StatisticsPages.test.tsx;apps/frontend/src/features/statistics/StatisticsPages.tsx;docs/api/openapi.yaml","valid-attribution-audit-false-positive","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"c6d0b99ab70ba090531f2446d42c5b1829244bf2","2026-09-14","liorarosenberg","liorarosenberg2004@gmail.com","feat(frontend): make 'Request additional competition' an on-demand modal","ai-mentioned-without-assisted-by","","feat(frontend): make 'Request additional competition' an on-demand modal
+
+Assisted by Claude Sonnet 5","apps/frontend/src/features/submitter-access/SubmitterAccessPanel.test.tsx;apps/frontend/src/features/submitter-access/SubmitterAccessPanel.tsx;apps/frontend/src/styles.css;tests/e2e/submitter-access.spec.ts","explicit-ai-assistance-without-valid-trailer","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"7761ad022708c4e22107cfc9e61d8debd482d8d8","2026-09-14","Ben Swartz","2434490@students.wits.ac.za","feat(submissions): let the guided CSV express a dismissal","malformed-assisted-by","#360; #536","feat(submissions): let the guided CSV express a dismissal
+
+Issue #536. The season upload package contract already accepted wickets, and the
+JSON upload path carried them end to end, but csvCandidates built each event from
+a fixed column set that had no dismissal fields. Every delivery submitted through
+the guided CSV therefore normalised to an empty wickets array, and a submitter
+using the shipped template could not record a wicket at all.
+
+Adds twelve columns to the CSV template: wicketKind, the dismissed player as a
+source identifier and name pair, and three fielder slots each carrying a source
+identifier, a name and a substitute flag. csvCandidates maps them into the
+existing seasonUploadWicketSchema shape. The dismissed player and each fielder are
+built with the same helper as the striker and bowler, so they resolve by name
+through the reference resolver under the rules established in #360.
+
+A blank wicketKind with any other dismissal column filled is reported as
+CSV_WICKET_KIND_MISSING rather than dropped, so a submitter who omits the kind is
+told rather than silently losing the wicket.
+
+The JSON template gains a second example event carrying a caught dismissal, since
+the format already supported wickets but the shipped template never demonstrated
+one.
+
+The column limits were chosen from the corpus rather than assumed. Of 174,342
+deliveries carrying a wicket, 10 carry more than one, and the contract already
+caps an event at two. Of 116,622 wickets naming a fielder, 5,872 name more than
+one and the maximum anywhere is three, every one of them a run out. The CSV
+therefore carries one dismissal per delivery and up to three fielders; anything
+beyond that must use the JSON package, and both limits are documented.
+
+No change is made to packages/contracts, the OpenAPI document, the database or any
+validation rule. The relationship between dismissal kind and fielders continues to
+be enforced in one place, by submissionWicketSchema.
+
+Refs #536
+
+Assisted-by: Claude-Code[Claude Opus 5], Claude-Web[Claude Opus 5]","apps/backend/tests/database/batch-publication-dismissal.database.test.ts;apps/backend/tests/database/csv-template-dismissal-publication.database.test.ts;apps/backend/tests/database/reference-resolver.database.test.ts;apps/frontend/public/season-upload-template.csv;apps/frontend/public/season-upload-template.json;apps/frontend/src/features/submissions/submission-validation-copy.test.ts;apps/frontend/src/features/submissions/submission-validation-copy.ts;apps/worker/src/batch-package.ts;apps/worker/tests/batch-package.test.ts;docs/api/season-upload-contract.md;docs/data/batch-submission-packages.md;evidence/ai/transcripts/ben-swartz/2026-08-30-2026-09-14-continuous-project-sessions.md","valid-attribution-audit-false-positive","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"1fd0e14b185398d4cf8ff29177b1e20b894605ad","2026-09-14","Ben Swartz","2434490@students.wits.ac.za","fix(public): point the footer API entry at the published documentation","malformed-assisted-by","#416; #475","fix(public): point the footer API entry at the published documentation
+
+Changes the destination of the footer API entry added for P01-F27. It previously
+scrolled to the API section of the home page. A team member reviewing the merged
+change reported that arriving there did not give him the API information he
+expected, so it now links to the published documentation at
+https://sports-analytics-tool.pages.dev/api/overview/.
+
+The address was taken from .gitea/workflows/deploy-docs.yml and corroborated by
+ci.yml and the README. It was confirmed live, and a request for a non-existent
+path under the same prefix returns 404, so the response is a real page rather
+than a catch-all.
+
+The link opens in the same tab. Nothing else in the frontend uses an absolute
+href, target or rel, so no external-link convention exists to follow.
+
+The home page fragment anchor and the scroll effect added for the previous
+destination are removed, since nothing else referenced them. Both files return to
+their state at 0e9dc59.
+
+Refs #475
+Refs #416
+
+Assisted-by: Claude-Code[Claude Opus 5], Claude-Web[Claude Opus 5]","apps/frontend/src/components/PublicShell.test.tsx;apps/frontend/src/components/PublicShell.tsx;apps/frontend/src/features/home/ApiFeature.tsx;apps/frontend/src/features/home/HomePage.tsx","valid-attribution-audit-false-positive","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"d80a8fbcee7ad5a3a0a19944f7b670ef7e23f14d","2026-09-14","Ben Swartz","2434490@students.wits.ac.za","fix(public): show the non-boundary flag only where it is meaningful","malformed-assisted-by","#416; #475","fix(public): show the non-boundary flag only where it is meaningful
+
+Addresses the third finding on issue #475. P01-F12 and P02-F22 recorded that
+every delivery in a calculation trace displayed ""Non-boundary: No"", which one
+participant read as a double negative of unclear purpose and the other saw only
+as a column of identical values.
+
+The trace now shows a Boundary row only on deliveries whose runs were run rather
+than hit to the boundary, and shows nothing on the rest. Frontend coverage
+asserts both halves: the row is absent where the flag is false and present where
+it is true.
+
+The field is not removed from the event exports. Both export endpoints are
+public and unversioned under /api/v1, runs.nonBoundary is required by
+packages/contracts and by openapi.yaml under additionalProperties: false, and
+docs/api/versioning.md classifies removing a field as breaking and requires a
+deprecation marking, migration guidance, a retirement date and a migration
+period. The export half of this finding therefore cannot be completed within
+Sprint 2 and the acceptance criterion is corrected on the issue.
+
+The derivation, database and API responses are unchanged. This is presentation
+only.
+
+Refs #475
+Refs #416
+
+Assisted-by: Claude-Code[Claude Opus 5], Claude-Web[Claude Opus 5]","apps/frontend/src/features/statistics/StatisticsPages.test.tsx;apps/frontend/src/features/statistics/StatisticsPages.tsx","valid-attribution-audit-false-positive","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"5f461c8115a3f340e0fad52daf789327f3b2626b","2026-09-14","Ben Swartz","2434490@students.wits.ac.za","fix(public): add an API entry to the footer and cover the download confirmation","malformed-assisted-by","#416; #475","fix(public): add an API entry to the footer and cover the download confirmation
+
+Addresses two of the four findings on issue #475, both raised by external
+participants during Sprint 2 public and analyst user testing.
+
+P01-F27: there was no API or Developers entry in the navigation or the footer,
+and the only route to API information was through the site logo. The public
+footer now carries an API entry linking to the API section of the home page,
+which is given an anchor and scrolled to on navigation, since client-side
+routing does not scroll to a fragment on its own.
+
+P01-F24 and P02-F18: no on-screen confirmation was given that a download had
+occurred. The confirmation is present on main and was not present in the build
+under test. No production change was required. A frontend test now covers it,
+asserting on the export section's own status region so that text elsewhere on
+the page cannot satisfy it, and requiring the region to be empty before the
+download and silent while the export is still preparing.
+
+Both participants were confirmed to have used the control now at
+EventExportControls.tsx, matched by the export panel wording recorded in the
+session files against the source of commit 249f9be227. It is the only event
+export control in the application.
+
+Out of scope: the player card ordering and the runsNonBoundary flag, which are
+the remaining two items on #475.
+
+Refs #475
+Refs #416
+
+Assisted-by: Claude-Code[Claude Opus 5], Claude-Web[Claude Opus 5]","apps/frontend/src/components/PublicShell.test.tsx;apps/frontend/src/components/PublicShell.tsx;apps/frontend/src/features/home/ApiFeature.tsx;apps/frontend/src/features/home/HomePage.tsx;apps/frontend/src/features/statistics/StatisticsPages.test.tsx;apps/frontend/src/styles.css","valid-attribution-audit-false-positive","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"c719a03de9aec126c3358d0462745ca804f8dc2a","2026-09-11","Dean Feldman","DeanFeldman@example.com","test(contracts): type fixture proposal field coverage","malformed-assisted-by","#497","test(contracts): type fixture proposal field coverage
+
+Refs #497
+
+Assisted-by: ChatGPT-Web[GPT-5.6 Thinking], Codex[GPT-5.6]","packages/contracts/src/tests/season-upload.test.ts","valid-attribution-audit-false-positive","yes","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"347b451cc3df0667d453b894f631f849728d1c10","2026-09-11","Dean Feldman","DeanFeldman@example.com","fix(ingestion): preserve remaining batch integrity work","malformed-assisted-by","#483; #488; #497","fix(ingestion): preserve remaining batch integrity work
+
+Refs #483
+Refs #488
+Refs #497
+
+Assisted-by: ChatGPT-Web[GPT-5.6 Thinking], Codex[GPT-5.6]","apps/backend/tests/unit/batch.service.test.ts;apps/frontend/src/features/submissions/BatchUploadPage.test.tsx;apps/frontend/src/features/submissions/BatchUploadPage.tsx;docs/api/season-upload-contract.md;packages/batch-processing/src/reference-resolver.ts;packages/contracts/src/batches.ts;packages/contracts/src/season-upload.ts;packages/contracts/src/tests/season-upload.test.ts","valid-attribution-audit-false-positive","yes","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"b98f6bf28344c9b15624f880d1e06323b6d89732","2026-09-11","Dean Feldman","DeanFeldman@example.com","Fix batch ingestion review and upload safety","malformed-assisted-by","#483; #487; #488; #497","Fix batch ingestion review and upload safety
+
+Implement canonical fixture review creation, versioned fixture proposals,
+package-authoritative season uploads, and stable content-based idempotency.
+
+Refs #483
+Refs #487
+Refs #488
+Refs #497
+
+Assisted-by: ChatGPT-Web[GPT-5.6 Thinking], Codex[GPT-5]","apps/backend/src/modules/batches/batch.controller.ts;apps/backend/src/modules/batches/batch.repository.ts;apps/backend/src/modules/batches/batch.routes.ts;apps/backend/src/modules/batches/batch.service.ts;apps/backend/tests/api/batches.test.ts;apps/backend/tests/database/batch.repository.database.test.ts;apps/backend/tests/unit/batch.service.test.ts;apps/frontend/src/features/reviews/BatchReviewWorkspacePage.test.tsx;apps/frontend/src/features/reviews/BatchReviewWorkspacePage.tsx;apps/frontend/src/features/submissions/BatchUploadPage.test.tsx;apps/frontend/src/features/submissions/BatchUploadPage.tsx;apps/frontend/src/features/submissions/batch-api.test.ts;apps/frontend/src/features/submissions/batch-api.ts;database/migrations/20260911130000000_batch-canonical-fixture-decision.sql;docs/api/season-upload-contract.md;evidence/ai/registers/dean-feldman.csv;evidence/ai/transcripts/dean-feldman/2026-09-11_AI-Implementation_Fix-season-context-selector.jsonl;packages/batch-processing/src/reference-resolver.ts;packages/contracts/src/batches.ts;packages/contracts/src/season-upload.ts;packages/contracts/src/tests/season-upload.test.ts","valid-attribution-audit-false-positive","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"7bb76004d1d579a3e6e600a3aea991d253a38a6d","2026-09-11","liorarosenberg","liorarosenberg2004@gmail.com","Pretty print","ai-mentioned-without-assisted-by","","Pretty print
+
+assisted by ChapGPT-5.6 Luna","apps/backend/tests/database/batch.repository.database.test.ts","explicit-ai-assistance-without-valid-trailer","yes","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"23477428a1bbad3d621d69564477f0392c5c1d79","2026-09-10","liorarosenberg","liorarosenberg2004@gmail.com","Fix #415: resolve venue location to coordinates for fixture weather","ai-mentioned-without-assisted-by","#415","Fix #415: resolve venue location to coordinates for fixture weather
+
+Assisted by Claude Sonnet 5","apps/backend/.env.example;apps/backend/src/modules/fixtures/fixture.repository.ts;apps/backend/src/modules/weather/fixture-weather.controller.ts;apps/backend/src/modules/weather/fixture-weather.service.ts;apps/backend/src/modules/weather/geocoding.service.ts;apps/backend/tests/api/fixture-weather.test.ts;apps/backend/tests/unit/fixture-weather.service.test.ts;apps/backend/tests/unit/fixture.repository.test.ts;apps/backend/tests/unit/geocoding.service.test.ts","explicit-ai-assistance-without-valid-trailer","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"5082dc4937daf6117c4957e822caaae16d4278dd","2026-09-04","liorarosenberg","liorarosenberg2004@gmail.com","fix: import basename for submission uploads","ai-mentioned-without-assisted-by","","fix: import basename for submission uploads
+
+Assisted by ChatGPT Web, GPT -5.6 Luna","apps/backend/src/modules/submissions/submission-upload.ts","explicit-ai-assistance-without-valid-trailer","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"2f0fffc3cb79acdc1f587bf6a3cc0b9868f67f8c","2026-09-04","liorarosenberg","liorarosenberg2004@gmail.com","fix: reconcile submission upload size limits","ai-mentioned-without-assisted-by","","fix: reconcile submission upload size limits
+
+assisted by ChatGPT Web, GPT -5.6 Luna","apps/backend/src/modules/submissions/submission-upload.ts;apps/backend/tests/api/submissions.test.ts;docs/api/submissions.md;docs/architecture/batch-ingestion-pipeline.md;packages/contracts/src/submissions.ts;packages/contracts/src/tests/submissions.test.ts","explicit-ai-assistance-without-valid-trailer","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"0e843a8dc24df40186a2675622f05d3cda61673d","2026-09-04","liorarosenberg","liorarosenberg2004@gmail.com","fix(style): add missing trailing newline","ai-mentioned-without-assisted-by","","fix(style): add missing trailing newline
+
+Assisted by Claude sonnet 5","apps/backend/src/modules/submissions/submission-upload.ts;apps/backend/tests/unit/submission-upload.test.ts","explicit-ai-assistance-without-valid-trailer","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"d8ac9f05bcf3f9ec1fa973e3282475734b1f8bd2","2026-09-04","Nadav Sundy","nsundy0@gmail.com"," feat(admin): revamp user management interface","malformed-assisted-by","#342"," feat(admin): revamp user management interface
+
+Refs #342
+
+Assisted-by: Codex[GPT-5.6 So
+l]","apps/frontend/src/features/admin/AdminUsersPage.test.tsx;apps/frontend/src/features/admin/AdminUsersPage.tsx;apps/frontend/src/features/admin/admin-api.ts;apps/frontend/src/styles.css;evidence/ai/registers/nadav-sundy.csv;tests/e2e/admin-users.spec.ts","confirmed-malformed-attribution-syntax","yes","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"2cf91e47764117cf335fbb4b014155738d4b8d07","2026-09-04","liorarosenberg","liorarosenberg2004@gmail.com","collect all CSV row faults instead of failing fast","ai-mentioned-without-assisted-by","#366","collect all CSV row faults instead of failing fast
+
+Malformed rows are now reported as structured faults (file, row,
+column count) instead of aborting on the first one. Faults no longer
+hide each other, valid rows still parse, and existing uploads still
+work. Adds tests for multiple/mixed faults.
+
+Closes #366
+
+Assisted by Claude Sonnet 5","apps/backend/src/modules/submissions/submission-upload.ts;apps/backend/tests/unit/submission-upload.test.ts","explicit-ai-assistance-without-valid-trailer","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"202f463bf7835b6960e73673a1b361ed3d846563","2026-09-02","liorarosenberg","liorarosenberg2004@gmail.com","updated with Prettier, assisted by Claude Sonnet 5","ai-mentioned-without-assisted-by","","updated with Prettier, assisted by Claude Sonnet 5",".gitea/workflows/deploy-docs.yml;docs/deployment/cloudflare_pages.md;docs/deployment/overview.md","explicit-ai-assistance-without-valid-trailer","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"ac3b6ba612f33cbae5e47efced83af82c8b6bbbc","2026-09-02","liorarosenberg","liorarosenberg2004@gmail.com","Automate MkDocs deployment to Cloudflare Pages via Gitea Actions (#29)","ai-mentioned-without-assisted-by","#29","Automate MkDocs deployment to Cloudflare Pages via Gitea Actions (#29)
+
+Assisted by Claude Sonnet 5",".gitea/workflows/deploy-docs.yml;docs/deployment/cloudflare_pages.md;docs/deployment/overview.md","explicit-ai-assistance-without-valid-trailer","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"2fa3f727367016a2d93cd4c6739c1e57b4813787","2026-08-31","liorarosenberg","liorarosenberg2004@gmail.com","fix(weather): use Open-Meteo archive endpoint for historical dates","malformed-assisted-by","#334","fix(weather): use Open-Meteo archive endpoint for historical dates
+
+Select forecast vs archive endpoint by date; add 422 DATE_UNSUPPORTED
+and UNSUPPORTED_DATE for out-of-range dates. Fixes #334.
+
+Assisted-by: Claude Sonnet 5","apps/backend/src/modules/weather/fixture-weather.service.ts;apps/backend/src/modules/weather/weather.controller.ts;apps/backend/src/modules/weather/weather.service.ts;apps/backend/tests/api/fixture-weather.test.ts;apps/backend/tests/api/weather.test.ts;apps/backend/tests/unit/fixture-weather.service.test.ts;apps/backend/tests/unit/weather.service.test.ts;docs/api/openapi.yaml;docs/api/weather.md;evidence/decisions/ADR-008-external-weather-api-integration.md","confirmed-malformed-attribution-syntax","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"71df3c7adc6a84c559a5e8760a537df9d8a29bc8","2026-08-28","liorarosenberg","liorarosenberg2004@gmail.com","docs(site): align MkDocs theme with brand guidelines","ai-mentioned-without-assisted-by","#253","docs(site): align MkDocs theme with brand guidelines
+
+$'Refs #253\nAssisted-by: Claude[Claude Sonnet 5]","docs/README.md;docs/javascripts/external-links.js;docs/stylesheets/extra.css;mkdocs.yml","confirmed-malformed-attribution-syntax","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"b544337f6de6c1203b218a30b80748a8f9270c0a","2026-08-24","liorarosenberg","liorarosenberg2004@gmail.com","update Issue #12 onboarding verification and AI evidence","ai-mentioned-without-assisted-by","#12","update Issue #12 onboarding verification and AI evidence
+
+Assisted by Claude Sonnet 5","evidence/ai/registers/liora-rosenberg.csv;evidence/ai/transcripts/liora-rosenberg/2026-08-24-Onboarding-verification.md;evidence/validation/issue-12-onboarding-verification.md;site/404.html;site/adr/0003-azure-hosting/index.html;site/ai/usage/index.html;site/api/contracts/index.html;site/api/event-statistic-mapping/index.html;site/api/openapi.yaml;site/api/openapi/index.html;site/api/overview/index.html;site/api/public-read/index.html;site/api/submission-field-mapping/index.html;site/api/submissions/index.html;site/api/versioning/index.html;site/api/weather/index.html;site/architecture/overview/index.html;site/architecture/repository-structure/index.html;site/architecture/system-architecture/index.html;site/data/cricsheet/index.html;site/database/access/index.html;site/database/erd/index.html;site/database/overview/index.html;site/database/schema/index.html;site/deployment/azure-app-service-recovery/index.html;site/deployment/azure-backend/index.html;site/deployment/azure-fronted/index.html;site/deployment/azure/index.html;site/deployment/cloudflare_pages/index.html;site/deployment/overview/index.html;site/design/assets/wireframes/admin-users-desktop.svg;site/design/assets/wireframes/admin-users-mobile.svg;site/design/assets/wireframes/fixture-detail-desktop.svg;site/design/assets/wireframes/fixture-detail-mobile.svg;site/design/assets/wireframes/fixtures-desktop.svg;site/design/assets/wireframes/fixtures-mobile.svg;site/design/assets/wireframes/home-desktop.svg;site/design/assets/wireframes/home-mobile.svg;site/design/assets/wireframes/signin-desktop.svg;site/design/assets/wireframes/signin-mobile.svg;site/design/assets/wireframes/submission-desktop.svg;site/design/assets/wireframes/submission-mobile.svg;site/design/brand-guidelines/index.html;site/design/frontend-component-baseline/index.html;site/design/information-architecture-and-wireframes/index.html;site/development/dependencies/index.html;site/development/gitea-issue-export/index.html;site/development/setup/index.html;site/development/technology-stack/index.html;site/development/testing/index.html;site/environment/index.html;site/git-methodology/index.html;site/index.html;site/planning/project-backlog/index.html;site/planning/sprint-1-requirements-traceability/index.html;site/project_methodology/index.html;site/requirements/sport-domain-definition/index.html;site/search/search_index.json;site/security/auth-provider-comparison/index.html;site/security/authentication/index.html;site/security/overview/index.html;site/security/password-recovery/index.html;site/security/privacy-retention/index.html;site/security/roles-and-permissions/index.html;site/sitemap.xml.gz;site/statistics/fixture-statistics/index.html","explicit-ai-assistance-without-valid-trailer","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"740f3b96004bcc3ec83d18bffe1c2d4c3d8f755a","2026-08-21","liorarosenberg","liorarosenberg2004@gmail.com","docs(design): add IA and wireframes page to site nav","ai-mentioned-without-assisted-by","#56","docs(design): add IA and wireframes page to site nav
+
+Refs #56, assisted by Claude Sonnet 5","mkdocs.yml","explicit-ai-assistance-without-valid-trailer","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"eacc837e9894b31270294ef22927f4feaa31c44a","2026-08-20","liorarosenberg","liorarosenberg2004@gmail.com","integrate Open-Meteo external API and add weather endpoint","ai-mentioned-without-assisted-by","","integrate Open-Meteo external API and add weather endpoint
+
+- Add WeatherService with Open-Meteo integration and timeout handling
+- Implement GET /api/v1/weather endpoint with validation and error mapping
+- Add unit and API tests for weather functionality
+- Update dependency injection and routing
+- Document integration in ADR-008, API docs, and OpenAPI spec
+- Update MkDocs navigation and environment documentation. Assisted by Claude Sonnet 5","apps/backend/.env.example;apps/backend/src/app.ts;apps/backend/src/modules/weather/weather.controller.ts;apps/backend/src/modules/weather/weather.routes.ts;apps/backend/src/modules/weather/weather.service.ts;apps/backend/tests/api/weather.test.ts;apps/backend/tests/test-app.ts;apps/backend/tests/unit/weather.service.test.ts;docs/api/openapi.yaml;docs/api/weather.md;evidence/ai/registers/liora-rosenberg.csv;evidence/decisions/ADR-008-external-weather-api-integration.md;mkdocs.yml;package-lock.json;site/404.html;site/adr/0003-azure-hosting/index.html;site/ai/usage/index.html;site/ai_policy.pdf;site/api/contracts/index.html;site/api/event-statistic-mapping/index.html;site/api/openapi.yaml;site/api/openapi/index.html;site/api/overview/index.html;site/api/public-read/index.html;site/api/submission-field-mapping/index.html;site/api/submissions/index.html;site/api/versioning/index.html;site/architecture/overview/index.html;site/architecture/repository-structure/index.html;site/architecture/system-architecture/index.html;site/data/cricsheet/index.html;site/database/access/index.html;site/database/erd/index.html;site/database/overview/index.html;site/database/schema/index.html;site/deployment/azure-app-service-recovery/index.html;site/deployment/azure-backend/index.html;site/deployment/azure-fronted/index.html;site/deployment/azure/index.html;site/deployment/cloudflare_pages/index.html;site/deployment/overview/index.html;site/design/assets/logo/statsthegame-favicon.svg;site/design/assets/logo/statsthegame-logo-dark.svg;site/design/assets/logo/statsthegame-logo-light.svg;site/design/assets/logo/statsthegame-logo-reference.png;site/design/assets/logo/statsthegame-mark-dark.svg;site/design/assets/logo/statsthegame-mark-light.svg;site/design/assets/logo/statsthegame-wordmark-dark.svg;site/design/assets/logo/statsthegame-wordmark-light.svg;site/design/brand-guidelines/index.html;site/development/dependencies/index.html;site/development/gitea-issue-export/index.html;site/development/setup/index.html;site/development/technology-stack/index.html;site/development/testing/index.html;site/environment/index.html;site/git-methodology/index.html;site/index.html;site/planning/project-backlog/index.html;site/project_methodology/index.html;site/requirements/sport-domain-definition/index.html;site/search/search_index.json;site/security/auth-provider-comparison/index.html;site/security/authentication/index.html;site/security/overview/index.html;site/security/privacy-retention/index.html;site/security/roles-and-permissions/index.html;site/sitemap.xml.gz;site/statistics/fixture-statistics/index.html","explicit-ai-assistance-without-valid-trailer","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"4a4f9a111602315ae27f22f9e2e748a3314844e4","2026-08-07","Dean Feldman","DeanFeldman@example.com","docs(ai): update Dean AI evidence","ai-mentioned-without-assisted-by","","docs(ai): update Dean AI evidence
+
+Add and organise retained ChatGPT and Codex transcripts","apps/backend/package.json;evidence/ai/transcripts/dean-feldman/2026-08-04-issue-38-doc-structure-for-files.md;evidence/ai/transcripts/dean-feldman/2026-08-05-general-merge-issue-resolution.md;evidence/ai/transcripts/dean-feldman/2026-08-05-general-project-name-suggestions.md;evidence/ai/transcripts/dean-feldman/2026-08-05-issue-1517-azure-deployment-strategy.md;evidence/ai/transcripts/dean-feldman/2026-08-05-issue-30-project-file-structure-documentation.md;evidence/ai/transcripts/dean-feldman/2026-08-06-general-event-data-submission-process.md;evidence/ai/transcripts/dean-feldman/2026-08-06-general-event-model-design-review.md;evidence/ai/transcripts/dean-feldman/2026-08-06-general-pr-merge-instructions.md;evidence/ai/transcripts/dean-feldman/2026-08-06-general-sport-selection-for-analytics.md;evidence/ai/transcripts/dean-feldman/2026-08-06-issue-30-ai-transcript-structure.md;evidence/ai/transcripts/dean-feldman/2026-08-06-issue-38-system-architecture-development-roadmap-codex.jsonl;evidence/ai/transcripts/dean-feldman/2026-08-06-issue-38-system-architecture-guardian-review-codex.jsonl;evidence/ai/transcripts/dean-feldman/2026-08-06-issue-72-testing-infrastructure-setup.md;evidence/ai/transcripts/dean-feldman/2026-08-07-general-git-merge-conflict-resolution.md;evidence/ai/transcripts/dean-feldman/2026-08-07-issue-72-testing-foundation-setup.md","contextual-ai-reference-not-assistance-declaration","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"84c5a347bcfe9ac081a1c8aae67714e45d1e0614","2026-08-06","liorarosenberg","liorarosenberg2004@gmail.com","docs: deploy MkDocs documentation to Cloudflare Pages - deploy documentation using Wrangler Assisted by ChatGPT on the web, (GPT -5.5)","ai-mentioned-without-assisted-by","","docs: deploy MkDocs documentation to Cloudflare Pages
+- deploy documentation using Wrangler
+Assisted by ChatGPT on the web, (GPT -5.5)","package-lock.json;package.json;site/404.html;site/ai/usage/index.html;site/api/overview/index.html;site/architecture/overview/index.html;site/architecture/repository-structure/index.html;site/assets/images/favicon.png;site/assets/javascripts/bundle.d7400e89.min.js;site/assets/javascripts/bundle.d7400e89.min.js.map;site/assets/javascripts/lunr/min/lunr.ar.min.js;site/assets/javascripts/lunr/min/lunr.da.min.js;site/assets/javascripts/lunr/min/lunr.de.min.js;site/assets/javascripts/lunr/min/lunr.du.min.js;site/assets/javascripts/lunr/min/lunr.el.min.js;site/assets/javascripts/lunr/min/lunr.es.min.js;site/assets/javascripts/lunr/min/lunr.fi.min.js;site/assets/javascripts/lunr/min/lunr.fr.min.js;site/assets/javascripts/lunr/min/lunr.he.min.js;site/assets/javascripts/lunr/min/lunr.hi.min.js;site/assets/javascripts/lunr/min/lunr.hu.min.js;site/assets/javascripts/lunr/min/lunr.hy.min.js;site/assets/javascripts/lunr/min/lunr.it.min.js;site/assets/javascripts/lunr/min/lunr.ja.min.js;site/assets/javascripts/lunr/min/lunr.jp.min.js;site/assets/javascripts/lunr/min/lunr.kn.min.js;site/assets/javascripts/lunr/min/lunr.ko.min.js;site/assets/javascripts/lunr/min/lunr.multi.min.js;site/assets/javascripts/lunr/min/lunr.nl.min.js;site/assets/javascripts/lunr/min/lunr.no.min.js;site/assets/javascripts/lunr/min/lunr.pt.min.js;site/assets/javascripts/lunr/min/lunr.ro.min.js;site/assets/javascripts/lunr/min/lunr.ru.min.js;site/assets/javascripts/lunr/min/lunr.sa.min.js;site/assets/javascripts/lunr/min/lunr.stemmer.support.min.js;site/assets/javascripts/lunr/min/lunr.sv.min.js;site/assets/javascripts/lunr/min/lunr.ta.min.js;site/assets/javascripts/lunr/min/lunr.te.min.js;site/assets/javascripts/lunr/min/lunr.th.min.js;site/assets/javascripts/lunr/min/lunr.tr.min.js;site/assets/javascripts/lunr/min/lunr.vi.min.js;site/assets/javascripts/lunr/min/lunr.zh.min.js;site/assets/javascripts/lunr/tinyseg.js;site/assets/javascripts/lunr/wordcut.js;site/assets/javascripts/workers/search.2c215733.min.js;site/assets/javascripts/workers/search.2c215733.min.js.map;site/assets/stylesheets/main.ec1eaa64.min.css;site/assets/stylesheets/main.ec1eaa64.min.css.map;site/assets/stylesheets/palette.ab4e12ef.min.css;site/assets/stylesheets/palette.ab4e12ef.min.css.map;site/database/overview/index.html;site/database/schema/index.html;site/deployment/azure/index.html;site/deployment/overview/index.html;site/development/dependencies/index.html;site/development/setup/index.html;site/development/testing/index.html;site/git-methodology/index.html;site/index.html;site/project_methodology/index.html;site/search/search_index.json;site/security/overview/index.html;site/sitemap.xml;site/sitemap.xml.gz","explicit-ai-assistance-without-valid-trailer","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
+"62b11f330c991d055f8fb36972847ff3ae16fa2a","2026-08-05","liorarosenberg","liorarosenberg2004@gmail.com","docs: deploy MkDocs documentation to Cloudflare Pages","ai-mentioned-without-assisted-by","","docs: deploy MkDocs documentation to Cloudflare Pages
+
+- deploy public documentation site
+- add public documentation URL to README
+- document deployment and update process
+- verify strict MkDocs build
+
+Assisted by ChatGPT on the web, (GPT-5.5)","README.md;docs/deployment/cloudflare_pages.md;site/404.html;site/ai/usage/index.html;site/api/overview/index.html;site/architecture/overview/index.html;site/architecture/repository-structure/index.html;site/assets/images/favicon.png;site/assets/javascripts/bundle.d7400e89.min.js;site/assets/javascripts/bundle.d7400e89.min.js.map;site/assets/javascripts/lunr/min/lunr.ar.min.js;site/assets/javascripts/lunr/min/lunr.da.min.js;site/assets/javascripts/lunr/min/lunr.de.min.js;site/assets/javascripts/lunr/min/lunr.du.min.js;site/assets/javascripts/lunr/min/lunr.el.min.js;site/assets/javascripts/lunr/min/lunr.es.min.js;site/assets/javascripts/lunr/min/lunr.fi.min.js;site/assets/javascripts/lunr/min/lunr.fr.min.js;site/assets/javascripts/lunr/min/lunr.he.min.js;site/assets/javascripts/lunr/min/lunr.hi.min.js;site/assets/javascripts/lunr/min/lunr.hu.min.js;site/assets/javascripts/lunr/min/lunr.hy.min.js;site/assets/javascripts/lunr/min/lunr.it.min.js;site/assets/javascripts/lunr/min/lunr.ja.min.js;site/assets/javascripts/lunr/min/lunr.jp.min.js;site/assets/javascripts/lunr/min/lunr.kn.min.js;site/assets/javascripts/lunr/min/lunr.ko.min.js;site/assets/javascripts/lunr/min/lunr.multi.min.js;site/assets/javascripts/lunr/min/lunr.nl.min.js;site/assets/javascripts/lunr/min/lunr.no.min.js;site/assets/javascripts/lunr/min/lunr.pt.min.js;site/assets/javascripts/lunr/min/lunr.ro.min.js;site/assets/javascripts/lunr/min/lunr.ru.min.js;site/assets/javascripts/lunr/min/lunr.sa.min.js;site/assets/javascripts/lunr/min/lunr.stemmer.support.min.js;site/assets/javascripts/lunr/min/lunr.sv.min.js;site/assets/javascripts/lunr/min/lunr.ta.min.js;site/assets/javascripts/lunr/min/lunr.te.min.js;site/assets/javascripts/lunr/min/lunr.th.min.js;site/assets/javascripts/lunr/min/lunr.tr.min.js;site/assets/javascripts/lunr/min/lunr.vi.min.js;site/assets/javascripts/lunr/min/lunr.zh.min.js;site/assets/javascripts/lunr/tinyseg.js;site/assets/javascripts/lunr/wordcut.js;site/assets/javascripts/workers/search.2c215733.min.js;site/assets/javascripts/workers/search.2c215733.min.js.map;site/assets/stylesheets/main.ec1eaa64.min.css;site/assets/stylesheets/main.ec1eaa64.min.css.map;site/assets/stylesheets/palette.ab4e12ef.min.css;site/assets/stylesheets/palette.ab4e12ef.min.css.map;site/database/overview/index.html;site/database/schema/index.html;site/deployment/azure/index.html;site/deployment/overview/index.html;site/development/dependencies/index.html;site/development/setup/index.html;site/development/testing/index.html;site/git-methodology/index.html;site/index.html;site/project_methodology/index.html;site/search/search_index.json;site/security/overview/index.html;site/sitemap.xml;site/sitemap.xml.gz","explicit-ai-assistance-without-valid-trailer","no","Original commit message and changed files reviewed; see issue-905-ai-attribution-reconciliation.md for the evidence-backed conclusion."
