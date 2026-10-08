@@ -102,6 +102,7 @@ nav:
 
   - Project Records & Evidence:
       - Overview: process/index.md
+      - Stakeholder & User-Feedback Review: process/stakeholder-and-user-feedback-review.md
       - Decisions Index: process/decisions.md
       - Team Meeting Transcripts: process/team-meeting-transcripts.md
       - Testing & Validation Evidence: process/validation-and-user-testing.md
