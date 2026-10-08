@@ -42,6 +42,20 @@ for a record tied to a specific issue number.
 
 Issue #870 establishes the [final non-user system verification bank](../testing/final-system-verification.md). Execution is split across #871–#877, with sanitised records retained under `evidence/validation/final-system-verification/`. This technical verification is intentionally separate from the formal participant-based user-testing evidence below.
 
+## Stakeholder demonstrations
+
+Stakeholder demonstrations tied to a feature or a milestone, rather than to a sprint ceremony, are
+retained under
+[`evidence/stakeholder-meetings/`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/stakeholder-meetings){ target="_blank" rel="noopener" },
+each with the disposition of every feedback item raised. Sprint-bounded stakeholder records remain
+under `evidence/sprints/<sprint>/` beside the planning and close-out evidence for the same sprint.
+
+These are deliberately separate from the formal participant-based user testing below: a
+demonstration produces behavioural feedback rather than scored task attempts, so it is not counted
+as a task attempt under ADR-013.
+
+- 6 October 2026 — natural-language query feature - [Source record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/stakeholder-meetings/2026-10-06-natural-language-query-demonstration.md){ target="_blank" rel="noopener" } — two items, both converted into issue #868 and verified by three evaluation runs; summarised in [Natural-Language Query Evidence](../validation/issue-817-natural-language-query-evidence.md).
+
 ## Formal user testing
 
 For documentation-level outcomes, start with the [Sprint 2 User Testing Summary](../testing/user-testing-sprint-2-summary.md) and [Sprint 3 User Testing Summary](../testing/user-testing-sprint-3-summary.md). The repository links below are retained as supporting source evidence.
@@ -84,3 +98,4 @@ Issue #418 exercises the reviewer/admin workflow implemented through #283 and #3
 Related engineering defects from the same wider ingestion/review audit include #465, #471, #479, #480, #481, #482, #483, #484, #485, #486, #487 and #488. Those issues are retained as engineering context and are not attributed to P04 unless the participant independently observed them during a recorded task.
 
 The preceding page was planned and drafted with the assistance of Claude[Claude Sonnet 5] and reviewed and edited with ChatGPT-Web[GPT-5.6 Sol], resolving issue #254 and the Sprint 2 user-testing process update.
+The stakeholder-demonstrations section was added with the assistance of Claude-Code[Claude Opus 5 (1M context)] under issue #817.

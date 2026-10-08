@@ -31,8 +31,11 @@ added:
 - the configured default competition, reported in `assumptions` so an assumed answer is never shown
   as an exact one.
 
-The three #868 evaluation runs below are the verification of that response. The feedback was
-behavioural rather than task-scored, so it is recorded here as demonstration feedback and is not
+The three #868 evaluation runs below are the verification of that response. The meeting record, with the disposition of each feedback
+item, is retained at
+[`evidence/stakeholder-meetings/2026-10-06-natural-language-query-demonstration.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/stakeholder-meetings/2026-10-06-natural-language-query-demonstration.md){ target="_blank" rel="noopener" }.
+The feedback was
+behavioural rather than task-scored, so it is recorded there as demonstration feedback and is not
 counted as a formal user-testing task attempt under
 [ADR-013](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-013-task-based-user-testing-evidence.md){ target="_blank" rel="noopener" }.
 
