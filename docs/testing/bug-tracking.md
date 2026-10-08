@@ -187,11 +187,11 @@ This creates a continuous record of defects discovered and resolved throughout t
 
 ## Continuous Use
 
-The Bug Tracker is intended to be used throughout the remainder of the project rather than only during dedicated testing periods.
+The Bug Tracker was used throughout the development lifecycle rather than only during dedicated testing periods. The Sprint 2 traceability record lists defects discovered through development, automated testing, reviewer testing, user testing and deployment; Sprint 3 and Final Submission records retain their later defect and verification work separately.
 
-Defects discovered during feature development, automated testing, user feedback, stakeholder reviews, deployment, and later regression testing should all use the same process.
+Defects discovered during feature development, automated testing, user feedback, stakeholder reviews, deployment, and later regression testing use the same issue-based process. The tracker and its issue/PR history remain the authoritative current state; this page describes the workflow rather than a snapshot of open defects.
 
-This allows the project team to maintain a consistent and auditable history of product quality over time.
+Representative semester-long evidence is available in the [Sprint 2 requirements traceability](../planning/sprint-2-requirements-traceability.md#7-bug-tracker-and-representative-resolved-defects), [Sprint 3 requirements traceability](../planning/sprint-3-requirements-traceability.md), and [final-system verification bank](final-system-verification.md). This provides a consistent and auditable history of product quality without claiming that all defects have been eliminated.
 
 ---
 
