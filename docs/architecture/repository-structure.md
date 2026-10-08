@@ -21,7 +21,7 @@ Sport-Analytics-Tool/
 │   │   │   ├── app.ts
 │   │   │   └── index.ts
 │   │   └── tests/
-│   └── frontend/
+│   ├── frontend/
 │       ├── public/
 │       └── src/
 │           ├── api/
@@ -29,8 +29,18 @@ Sport-Analytics-Tool/
 │           ├── features/
 │           ├── pages/
 │           └── test/
+│   └── worker/
+│       ├── src/
+│       │   ├── batch-validation-job.ts
+│       │   ├── batch-publication-job.ts
+│       │   ├── dataset-release-job.ts
+│       │   ├── outbox-relay.ts
+│       │   └── index.ts
+│       └── tests/
 ├── packages/
-│   └── contracts/
+│   ├── contracts/
+│   ├── batch-processing/
+│   └── object-storage/
 ├── database/
 │   ├── migrations/
 │   ├── schema/
@@ -45,6 +55,8 @@ Sport-Analytics-Tool/
 │   └── validation/
 ├── infra/
 │   └── azure/
+│       ├── backend/
+│       └── worker/
 ├── scripts/
 ├── tests/
 │   ├── e2e/
@@ -85,3 +97,5 @@ The monorepo reduces setup overhead and supports coordinated changes. dependency
 The validation-evidence directory was added to the documented repository tree with the assistance
 of Codex[GPT-5.6 Sol].
 The independently deployable worker boundary was added with the assistance of Codex[GPT-5].
+The Issue #883 final repository-structure reconciliation was reviewed and edited with the
+assistance of Codex[GPT-5].
