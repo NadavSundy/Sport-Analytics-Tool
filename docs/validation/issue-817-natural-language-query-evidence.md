@@ -6,6 +6,36 @@ behaviour itself is documented on the [Analytics Query](../api/analytics-query.m
 provider decision in
 [ADR-017](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-017-llm-provider-integration.md){ target="_blank" rel="noopener" }.
 
+## Demonstration feedback, 6 October 2026
+
+The feature was demonstrated on 6 October 2026, after issues #815, #816 and #851 had delivered the
+endpoint, the home-page widget and the suggestions. Two observations were recorded:
+
+- **Answers were hard to get with casual phrasing.** A question had to be worded close to the shape
+  of a published metric to be answered. Ordinary wording for the same figure — "who smashes the most
+  sixes", "who is the most economical bowler" — did not reliably reach the metric it names.
+- **Follow-up questions were not understood.** Having asked about a player, asking a second question
+  about the same player did not work: each question was translated with no knowledge of the one
+  before it.
+
+**Issue #868 was the response**, and it is what the final behaviour on this page describes. It
+added:
+
+- a casual-wording map generated from the metric enum itself, so wording for a published measure
+  reaches that measure while a superlative naming no published measure stays a refusal with
+  suggestions;
+- conversation support — up to five earlier turns sent as delimited prior context, so a follow-up
+  resolves against what an earlier question named;
+- scorecard-name handling with the surname fallback, so a spoken name like "Virat Kohli" reaches the
+  scorecard's `V Kohli` and a disagreeing initial asks rather than answers as somebody else; and
+- the configured default competition, reported in `assumptions` so an assumed answer is never shown
+  as an exact one.
+
+The three #868 evaluation runs below are the verification of that response. The feedback was
+behavioural rather than task-scored, so it is recorded here as demonstration feedback and is not
+counted as a formal user-testing task attempt under
+[ADR-013](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-013-task-based-user-testing-evidence.md){ target="_blank" rel="noopener" }.
+
 ## How the feature is evaluated
 
 Translation is not deterministic, so it cannot be verified by a unit test asserting one output. It is
@@ -125,4 +155,5 @@ The preceding page was drafted with the assistance of Claude-Code[Claude Opus 5 
 issue #817. The run figures and per-run findings were read from the five evaluation records in
 `evidence/validation/` rather than restated from memory, and the run 2 against run 3 suggestion
 comparison was taken by diffing those two records. The evaluation runs themselves were performed by
-Ben Swartz.
+Ben Swartz, and the 6 October demonstration feedback is his own record of that session rather than
+anything the tool observed.
