@@ -161,6 +161,7 @@ nav:
               - Runner Operations: deployment/runner-operations.md
 
           - Planning & Sprint History:
+              - Planning, Tracking, Bug & Tooling Review: process/planning-tracking-and-tooling-review.md
               - Project Backlog & Milestone Plan: planning/project-backlog.md
               - Sprint 1 Requirements Traceability: planning/sprint-1-requirements-traceability.md
               - Sprint 2 Requirements Traceability: planning/sprint-2-requirements-traceability.md

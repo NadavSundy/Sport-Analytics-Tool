@@ -59,7 +59,9 @@ Batch ingestion requires the submission API's trust model at the corpus importer
 
 ### 2.4 Architectural position
 
-The architecture overview records a background worker as a future deployment boundary for batch imports, to be introduced when asynchronous work is implemented. This design activates that boundary.
+The architecture overview records the implemented background-worker boundary for batch imports,
+publication and dataset-release generation. This design defines the batch-ingestion portion of that
+boundary.
 
 Issue #265 introduced no object-storage component: `multer.memoryStorage()` holds the payload in
 application heap. Section 5 activates the private Azure Blob Storage boundary accepted in ADR-011.

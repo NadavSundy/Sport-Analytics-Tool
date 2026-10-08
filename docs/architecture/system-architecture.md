@@ -2,7 +2,7 @@
 
 **Status:** Current architecture with later-tier components explicitly marked where still planned.
 **Related issues:** #38, #55, #73, #275, #278, #283, #286, #293, #294, #363, #364
-**Last updated:** 9 September 2026
+**Last updated:** 8 October 2026
 
 ## 1. Purpose and architectural principles
 
@@ -107,7 +107,7 @@ flowchart TB
 
     subgraph Data[Persistent data]
         DB[(PostgreSQL<br/>events, users, grants, statistics, audit)]
-        Files[(Azure Blob Storage<br/>approved target for uploads and exports)]
+        Files[(Private Azure Blob Storage<br/>staged payloads and release artifacts)]
     end
 
     subgraph Services[Intermediate and advanced services]
@@ -122,12 +122,12 @@ flowchart TB
     Frontend -->|Managed sign-in| Auth
     Frontend -->|HTTPS: JSON, multipart, bearer token| API
     Consumer -->|HTTPS: public or API credentials| API
-    Consumer <-->|Versioned dataset files| Files
     API -->|Verify access token| Auth
     API -->|TLS SQL through server-side driver| DB
-    API -->|Upload and signed download operations| Files
+    API -->|Store payloads and stream release artifacts| Files
     API -->|Timeouts, quotas, retries| External
-    API -->|Enqueue durable work| Queue
+    API -->|Atomically write domain state and outbox rows| DB
+    DB -->|Outbox relay| Queue
     Queue --> Worker
     Worker --> DB
     Worker --> Files
@@ -399,11 +399,13 @@ flowchart LR
     PR --> CI[CI: install, structure, format,<br/>lint, typecheck, test, build]
     CI --> Review[Peer review and approval]
     Review --> Main[Protected main branch]
-    Main --> FE[Frontend deployment<br/>Azure App Service]
-    Main --> BE[Backend deployment<br/>Azure App Service]
+    Main --> FE[Frontend deployment<br/>Cloudflare Pages]
+    Main --> BE[Backend deployment<br/>Azure Container Apps]
+    Main --> Worker[Worker deployment<br/>Azure Container Apps]
     Main --> Docs[MkDocs build and<br/>Cloudflare Pages deployment]
     Migration[Reviewed SQL migrations] --> DB[(Supabase-hosted PostgreSQL)]
     BE --> DB
+    Worker --> DB
     FE --> BE
     Secrets[Environment-specific secret stores] -.-> FE
     Secrets -.-> BE
@@ -414,10 +416,9 @@ flowchart LR
 - **Local:** Vite frontend on port 5173 and Express API on port 3000 run as separate
   processes. Developers use safe environment placeholders and either shared development
   services or an approved isolated local stack.
-- **Development:** the frontend and backend currently target separate Azure App Services.
-  PostgreSQL is hosted by Supabase in Frankfurt and reached by the backend over the TLS
-  Supavisor session pooler. The documentation site is deployed separately to Cloudflare
-  Pages.
+- **Development:** the frontend deploys to Cloudflare Pages; the backend and asynchronous worker
+  deploy as separate Azure Container Apps. PostgreSQL and managed authentication are supplied by
+  Supabase. The documentation site deploys separately to Cloudflare Pages.
 - **Preview/test:** Pull Requests always receive CI verification. Automated per-PR application
   previews are desirable but not yet established.
 - **Production:** service names, database plan/region, storage, secrets, observability,
@@ -806,3 +807,5 @@ The issue #286 selective statistics refresh architecture was documented with the
 Codex[GPT-5].
 The Issue #364 current-state architecture reconciliation was reviewed and edited with the
 assistance of ChatGPT-Web[GPT-5.6 Sol].
+The Issue #883 final architecture reconciliation was reviewed and edited with the assistance of
+Codex[GPT-5].
