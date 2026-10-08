@@ -1,4 +1,4 @@
-﻿# Sprint 2 Stakeholder Review â€” Asynchronous Interaction
+﻿# Sprint 2 Stakeholder Review - Asynchronous Interaction
 
 **Date:** 8 September 2026
 **Stakeholder:** Terence Nkoua Mackyta
