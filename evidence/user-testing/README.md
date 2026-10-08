@@ -25,6 +25,12 @@ The committed Markdown evidence is the authoritative retained record. User-testi
 
 Before committing evidence, remove credentials, personal email addresses and unnecessary identifying information.
 
+## Sprint 4
+
+Final-stage evidence for #803 is retained under [sprint-4/](sprint-4/README.md). Preparation templates have no invented date/participant/outcome. Use the established filenames only for actual sessions; do not overwrite Sprint 2/3 records.
+
 ## AI Declaration
 
 The preceding document was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+
+The Sprint 4 preparation links were added with the assistance of Codex[GPT-6].

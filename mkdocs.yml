@@ -82,6 +82,7 @@ nav:
           - User Testing Overview: testing/user-testing-overview.md
           - Sprint 2 User Testing Summary: testing/user-testing-sprint-2-summary.md
           - Sprint 3 User Testing Summary: testing/user-testing-sprint-3-summary.md
+          - Sprint 4 Final User Testing: testing/user-testing-sprint-4-summary.md
       - Bug Tracking: testing/bug-tracking.md
 
   - Deployment & CI/CD:
