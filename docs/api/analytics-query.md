@@ -142,14 +142,47 @@ may look identical.** Many people in the corpus share a display name: observatio
 identifier. The published participant resource carries nothing further to tell them apart, so an
 interface must resolve that by asking rather than by guessing.
 
+## Anonymous rate limiting
+
+Definition evaluation is anonymous and does real work: it resolves every name hint
+through the parameterised reads and calls the published statistics services. It
+makes no language-model call, so it is cheap, but it is not free, and the
+suggestion flow above deliberately sends traffic to it.
+
+It is therefore metered by **the same anonymous bounds as the canonical cricket
+reads**, through the same middleware. There is no limiter specific to this
+operation and nothing to configure for it:
+
+| Limit                   | Default | Variable                                 |
+| ----------------------- | ------- | ---------------------------------------- |
+| Per source, per minute  | 30      | `ANONYMOUS_RATE_LIMIT_PER_MINUTE`        |
+| All sources, per minute | 600     | `ANONYMOUS_GLOBAL_RATE_LIMIT_PER_MINUTE` |
+
+**The bucket is shared with the canonical reads.** A client browsing fixtures and
+following suggestions draws both from one per-source allowance, because it is one
+client making one stream of anonymous requests.
+
+A source is identified by an HMAC-SHA-256 digest of its address under
+`ANONYMOUS_RATE_LIMIT_SECRET`, never by the address, exactly as the canonical reads
+identify one. The window is the calendar minute. The limit counts **attempts**, so a
+body that fails the contract still spends one, and the counter fails closed: if it
+cannot be read the request is refused with `503 RATE_LIMIT_UNAVAILABLE` rather than
+admitted unmetered.
+
+Supplying `X-API-Key` opts into consumer identification instead, on the same terms as
+a canonical read: the consumer's own limits and quota apply, and an invalid or revoked
+key is `401` rather than a fall back to anonymous access.
+
 ## Evaluation failure responses
 
-| Status | Condition                                                                                           |
-| ------ | --------------------------------------------------------------------------------------------------- |
-| `400`  | The body is not valid JSON (`INVALID_JSON`).                                                        |
-| `413`  | The body exceeds 1 MB (`PAYLOAD_TOO_LARGE`).                                                        |
-| `422`  | The body does not satisfy the query-definition contract (`VALIDATION_FAILED`).                      |
-| `503`  | A database statement exceeded its bound (`DATABASE_STATEMENT_TIMEOUT`); the request may be retried. |
+| Status | Condition                                                                                                                      |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `400`  | The body is not valid JSON (`INVALID_JSON`).                                                                                   |
+| `413`  | The body exceeds 1 MB (`PAYLOAD_TOO_LARGE`).                                                                                   |
+| `422`  | The body does not satisfy the query-definition contract (`VALIDATION_FAILED`).                                                 |
+| `429`  | The anonymous per-source or global per-minute bound was reached (`RATE_LIMIT_EXCEEDED`), with `RateLimit-*` and `Retry-After`. |
+| `503`  | A database statement exceeded its bound (`DATABASE_STATEMENT_TIMEOUT`); the anonymous counter could not be read                |
+|        | (`RATE_LIMIT_UNAVAILABLE`). Either may be retried.                                                                             |
 
 ## Natural-language questions
 
@@ -231,9 +264,13 @@ and none that failed validation is ever returned. A suggestion is never the
 `unsupported` kind: it is shown as something to ask.
 
 **A suggestion is answered by posting it to
-`POST /api/v1/query-definitions/evaluate`.** That makes no language-model call and
-is not counted against the limits below, so following a suggestion costs a reader
-nothing.
+`POST /api/v1/query-definitions/evaluate`.** That makes no language-model call, so
+it spends nothing against the natural-language limits below and nothing against the
+provider. It is not unmetered, though: it counts against the
+[anonymous read bounds](#anonymous-rate-limiting) the canonical reads use, because
+it still resolves names and reads published statistics. A reader following
+suggestions will not exhaust the day's questions; a client looping over them can
+still be refused.
 
 **Suggestions carry no label.** A client words one from the definition itself, so
 the wording cannot disagree with what it describes. They sit beside the definition
@@ -471,4 +508,6 @@ documented with the assistance of Claude-Code[Claude Opus 5 (1M context)] under 
 follow-up questions, the default competition, the casual-phrasing guidance and the surname fallback
 were documented with the assistance of Claude-Code[Claude Opus 5 (1M context)] under issue #868. The
 suggestions and scoped answers were documented with the assistance of
-Claude-Code[Claude Opus 5 (1M context)] under issue #851.
+Claude-Code[Claude Opus 5 (1M context)] under issue #851. The anonymous rate limiting on definition
+evaluation was documented with the assistance of Claude-Code[Claude Opus 5 (1M context)] under issue
+#924, from the limiter's implemented behaviour rather than from its description.
