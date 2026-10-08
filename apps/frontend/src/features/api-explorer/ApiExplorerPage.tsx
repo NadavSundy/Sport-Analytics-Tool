@@ -1,6 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { parse } from 'yaml';
 
 import { ApiExplorerLoadingIndicator } from './ApiExplorerLoadingIndicator';
 import { ApiExplorerRouteFrame } from './ApiExplorerRouteFrame';
@@ -122,7 +121,10 @@ export function implementedExplorerDocument(document: OpenApiDocument): OpenApiD
   };
 }
 
-function parseOpenApiDocument(source: string): OpenApiDocument {
+async function parseOpenApiDocument(source: string): Promise<OpenApiDocument> {
+  // Keep the parser out of the initial route bundle; unavailable specifications
+  // never need it, and the page can render while a successful response loads it.
+  const { parse } = await import('yaml');
   const parsed = parse(source) as unknown;
 
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
@@ -170,7 +172,7 @@ export function ApiExplorerContent() {
         }
 
         const source = await response.text();
-        const document = parseOpenApiDocument(source);
+        const document = await parseOpenApiDocument(source);
 
         if (active) {
           setLoadState({
