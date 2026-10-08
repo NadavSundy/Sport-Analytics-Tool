@@ -18,6 +18,7 @@ import {
 const API_KEY = 'test-placeholder-not-a-real-key';
 const MODEL = 'claude-haiku-4-5-20251001';
 const QUESTION = 'Who scored the most runs in the 2026 Indian Premier League?';
+const DEFAULT_COMPETITION = 'Indian Premier League';
 
 const DEFINITION = {
   kind: 'leaderboard',
@@ -48,12 +49,13 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 function client(
   fetchImplementation: typeof fetch,
-  overrides: { apiKey?: string | undefined } = {},
+  overrides: { apiKey?: string | undefined; defaultCompetition?: string } = {},
 ) {
   return createLlmClient({
     apiKey: 'apiKey' in overrides ? overrides.apiKey : API_KEY,
     model: MODEL,
     timeoutMs: 15_000,
+    defaultCompetition: overrides.defaultCompetition ?? DEFAULT_COMPETITION,
     fetchImplementation,
   });
 }
@@ -107,6 +109,7 @@ describe('analytics query LLM adapter', () => {
         model: MODEL,
         // Far below the configured floor, so the test does not wait on a real bound.
         timeoutMs: 20,
+        defaultCompetition: DEFAULT_COMPETITION,
         fetchImplementation: fetchStub,
       }).translateQuestion(QUESTION),
     ).rejects.toBeInstanceOf(LlmTimeoutError);
@@ -359,15 +362,18 @@ describe('analytics query LLM request', () => {
     }
   });
 
-  // The system prompt is the contract description plus a fixed framing sentence.
-  // The framing carries no numbers, so any digit in the prompt came from the
-  // contract itself rather than from data this adapter added.
-  it('adds only fixed framing text to the contract description', async () => {
+  // The system prompt is the contract description, a fixed framing sentence, and
+  // the one configured value the adapter adds: the default competition name.
+  // Strip those three and nothing with a digit in it is left, so no number in the
+  // prompt came from anywhere but the contract.
+  it('adds only fixed framing text and the configured default to the description', async () => {
     const request = await capturedRequest();
     const system = String(request.body.system);
 
     expect(system).toContain(ANALYTICS_QUERY_PROMPT_DESCRIPTION);
-    expect(system.replace(ANALYTICS_QUERY_PROMPT_DESCRIPTION, '')).not.toMatch(/\d/);
+    expect(
+      system.replace(ANALYTICS_QUERY_PROMPT_DESCRIPTION, '').replace(DEFAULT_COMPETITION, ''),
+    ).not.toMatch(/\d/);
   });
 });
 

@@ -14,7 +14,6 @@ import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { ApiResponseError } from '../../api/client';
 import { NameCombobox, type NameComboboxOption } from '../../components/NameCombobox';
 import { useAuth } from '../auth/AuthProvider';
-import { getCurrentUserProfile } from '../auth/current-user-api';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
 import { BatchUploadInputError, MAX_BATCH_BYTES, uploadBatch } from './batch-api';
 import {
@@ -24,6 +23,11 @@ import {
 } from './BatchUploadPage';
 import { invalidateBatchCollections } from './batch-collection-state';
 import { CorrectionWorkspace } from './CorrectionWorkspace';
+import {
+  canRetrySubmissionAccess,
+  loadSubmissionAccess,
+  submissionAccessErrorMessage,
+} from './submission-access';
 import { signInPathFor } from '../auth/auth-return';
 import {
   listCompetitionFixtures,
@@ -48,7 +52,7 @@ const EMPTY_EVENTS = '[]';
 
 type AccessState =
   | { kind: 'loading' }
-  | { kind: 'error'; message: string }
+  | { kind: 'error'; message: string; canRetry: boolean }
   | {
       kind: 'forbidden';
       role: CurrentUserProfile['role'];
@@ -183,11 +187,16 @@ function readFileText(file: File): Promise<string> {
   });
 }
 
-function AccessError({ message }: { message: string }) {
+function AccessError({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
     <div className="state-message state-message--error" role="alert">
       <h2>Submission access could not be checked</h2>
       <p>{message}</p>
+      {onRetry ? (
+        <button className="button button--secondary" type="button" onClick={onRetry}>
+          Try again
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -1513,6 +1522,7 @@ export function SubmissionPage() {
   const [accessState, setAccessState] = useState<AccessState>({
     kind: 'loading',
   });
+  const [accessAttempt, setAccessAttempt] = useState(0);
   const [workflow, setWorkflow] = useState<SubmissionWorkflow>(
     requestedWorkflow === 'season' || requestedWorkflow === 'catalogue'
       ? requestedWorkflow
@@ -1530,24 +1540,9 @@ export function SubmissionPage() {
 
     setAccessState({ kind: 'loading' });
 
-    void getCurrentUserProfile(client, controller.signal)
-      .then(async (profile) => {
-        if (profile.role !== 'submitter' && profile.role !== 'admin') {
-          setAccessState({
-            kind: 'forbidden',
-            role: profile.role,
-            approvalState: profile.approvalState,
-          });
-          return;
-        }
-
-        const competitions = await competitionOptions(profile, controller.signal);
-
-        setAccessState({
-          kind: 'permitted',
-          competitions,
-          profile: { ...profile, role: profile.role },
-        });
+    void loadSubmissionAccess(client, controller.signal)
+      .then((access) => {
+        if (!controller.signal.aborted) setAccessState(access);
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) {
@@ -1556,15 +1551,13 @@ export function SubmissionPage() {
 
         setAccessState({
           kind: 'error',
-          message:
-            error instanceof ApiResponseError && error.kind === 'unauthenticated'
-              ? 'Your session is no longer valid. Sign in again to continue.'
-              : 'Your application role and fixture scope could not be loaded. Please try again.',
+          message: submissionAccessErrorMessage(error),
+          canRetry: canRetrySubmissionAccess(error),
         });
       });
 
     return () => controller.abort();
-  }, [client, isAuthenticated, isLoading]);
+  }, [accessAttempt, client, isAuthenticated, isLoading]);
 
   if (!isLoading && !isAuthenticated) {
     return <Navigate to={signInPathFor(`${location.pathname}${location.search}`)} replace />;
@@ -1591,7 +1584,12 @@ export function SubmissionPage() {
           <p>Loading your persisted role and competition scope…</p>
         </div>
       ) : accessState.kind === 'error' ? (
-        <AccessError message={accessState.message} />
+        <AccessError
+          message={accessState.message}
+          {...(accessState.canRetry
+            ? { onRetry: () => setAccessAttempt((attempt) => attempt + 1) }
+            : {})}
+        />
       ) : accessState.kind === 'forbidden' ? (
         <ForbiddenState role={accessState.role} approvalState={accessState.approvalState} />
       ) : (

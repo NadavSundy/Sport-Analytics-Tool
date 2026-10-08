@@ -117,7 +117,26 @@ resolves; no match is `entity_not_found`; more than one is `entity_ambiguous`.
 A search reads at most 25 matches. More matches than that are reported ambiguous rather than
 narrowed, because a second exact match may sit outside the page.
 
-`candidates` carries at most five entries, each an identifier and a display name. **Two candidates
+**A name that finds nothing falls back to its surname.** Translation is asked for scorecard names, so
+the first search usually succeeds; the fallback is for when it does not, because `Virat Kohli`
+searched whole matches nothing where the scorecard says `V Kohli`. It is the same parameterised read
+with the last word of the name bound instead, so no SQL is added, and it runs only on the path that
+would otherwise have reported `entity_not_found`.
+
+The fallback may suggest but never decide. A surname matching one player whose leading initial agrees
+with the hint resolves — `Virat Kohli` to `V Kohli`. One whose initial disagrees is reported as
+`entity_ambiguous` with that single candidate, so `Suresh Kohli` asks "did you mean V Kohli" rather
+than answering with a different player's figures or dead-ending. A crowded surname is reported
+ambiguous with candidates as any other crowded match is.
+
+The comparison is the leading initial and nothing more, which errs toward asking: a scorecard that
+orders initials differently from the spoken name, `KD Karthik` against `Dinesh Karthik`, also asks.
+One extra confirmation is the accepted price for never answering as somebody else. A single-token
+name and a surname under three characters skip the fallback entirely — the first search already was
+that token, and `%K%` would match most of the corpus.
+
+`candidates` carries one to five entries, each an identifier and a display name. A single candidate
+is the surname fallback asking for confirmation, as above. **Two candidates
 may look identical.** Many people in the corpus share a display name: observation O2 in the
 [database schema](../database/schema.md) records that 168 names map to more than one player
 identifier. The published participant resource carries nothing further to tell them apart, so an
@@ -244,6 +263,103 @@ career totals" for a question that was answered correctly.
 An empty `statisticIds` for a participant question means nothing is published at
 that scope, which is an answer rather than an error.
 
+### Follow-up questions
+
+A question may carry up to five earlier turns, oldest first, so that a follow-up resolves against
+what was already asked:
+
+```json
+{
+  "question": "What about his strike rate?",
+  "conversation": [
+    {
+      "question": "What are V Kohli's career statistics?",
+      "definition": {
+        "kind": "participant_statistics",
+        "participant": { "name": "V Kohli" },
+        "scope": "career"
+      }
+    }
+  ]
+}
+```
+
+Each turn is the question that was asked and the definition it was read as; take the definition from
+that turn's own `evaluation.definition`. `conversation` is optional, so a client that keeps no
+history — the home-page widget — sends only `question`.
+
+Both halves are the existing contracts rather than looser copies. An earlier question obeys the same
+300-character rule as the current one, because it is the same kind of thing: text the reader wrote.
+An earlier definition must satisfy the whole query-definition contract.
+
+**One invalid turn fails the whole request** with `422 VALIDATION_FAILED`, naming the turn and the
+field, rather than being dropped: a conversation read from a partially-rejected history would answer
+a question nobody asked. The body is validated before the limiter and before the provider, so a
+rejected history spends nothing.
+
+The turns reach the provider as clearly delimited prior context inside the same user turn, oldest
+first, with the current question last. They are framed as data on exactly the terms the question
+already is, and nothing is added to them: no cricket data, no result and no resolved identifier,
+because the turns come from the request body and never from an evaluation. ADR-017 records this as
+part of what is sent.
+
+The five-turn bound is a cost bound. Every turn is re-sent on every question, so an unbounded history
+would make one conversation arbitrarily expensive against the ADR-017 limit.
+
+### The default competition
+
+A question that needs a competition and names none is read against a configured default
+(`NL_QUERY_DEFAULT_COMPETITION`, default `Indian Premier League`). The response then says so:
+
+```json
+{
+  "data": {
+    "question": "Who has the most sixes?",
+    "model": "claude-haiku-4-5-20251001",
+    "evaluation": {
+      "outcome": "answered",
+      "definition": {
+        "kind": "leaderboard",
+        "metric": "most_sixes",
+        "scope": "competition",
+        "competition": { "name": "Indian Premier League" }
+      }
+    },
+    "assumptions": ["competition"]
+  }
+}
+```
+
+`assumptions` names the reference the reader did not supply; the name itself is in the definition,
+because that is what was queried. A client should mark such an answer as assumed — the home-page
+widget says "You did not say which competition, so this assumes Indian Premier League" — because
+otherwise the reader is shown an answer to a narrower question than they asked.
+
+The field is absent when the reader named everything themselves, and the definition is unaffected
+either way: a definition that used the default is identical to one where the reader named it, so the
+same question carries the same `definitionVersion`.
+
+**A season is never assumed.** The translation step is told the default competition but neither
+today's date nor which seasons the platform holds, so an assumed season would be a guess reported as
+an answer. A question that needs a season and names none — "last season", "this year" — comes back
+`unsupported` with the reason `ambiguous` and suggestions scoped to a competition already in play.
+`competition` is therefore the only value `assumptions` can carry.
+
+The default is configuration, not database content: an operator sets the name and nothing reads it
+from the corpus. It is validated by the same name rule a definition applies, so a deployment cannot
+configure a default that the contract would then reject.
+
+### Casual phrasing
+
+Casual wording for a published metric is read as that metric: "smashes the most sixes" is
+`most_sixes`, "best economy" and "most economical" are `best_economy_rate`, "scores fastest" is
+`highest_strike_rate`. The mapping is generated from the metric enum itself, so a metric renamed in
+the contract cannot leave the guidance naming a metric that no longer exists.
+
+A superlative that names no published measure stays a refusal with something to ask instead: "who is
+the best batter", "the GOAT", "the most dangerous batter" are `unsupported` with the reason
+`ambiguous` and up to three concrete suggestions.
+
 ### Limits
 
 The operation is anonymous and every admitted request calls a paid provider, so the limits are its
@@ -255,6 +371,7 @@ protection rather than a convenience.
 | Per client, per UTC day  | 100            | `NL_QUERY_DAILY_QUOTA_PER_CLIENT` |
 | All clients, per UTC day | 300            | `NL_QUERY_GLOBAL_DAILY_LIMIT`     |
 | Question length          | 300 characters | not configurable                  |
+| Conversation turns       | 5              | not configurable                  |
 
 The per-client limits are generous because a campus or a mobile network can put many readers behind
 one address. The limits are not independent: one client may consume at most its own daily quota of
@@ -333,10 +450,11 @@ when it is not. All of these headers are exposed to browsers by the existing COR
 ### What is logged
 
 One line per request records the outcome, the definition kind, the definition version, the model, the
-token counts and the elapsed time. The question text and the model's raw output are never written, at
-any level: the question is the reader's own words, it already reaches a third party, and a log is the
-one place it would be retained. The client hash is not logged either, because nothing in a log needs
-it.
+token counts, the elapsed time, how many conversation turns were sent and what was assumed. The
+question text and the model's raw output are never written, at any level: the question is the
+reader's own words, it already reaches a third party, and a log is the one place it would be
+retained. The same holds for the earlier turns — a count is recorded, never their text. The client
+hash is not logged either, because nothing in a log needs it.
 
 ## Related reading
 
@@ -350,5 +468,7 @@ it.
 This page was drafted with the assistance of Claude-Code[Claude Opus 5 (1M context)] under issue
 #813. The natural-language query endpoint, its limits and the post-deployment verification were
 documented with the assistance of Claude-Code[Claude Opus 5 (1M context)] under issue #815. The
+follow-up questions, the default competition, the casual-phrasing guidance and the surname fallback
+were documented with the assistance of Claude-Code[Claude Opus 5 (1M context)] under issue #868. The
 suggestions and scoped answers were documented with the assistance of
 Claude-Code[Claude Opus 5 (1M context)] under issue #851.

@@ -62,6 +62,9 @@ param nlQueryDailyQuotaPerClient int = 100
 @description('Natural-language questions answered per UTC day across all clients; 1 to 100000.')
 param nlQueryGlobalDailyLimit int = 300
 
+@description('Competition a natural-language question that names none is read against (issue #868).')
+param nlQueryDefaultCompetition string = 'Indian Premier League'
+
 @description('Exact allowed browser origins for credentialed API requests.')
 param corsOrigins string
 
@@ -230,6 +233,10 @@ resource backend 'Microsoft.App/containerApps@2025-02-02-preview' = {
             { name: 'NL_QUERY_RATE_LIMIT_PER_MINUTE', value: string(nlQueryRateLimitPerMinute) }
             { name: 'NL_QUERY_DAILY_QUOTA_PER_CLIENT', value: string(nlQueryDailyQuotaPerClient) }
             { name: 'NL_QUERY_GLOBAL_DAILY_LIMIT', value: string(nlQueryGlobalDailyLimit) }
+            // Configuration, not database content: the competition name a
+            // question that names none is read against (issue #868). It carries a
+            // default, so the deployment adds no required parameter.
+            { name: 'NL_QUERY_DEFAULT_COMPETITION', value: nlQueryDefaultCompetition }
             { name: 'OBJECT_STORAGE_PROVIDER', value: 'azure' }
             { name: 'AZURE_STORAGE_ACCOUNT_NAME', value: existingStorage.name }
             { name: 'AZURE_STORAGE_CONTAINER_NAME', value: storageContainerName }
