@@ -85,7 +85,7 @@ export function createNaturalLanguageQueryController(
       return;
     }
 
-    const { question } = parsed.data;
+    const { question, conversation } = parsed.data;
     const startedAt = process.hrtime.bigint();
 
     void (async () => {
@@ -106,7 +106,7 @@ export function createNaturalLanguageQueryController(
       }
 
       const translationStartedAt = process.hrtime.bigint();
-      const translation = await dependencies.llmClient.translateQuestion(question);
+      const translation = await dependencies.llmClient.translateQuestion(question, conversation);
       const translationMs = elapsedMs(translationStartedAt);
 
       const evaluation = await dependencies.evaluator.evaluate(translation.definition);
@@ -125,6 +125,12 @@ export function createNaturalLanguageQueryController(
           translationMs,
           totalMs: elapsedMs(startedAt),
           suggestionCount: translation.suggestions.length,
+          // How many turns were sent and what was assumed, both metering data
+          // rather than content: a count and a reference name, never the turns
+          // themselves. The questions inside them are the reader's own words and
+          // are kept out of the log exactly as the current question is.
+          conversationTurns: conversation?.length ?? 0,
+          assumptions: translation.assumptions,
         },
         'Natural-language query answered',
       );
@@ -137,6 +143,10 @@ export function createNaturalLanguageQueryController(
           // Omitted rather than sent empty: an absent field says nothing was
           // suggested, which is what an interface needs to know.
           ...(translation.suggestions.length > 0 ? { suggestions: translation.suggestions } : {}),
+          // Likewise: an absent `assumptions` says the reader named everything
+          // themselves, so a client only ever has to show "(assumed)" when the
+          // field is there.
+          ...(translation.assumptions.length > 0 ? { assumptions: translation.assumptions } : {}),
         },
       });
     })().catch((error: unknown) => {

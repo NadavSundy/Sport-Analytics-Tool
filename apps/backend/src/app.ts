@@ -195,6 +195,7 @@ export function createApp(dependencies: AppDependencies = {}) {
       apiKey: environment.LLM_API_KEY,
       model: environment.LLM_MODEL,
       timeoutMs: environment.LLM_TIMEOUT_MS,
+      defaultCompetition: environment.NL_QUERY_DEFAULT_COMPETITION,
     });
   const naturalLanguageQueryLimiter =
     dependencies.naturalLanguageQueryLimiter ??

@@ -16,12 +16,17 @@
  * it is acceptable.
  */
 
+import {
+  CONVERSATIONAL_QUERY_CASES,
+  TESTER_QUESTION_CASES,
+} from './natural-language-conversational-cases.mjs';
+
 /**
  * Every matcher is a partial definition: the keys it names must match, and keys
  * it does not name are not examined. That keeps a case about the thing it tests
  * — the metric, the scope, the refusal — rather than about every default.
  */
-export const NATURAL_LANGUAGE_QUERY_CASES = [
+const CORE_CASES = [
   // Leaderboards.
   {
     id: 'leaderboard-runs-competition',
@@ -98,18 +103,28 @@ export const NATURAL_LANGUAGE_QUERY_CASES = [
       { kind: 'participant_statistics', scope: 'career', participant: { name: 'BB McCullum' } },
     ],
   },
+  // Issue #868 requires a scorecard name, so the expected hint is "Q de Kock" and
+  // not the full name the reader wrote. This was a regression in run 1 only
+  // because the case still asserted the rule #868 replaced — "copy the name the
+  // reader wrote" — and the pin is moved rather than loosened.
   {
     id: 'participant-runs-only',
     question: 'How many runs has Quinton de Kock scored in total?',
     accept: [
-      { kind: 'participant_statistics', scope: 'career', participant: { name: 'Quinton de Kock' } },
+      { kind: 'participant_statistics', scope: 'career', participant: { name: 'Q de Kock' } },
     ],
   },
+  // An apostrophe in a name has to survive translation. The question is written
+  // in scorecard form on purpose: converting "D'Arcy Short" to initials drops the
+  // apostrophe entirely, so the old wording stopped testing apostrophes the
+  // moment #868 required the conversion. A surname apostrophe is what the
+  // contract's name rule has to carry, and asking in scorecard form tests that
+  // rather than the model's knowledge of a player's initials.
   {
     id: 'participant-apostrophe-name',
-    question: "Show me D'Arcy Short's career numbers",
+    question: "How has SNJ O'Keefe done in his career?",
     accept: [
-      { kind: 'participant_statistics', scope: 'career', participant: { name: "D'Arcy Short" } },
+      { kind: 'participant_statistics', scope: 'career', participant: { name: "SNJ O'Keefe" } },
     ],
   },
 
@@ -274,6 +289,16 @@ export const NATURAL_LANGUAGE_QUERY_CASES = [
   },
 ];
 
+/**
+ * The whole evaluation set: the issue #815 cases, the issue #868 conversational
+ * cases, and whatever questions testers have contributed.
+ */
+export const NATURAL_LANGUAGE_QUERY_CASES = [
+  ...CORE_CASES,
+  ...CONVERSATIONAL_QUERY_CASES,
+  ...TESTER_QUESTION_CASES,
+];
+
 /** True when every key the matcher names matches, nested objects included. */
 function matches(matcher, actual) {
   if (Array.isArray(matcher)) {
@@ -298,7 +323,7 @@ function matches(matcher, actual) {
  * A failure says which matcher was expected and what arrived, so a run can be
  * read without the provider in front of you.
  */
-export function compareTranslation(testCase, definition, suggestions = []) {
+export function compareTranslation(testCase, definition, suggestions = [], assumptions = []) {
   if (definition === undefined || definition === null) {
     return { id: testCase.id, pass: false, detail: 'no definition was returned' };
   }
@@ -322,17 +347,58 @@ export function compareTranslation(testCase, definition, suggestions = []) {
     };
   }
 
+  // An assumption has to be reported to be acceptable (issue #868). A question
+  // answered against the default competition without saying so showed the reader
+  // an answer to a narrower question than they asked, so it fails here even
+  // though the definition itself matched. An empty expectation asserts the
+  // opposite: that nothing was assumed.
+  if (testCase.expectAssumptions !== undefined) {
+    const expected = [...testCase.expectAssumptions].sort().join(', ') || 'none';
+    const actual = [...assumptions].sort().join(', ') || 'none';
+
+    if (expected !== actual) {
+      return {
+        id: testCase.id,
+        pass: false,
+        detail: `${describe(definition)} but assumed ${actual}, expected ${expected}`,
+      };
+    }
+  }
+
   const offered = suggestions.length > 0 ? ` + ${suggestions.length} suggestion(s)` : '';
-  return { id: testCase.id, pass: true, detail: `${describe(definition)}${offered}` };
+  const assumed = assumptions.length > 0 ? ` (assumed ${[...assumptions].sort().join(', ')})` : '';
+  return { id: testCase.id, pass: true, detail: `${describe(definition)}${offered}${assumed}` };
 }
 
+/**
+ * One definition in a line.
+ *
+ * Participant names are included because run 1 of the issue #868 evaluation
+ * reported two failures as "expected one of participant_statistics scope=career;
+ * got participant_statistics scope=career" — identical, and therefore useless.
+ * The mismatching key was the participant name, which this did not print, so the
+ * only way to learn what the model had actually returned was to pay for another
+ * run. Anything a case can match on has to be visible here.
+ */
 function describe(definition) {
-  const { kind, reason, metric, scope, limit } = definition;
+  const { kind, reason, metric, scope, limit, participant, participants, competition, season } =
+    definition;
+
+  const names = participants
+    ? `participants=${participants.map((entry) => entry?.name).join(' vs ')}`
+    : participant && `participant=${participant.name}`;
+
+  const scopeName =
+    (competition && `competition=${competition.name}`) ||
+    (season && `season=${season.competitionName} ${season.seasonLabel}`);
+
   return [
     kind,
     reason && `reason=${reason}`,
     metric && `metric=${metric}`,
     scope && `scope=${scope}`,
+    names,
+    scopeName,
     limit !== undefined && `limit=${limit}`,
   ]
     .filter(Boolean)
@@ -350,7 +416,7 @@ export function renderResults({ model, startedAt, results }) {
   const rows = results
     .map(
       (result) =>
-        `| ${result.id} | ${result.pass ? 'pass' : 'FAIL'} | ${result.detail.replaceAll('|', '\\|')} |`,
+        `| ${result.id} | ${result.turns ?? 0} | ${result.pass ? 'pass' : 'FAIL'} | ${result.detail.replaceAll('|', '\\|')} |`,
     )
     .join('\n');
 
@@ -364,20 +430,28 @@ export function renderResults({ model, startedAt, results }) {
 | Cases | ${total} |
 | Passed | ${passed} |
 | Failed | ${failed} |
+| Multi-turn cases | ${results.filter((result) => (result.turns ?? 0) > 0).length} |
 
 A case passes when the returned definition matches one of the translations the
 case accepts. Some cases accept more than one reading, because translation is not
 deterministic and two readings of the same question can both be defensible; the
 case list records which and why.
 
-| Case | Result | Detail |
-| ---- | ------ | ------ |
+A case stating "expectSuggestions" also has to offer something answerable, and a
+case stating "expectAssumptions" also has to report exactly those assumptions: a
+question answered against the default competition without saying so fails, because
+the reader would have been shown an answer to a narrower question than they asked.
+
+The "Turns" column is how many earlier turns the case sent as prior context.
+
+| Case | Turns | Result | Detail |
+| ---- | ----- | ------ | ------ |
 ${rows}
 
 ## AI Declaration
 
 The evaluation set and runner were produced with the assistance of
-Claude-Code[Claude Opus 5 (1M context)] under issue #815. The run recorded above
-was performed by Ben Swartz.
+Claude-Code[Claude Opus 5 (1M context)] under issues #815 and #868. The run
+recorded above was performed by Ben Swartz.
 `;
 }

@@ -2558,6 +2558,18 @@ paths:
         returns against the query-definition contract, so output that does not
         satisfy it is reported as `422 QUERY_NOT_UNDERSTOOD` rather than answered.
 
+        A question may carry up to five earlier turns in `conversation`, so a
+        follow-up resolves against what was already asked. The turns are included
+        in the request to the provider as clearly delimited prior context, as data
+        on exactly the terms the question itself is; no database content, result or
+        resolved identifier accompanies them. A history that fails validation is
+        `422 VALIDATION_FAILED`, refused before the limiter and before the
+        provider.
+
+        A question that needs a competition and names none is read against a
+        configured default, and the response then carries `assumptions` so a
+        client can say so. A season is never assumed.
+
         The operation requires no authentication, because it returns only
         resources the public statistics reads already serve anonymously. What
         stands in place of a credential is a durable limiter: a per-client rate
@@ -6422,7 +6434,8 @@ components:
         - other
 
     NaturalLanguageQuery:
-      description: A reader's question. It is the only thing a caller may send.
+      description: >-
+        A reader's question, and optionally the turns that came before it.
       type: object
       additionalProperties: false
       required: [question]
@@ -6435,6 +6448,44 @@ components:
           type: string
           minLength: 1
           maxLength: 300
+        conversation:
+          description: >-
+            Earlier turns of the same conversation, oldest first, so a follow-up
+            such as "What about his strike rate?" or "And in 2023?" resolves
+            against what was already asked.
+
+            Optional: a client that keeps no history sends only `question`. Every
+            turn is re-sent on every question and reaches the provider, which is
+            why the list is bounded at five.
+
+            A caller supplies this, so none of it is trusted. One turn that fails
+            validation fails the whole request with `422 VALIDATION_FAILED`
+            rather than being dropped, because a conversation read from a
+            partially-rejected history would answer a question nobody asked.
+          type: array
+          maxItems: 5
+          items: { $ref: '#/components/schemas/NaturalLanguageConversationTurn' }
+
+    NaturalLanguageConversationTurn:
+      description: >-
+        One earlier turn: the question that was asked and the definition it was
+        read as. Both halves are the existing contracts, so an earlier question
+        obeys the same 300-character rule as the current one and an earlier
+        definition must satisfy the whole query-definition contract.
+      type: object
+      additionalProperties: false
+      required: [question, definition]
+      properties:
+        question:
+          description: The earlier question, trimmed before it is measured.
+          type: string
+          minLength: 1
+          maxLength: 300
+        definition:
+          description: >-
+            What that question was read as. Take it from the `evaluation.definition`
+            of the answer to that turn.
+          $ref: '#/components/schemas/AnalyticsQueryDefinition'
 
     NaturalLanguageQueryResult:
       type: object
@@ -6470,6 +6521,24 @@ components:
           type: array
           items: { $ref: '#/components/schemas/QuerySuggestion' }
           maxItems: 3
+        assumptions:
+          description: >-
+            What the translation filled in rather than reading from the question,
+            so a client can mark the answer "(assumed)".
+
+            Its only member is `competition`, and it appears when a question
+            needed a competition and named none: the configured default was used,
+            and the name itself is in `evaluation.definition`. A season is never
+            assumed, because the translation step is told neither today's date nor
+            which seasons the platform holds; a question needing a season and
+            naming none comes back `unsupported` with suggestions instead.
+
+            Absent when the reader named everything themselves. The definition and
+            its `definitionVersion` are unaffected either way: a definition that
+            used the default is identical to one where the reader named it.
+          type: array
+          items: { type: string, enum: [competition] }
+          maxItems: 1
 
     QuerySuggestion:
       description: >-
@@ -6625,9 +6694,13 @@ components:
         reference: { $ref: '#/components/schemas/QueryDefinitionReference' }
         nameHint: { $ref: '#/components/schemas/AnalyticsQueryNameHint' }
         candidates:
+          description: >-
+            At least one. A single candidate is the surname fallback asking for
+            confirmation: the name matched exactly one player by surname alone,
+            and their initial does not agree with what the reader wrote.
           type: array
           items: { $ref: '#/components/schemas/QueryDefinitionCandidate' }
-          minItems: 2
+          minItems: 1
           maxItems: 5
 
     QueryDefinitionUnsupported:
