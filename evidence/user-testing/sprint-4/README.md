@@ -1,0 +1,50 @@
+# Sprint 4 final structured user testing - Issue #803
+
+**Status: one reviewed public human session and one user-confirmed assisted local submitter/reviewer session, plus a separately labelled AI simulation. Issue #803 remains open; see the [completion audit](2026-10-07-completion-audit.md).**
+
+The [public session record](2026-10-05-P15-public.md) and [source excerpts](raw/2026-10-05-P15-public-notes.md) retain four reported task attempts and all six post-test answers. P15 allocation, reported date/time and independence are confirmed by Gabriel; all four outcomes and finding decisions are approved. Exact deployed build/browser version and original export remain unavailable.
+
+Use the existing [protocol](../../../docs/testing/user-testing-protocol.md), [task bank](../../../docs/testing/user-testing-task-bank.md), [session template](../session-template.md) and ADR-013. No survey pipeline or parallel testing site is introduced.
+
+## Execution order
+
+1. Facilitator reads the [runbook](../../../testing/user-testing/SPRINT4_FACILITATOR_RUNBOOK.md) privately and completes the [scenario record](../../../testing/user-testing/sprint-4-scenario-record.md).
+2. Resolve every selected workflow's readiness blocker in the [technical preparation record](technical-preparation.md). Source routes or a closed implementation issue do not prove deployment readiness.
+3. Recruit suitable participants, allocate anonymous IDs, and supply only the selected [participant task sheet](../../../testing/user-testing/SPRINT4_PARTICIPANT_TASKS.md).
+4. Copy the matching [public](templates/public-session-template.md), [submitter](templates/submitter-session-template.md), [reviewer](templates/reviewer-session-template.md) or [API consumer](templates/api-consumer-session-template.md) template. Record the actual date, environment/build and individual task outcomes.
+5. Review/redact evidence using the [capture checklist](evidence-capture-checklist.md). Preserve source notes in raw/, session records at this directory root, supporting files in supporting/, analysis separately, and human retests in retests/.
+6. Validate factual interpretation with the facilitator, evaluate findings in the [decision table](feedback-decisions.md), link fixes/issues and complete required [human retests](retest-template.md).
+7. Populate the [final summary](sprint-4-user-testing-summary.md) only from retained evidence. Keep #803 open until its acceptance criteria and review requirements are met.
+
+## Planned coverage
+
+| Session         | Role               | Required tasks                                   | Completed sessions                             |
+| --------------- | ------------------ | ------------------------------------------------ | ---------------------------------------------- |
+| 1               | Public / analyst   | PUB-01; PUB-02; PUB-03; PUB-06                   | 1 reviewed human session                       |
+| 2               | Approved submitter | AUTH-01; AUTH-02; SUB-01; SUB-02; SUB-03; SUB-04 | 1 assisted combined session                    |
+| 3               | Reviewer           | AUTH-01; REV-01; REV-02; REV-04                  | Same combined session; not an additional count |
+| 4 (recommended) | API consumer       | PUB-05; API-01; API-02                           | 0                                              |
+
+Minimum: three real completed sessions representing more than one relevant workflow where practical. Automated checks and Codex walkthroughs are technical preparation only. Unattempted tasks and environmental blockers are recorded, never scored as success.
+
+## Identifiers, naming and retention
+
+P15 is allocated to the reviewed public session. The local session's participant mapping remains pending; LOCAL-01 is only an evidence key. Facilitator checks concurrent allocations before assigning another anonymous participant ID. Reuse an existing ID only for the same anonymous person; never identify a new person with a historical ID. No date is allocated in blank templates.
+
+Completed records: `YYYY-MM-DD-PXX-ROLE.md`. Supporting files: matching prefix plus Task ID, e.g. `YYYY-MM-DD-PXX-public-PUB-02-01.png`. Retests use the same participant/date/role prefix plus Task ID and `retest`; distinguish them from original attempts. Do not overwrite earlier evidence.
+
+All credentials stay outside Git/chat. Recordings require explicit consent. Raw notes retained in Git must already be anonymised/redacted; sensitive originals stay outside the repository. Check filenames, metadata and screen content as well as Markdown.
+
+## Git and review boundary
+
+Preparation is on `graz/test/803-final-structured-user-testing`, based on fetched origin/main e4cd199e. The environment-required `graz/` namespace precedes the repository `test/803-...` convention. Original checkout and unrelated work are preserved.
+
+Assignee verified in Gitea: GabeRaz (Gabriel Raz); milestone Sprint 4; labels area: testing and priority: high. #800 is open; #801 and #802 are closed; #803 blocks open final gate #810. Recheck these states and builds before formal testing and final review.
+
+Use `Refs #803` for preparation; do not use a closing keyword. The Git methodology requires issue acceptance before normal integration. A draft preparation PR may collect feedback, but is not mergeable; any proposed integration of partial scope needs the team to record an approved scope decision first. No methodology change is implied. Merge requires independent team approval, current main, green required quality CI and a merge commit.
+
+AI register: Gabriel Raz's member CSV. Transcript import is pending; follow [AI handoff](ai-evidence-handoff.md) before merge.
+
+## AI Declaration
+
+This preparation document was planned and generated with the assistance of Codex[GPT-6]. P15 outcomes and decisions were reviewed by Gabriel; further sessions and overall acceptance remain pending.

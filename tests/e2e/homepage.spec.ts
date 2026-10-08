@@ -30,10 +30,15 @@ test(
     await expect(
       page.getByRole('heading', { level: 1, name: 'The game, measured ball by ball.' }),
     ).toBeVisible();
-    await expect(page.getByRole('img', { name: 'Cricket match in progress' })).toHaveAttribute(
-      'src',
-      '/images/cricket-match-john-oswald-unsplash.jpg',
-    );
+    const heroImage = page.getByRole('img', { name: 'Cricket match in progress' });
+    await expect
+      .poll(() =>
+        heroImage.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0),
+      )
+      .toBe(true);
+    await expect
+      .poll(() => heroImage.evaluate((image: HTMLImageElement) => image.currentSrc))
+      .toMatch(/\/images\/cricket-match-john-oswald-(640|1280)\.webp$/);
     await expect(page.getByRole('link', { name: 'Photo: John Oswald / Unsplash' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Browse fixtures' }).first()).toHaveAttribute(
       'href',
@@ -68,6 +73,15 @@ test(
       if ((await canvas.count()) > 0) {
         await expect(canvas).toHaveAttribute('data-scene-theme', theme);
       }
+      // Audit the settled theme rather than colours midway through a transition.
+      await page.evaluate(async () => {
+        await Promise.all(
+          document
+            .getAnimations()
+            .filter((animation) => animation instanceof CSSTransition)
+            .map((transition) => transition.finished.catch(() => undefined)),
+        );
+      });
       const results = await new AxeBuilder({ page }).analyze();
       expect(
         results.violations.filter(

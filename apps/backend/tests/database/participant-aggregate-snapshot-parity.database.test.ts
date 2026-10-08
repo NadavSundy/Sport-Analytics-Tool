@@ -57,7 +57,10 @@ describe.sequential('participant aggregate snapshot parity', () => {
   function savepointPool(client: PoolClient): Pool {
     const statements: Record<string, string> = {
       BEGIN: 'SAVEPOINT parity_transaction',
-      COMMIT: 'RELEASE SAVEPOINT parity_transaction',
+      // RELEASE preserves SET LOCAL values in the outer transaction, unlike a
+      // real COMMIT. Do not leak the snapshot writer's 1ms lock timeout into
+      // subsequent snapshot reads or live derivation on this shared client.
+      COMMIT: 'SET LOCAL lock_timeout = DEFAULT; RELEASE SAVEPOINT parity_transaction',
       ROLLBACK: 'ROLLBACK TO SAVEPOINT parity_transaction',
     };
     const query = (text: string, values?: unknown[]) =>
@@ -80,6 +83,7 @@ describe.sequential('participant aggregate snapshot parity', () => {
       loadSource: (id) => loadParticipantAggregatesSource(id, client),
     });
     expect([...outcomes.values()].every((outcome) => outcome === 'refreshed')).toBe(true);
+    expect((await client.query('SHOW lock_timeout')).rows[0]?.lock_timeout).toBe('0');
 
     const service = createParticipantAggregatesService(async () => {
       throw new Error('Expected stored rows to be served.');

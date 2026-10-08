@@ -1,0 +1,110 @@
+- link "Skip to main content":
+  - /url: "#main-content"
+- banner:
+  - link "Stat'sTheGame home":
+    - /url: /
+    - img "Stat'sTheGame"
+  - generic: Theme
+  - checkbox "Switch to Day Match theme" [checked]
+  - generic: Night Match
+  - button "Menu"
+- main:
+  - article:
+    - link "Back to players":
+      - /url: /participants
+    - paragraph: Published fixture statistics
+    - heading "Compare players" [level=1]
+    - paragraph: Select two players in one fixture to compare the published batting and bowling figures.
+    - generic: Fixture
+    - combobox "Fixture":
+      - option "Select a fixture"
+      - option "S4 Local Lions vs S4 Local Eagles"
+      - option "S4 Local Lions vs S4 Local Eagles" [selected]
+    - generic: Player A
+    - combobox "Player A":
+      - option "Select a player"
+      - option "S4 Local Bowler"
+      - option "S4 Local Fielder"
+      - option "S4 Local Non-striker"
+      - option "S4 Local Striker" [selected]
+    - generic: Player B
+    - combobox "Player B":
+      - option "Select a player"
+      - option "S4 Local Bowler"
+      - option "S4 Local Fielder"
+      - option "S4 Local Non-striker" [selected]
+      - option "S4 Local Striker"
+    - button "Compare performances" [active]
+    - region "Player performance comparison":
+      - paragraph: "Scope: Current fixture"
+      - paragraph: Metrics use the published fixture scorecard. Rates are shown as published.
+      - heading "Batting" [level=2]
+      - table "Batting metrics from the published fixture statistics":
+        - caption: Batting metrics from the published fixture statistics
+        - rowgroup:
+          - row "Metric S4 Local Striker S4 Local Non-striker":
+            - columnheader "Metric"
+            - columnheader "S4 Local Striker"
+            - columnheader "S4 Local Non-striker"
+        - rowgroup:
+          - row "Runs (runs) 4 0":
+            - rowheader "Runs (runs)"
+            - cell "4"
+            - cell "0"
+          - row "Balls faced (balls) 2 0":
+            - rowheader "Balls faced (balls)"
+            - cell "2"
+            - cell "0"
+          - row "Strike rate (%) 200 —":
+            - rowheader "Strike rate (%)"
+            - cell "200"
+            - cell "—"
+          - row "Fours (boundaries) 1 0":
+            - rowheader "Fours (boundaries)"
+            - cell "1"
+            - cell "0"
+          - row "Sixes (boundaries) 0 0":
+            - rowheader "Sixes (boundaries)"
+            - cell "0"
+            - cell "0"
+      - heading "Bowling" [level=2]
+      - table "Bowling metrics from the published fixture statistics":
+        - caption: Bowling metrics from the published fixture statistics
+        - rowgroup:
+          - row "Metric S4 Local Striker S4 Local Non-striker":
+            - columnheader "Metric"
+            - columnheader "S4 Local Striker"
+            - columnheader "S4 Local Non-striker"
+        - rowgroup:
+          - row "Runs conceded (runs) Did not bowl Did not bowl":
+            - rowheader "Runs conceded (runs)"
+            - cell "Did not bowl"
+            - cell "Did not bowl"
+          - row "Wides (deliveries) Did not bowl Did not bowl":
+            - rowheader "Wides (deliveries)"
+            - cell "Did not bowl"
+            - cell "Did not bowl"
+          - row "No-balls (deliveries) Did not bowl Did not bowl":
+            - rowheader "No-balls (deliveries)"
+            - cell "Did not bowl"
+            - cell "Did not bowl"
+          - row "Overs (overs) Did not bowl Did not bowl":
+            - rowheader "Overs (overs)"
+            - cell "Did not bowl"
+            - cell "Did not bowl"
+          - row "Economy rate (runs per over) Did not bowl Did not bowl":
+            - rowheader "Economy rate (runs per over)"
+            - cell "Did not bowl"
+            - cell "Did not bowl"
+          - row "Wickets (wickets) Did not bowl Did not bowl":
+            - rowheader "Wickets (wickets)"
+            - cell "Did not bowl"
+            - cell "Did not bowl"
+- contentinfo:
+  - img "Stat'sTheGame"
+  - navigation "API resources":
+    - link "API Explorer":
+      - /url: /api
+    - link "API Documentation":
+      - /url: https://sports-analytics-tool.pages.dev/api/overview/
+  - paragraph: The game, measured ball by ball.

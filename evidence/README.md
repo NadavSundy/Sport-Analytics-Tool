@@ -4,14 +4,15 @@ Store genuine project evidence here so claims in documentation, issues and miles
 traced to retained records. Evidence is the source record; the public documentation site provides
 human-friendly indexes and explanations without rewriting the evidence itself.
 
-| Directory       | Purpose                                                                                            |
-| --------------- | -------------------------------------------------------------------------------------------------- |
-| `sprints/`      | Sprint planning, stand-ups, stakeholder records, close-outs and retained Teams meeting transcripts |
-| `decisions/`    | Architecture Decision Records and other project-level decisions                                    |
-| `user-testing/` | Consent-aware session material, findings, evaluation and retest evidence                           |
-| `validation/`   | Sanitised command/result evidence and issue-specific verification records                          |
-| `acceptance/`   | Integrated acceptance records that do not fit a narrower validation directory                      |
-| `ai/`           | AI usage registers and per-team-member AI interaction transcripts                                  |
+| Directory               | Purpose                                                                                            |
+| ----------------------- | -------------------------------------------------------------------------------------------------- |
+| `sprints/`              | Sprint planning, stand-ups, stakeholder records, close-outs and retained Teams meeting transcripts |
+| `decisions/`            | Architecture Decision Records and other project-level decisions                                    |
+| `user-testing/`         | Consent-aware session material, findings, evaluation and retest evidence                           |
+| `validation/`           | Sanitised command/result evidence and issue-specific verification records                          |
+| `acceptance/`           | Integrated acceptance records that do not fit a narrower validation directory                      |
+| `ai/`                   | AI usage registers and per-team-member AI interaction transcripts                                  |
+| `stakeholder-meetings/` | Feature- or milestone-scoped stakeholder demonstrations and the disposition of each feedback item  |
 
 ## Evidence integrity
 
@@ -44,3 +45,5 @@ not confused.
 
 The evidence-directory description, format-preservation rules and Teams transcript presentation-copy
 policy were reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The `stakeholder-meetings/` row was added with the assistance of
+Claude-Code[Claude Opus 5 (1M context)] under issue #817.

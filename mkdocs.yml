@@ -78,10 +78,12 @@ nav:
       - Automated Testing Strategy: development/testing.md
       - Repository-wide Code Coverage: testing/code-coverage.md
       - Representative-scale Performance: development/performance-baseline.md
+      - Natural-Language Query Evidence: validation/issue-817-natural-language-query-evidence.md
       - User Testing:
           - User Testing Overview: testing/user-testing-overview.md
           - Sprint 2 User Testing Summary: testing/user-testing-sprint-2-summary.md
           - Sprint 3 User Testing Summary: testing/user-testing-sprint-3-summary.md
+          - Sprint 4 Final User Testing: testing/user-testing-sprint-4-summary.md
       - Bug Tracking: testing/bug-tracking.md
 
   - Deployment & CI/CD:

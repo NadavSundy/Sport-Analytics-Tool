@@ -1,0 +1,11 @@
+{
+  "competitionId": "1",
+  "competitionName": "LOCAL ONLY - Sprint 4 Disposable Cup",
+  "fixtureIds": ["1", "2"],
+  "teams": ["S4 Local Lions", "S4 Local Eagles"],
+  "people": ["1", "2", "3", "4"],
+  "databaseHost": "127.0.0.1",
+  "databasePort": 55483,
+  "dates": ["2026-10-07", "2026-10-08"],
+  "createdAt": "2026-10-07T16:23:36.520Z"
+}

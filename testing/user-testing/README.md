@@ -89,6 +89,12 @@ The 8 September stakeholder pack also contained Basic wrapper JSON and the older
 
 The active pack therefore keeps the useful live reference data and converts the deliberate cricket-rule examples into event-array inputs for the current Advanced technical JSON flow. Guided-package tests are prepared from the current committed templates.
 
+## Sprint 4 final testing
+
+Use [facilitator-only runbook](SPRINT4_FACILITATOR_RUNBOOK.md), [participant task sheets](SPRINT4_PARTICIPANT_TASKS.md), [scenario record](sprint-4-scenario-record.md) and [Sprint 4 evidence guide](../../evidence/user-testing/sprint-4/README.md). Do not expose setup clicks or expected answers during participant tasks.
+
 ## AI Declaration
 
 The preceding facilitator pack and the derived advanced-event validation examples were reviewed and generated with the assistance of ChatGPT-Web[GPT-5.6 Sol]. The underlying fixture-5 reference/events and deliberate error cases were supplied from the team's 8 September stakeholder test pack.
+
+The Sprint 4 preparation links were added with the assistance of Codex[GPT-6].
