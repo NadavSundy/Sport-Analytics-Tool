@@ -21,6 +21,7 @@ and is linked from these pages rather than copied into the documentation site.
 | Project workflow, Sprint structure and ceremonies              | [Project Methodology](../project_methodology.md)                                                                                                                                                                                      |
 | Source-control and Pull Request methodology                    | [Git Methodology](../git-methodology.md)                                                                                                                                                                                              |
 | Backlog and milestone planning                                 | [Project Backlog & Milestone Plan](../planning/project-backlog.md)                                                                                                                                                                    |
+| Planning, tracking, defects and tooling review                 | [Planning, Tracking, Bug and Tooling Evidence Review](planning-tracking-and-tooling-review.md)                                                                                                                                        |
 
 ## Methodology
 
