@@ -6,6 +6,7 @@ import {
   type ParticipantAggregates,
 } from '@sport-analytics/contracts';
 
+import type { AnonymousAccessRepository } from '../../src/modules/api-consumers/anonymous-access.repository';
 import type { LeaderboardsService } from '../../src/modules/statistics/leaderboards.service';
 import type { ParticipantAggregatesService } from '../../src/modules/statistics/participant-aggregates.service';
 import type { QueryDefinitionNameResolver } from '../../src/modules/analytics-query/query-definition.evaluator';
@@ -90,6 +91,7 @@ function appWith(
     leaderboard?: Leaderboard | null;
     aggregates?: (participantId: string) => ParticipantAggregates | null;
     names?: Partial<QueryDefinitionNameResolver>;
+    anonymous?: AnonymousAccessRepository;
   } = {},
 ) {
   const leaderboards: LeaderboardsService = {
@@ -123,8 +125,121 @@ function appWith(
     undefined,
     leaderboards,
     { names: nameResolver(options.names) },
+    // A default parameter, so `undefined` keeps the permissive test repository.
+    options.anonymous,
   );
 }
+
+const RESET_AT = new Date('2026-10-08T10:01:00.000Z');
+
+/**
+ * An anonymous limiter that admits `allowed` requests and refuses the rest, so a
+ * test can take the step from inside the bound to past it.
+ */
+function anonymousRepositoryAllowing(allowed: number): AnonymousAccessRepository {
+  let used = 0;
+
+  return {
+    consume: vi.fn(async () => {
+      used += 1;
+      return {
+        allowed: used <= allowed,
+        sourceUsed: used,
+        globalUsed: used,
+        exceeded: used <= allowed ? null : ('source' as const),
+        resetAt: RESET_AT,
+      };
+    }),
+  };
+}
+
+const LEADERBOARD_QUESTION = {
+  kind: 'leaderboard',
+  metric: 'most_runs',
+  scope: 'competition',
+  competition: { name: 'Indian Premier League' },
+} as const;
+
+describe('query definition evaluation anonymous rate limit', () => {
+  // The endpoint is anonymous and does real database work: it resolves every
+  // name hint and calls the published statistics services. The documentation
+  // actively directs traffic to it by telling clients that answering a
+  // suggestion costs nothing, so "free of provider cost" must not be read as
+  // "free". It is metered by the same anonymous bounds as the canonical reads.
+  it('answers every request inside the anonymous bound', async () => {
+    const anonymous = anonymousRepositoryAllowing(30);
+    const app = appWith({ anonymous });
+
+    for (let attempt = 1; attempt <= 30; attempt += 1) {
+      await request(app)
+        .post(EVALUATE)
+        .send(LEADERBOARD_QUESTION)
+        .expect('RateLimit-Limit', '30')
+        .expect('RateLimit-Remaining', String(30 - attempt))
+        .expect(200);
+    }
+
+    expect(anonymous.consume).toHaveBeenCalledTimes(30);
+  });
+
+  it('refuses the request past the bound with the shared anonymous error', async () => {
+    const anonymous = anonymousRepositoryAllowing(1);
+    const app = appWith({ anonymous });
+
+    await request(app).post(EVALUATE).send(LEADERBOARD_QUESTION).expect(200);
+
+    const refused = await request(app)
+      .post(EVALUATE)
+      .send(LEADERBOARD_QUESTION)
+      .expect('RateLimit-Remaining', '0')
+      .expect(429);
+
+    // The existing shape, not a second one invented for this route.
+    expect(refused.body).toEqual({
+      error: {
+        code: 'RATE_LIMIT_EXCEEDED',
+        message: 'Too many anonymous requests. Retry after the current rate-limit window.',
+      },
+    });
+    expect(refused.headers['retry-after']).toBe(refused.headers['ratelimit-reset']);
+  });
+
+  it('meters on the attempt, so a body that fails the contract still counts', async () => {
+    const anonymous = anonymousRepositoryAllowing(30);
+
+    await request(appWith({ anonymous }))
+      .post(EVALUATE)
+      .send({ kind: 'season_summary' })
+      .expect(422);
+
+    expect(anonymous.consume).toHaveBeenCalledOnce();
+  });
+
+  it('keys the limit on a digest rather than the address', async () => {
+    const anonymous = anonymousRepositoryAllowing(30);
+
+    await request(appWith({ anonymous })).post(EVALUATE).send(LEADERBOARD_QUESTION).expect(200);
+
+    expect(anonymous.consume).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceKey: expect.stringMatching(/^[a-f0-9]{64}$/),
+        sourceLimit: 30,
+        globalLimit: 600,
+      }),
+    );
+    expect(JSON.stringify(vi.mocked(anonymous.consume).mock.calls)).not.toContain('127.0.0.1');
+  });
+
+  it('leaves the sibling natural-language endpoint to its own limiter', async () => {
+    const anonymous = anonymousRepositoryAllowing(30);
+
+    await request(appWith({ anonymous }))
+      .post('/api/v1/natural-language-queries')
+      .send({ question: 'Who scored the most runs in the Indian Premier League?' });
+
+    expect(anonymous.consume).not.toHaveBeenCalled();
+  });
+});
 
 describe('query definition evaluation endpoint', () => {
   // The natural-language feature is offered to anonymous visitors, so the
