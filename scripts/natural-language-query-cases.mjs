@@ -261,6 +261,105 @@ const CORE_CASES = [
     expectSuggestions: true,
   },
 
+  // Issue #940. A competition the model does not recognise must still be passed
+  // through as a name hint: `Austria tour of Hungary` is competition 674 in the
+  // deployed corpus, with one season labelled `2026`, and both of these questions
+  // were refused as ambiguous on 9 October with suggestions that fell back to the
+  // Indian Premier League. Recognising a competition is the resolver's job, so
+  // each case pins the reader's own name in the definition, and
+  // `expectAssumptions: []` pins that no default was substituted for it.
+  {
+    id: 'named-competition-unfamiliar-season-runs',
+    question: 'Who scored the most runs in the Austria tour of Hungary in 2026?',
+    accept: [
+      {
+        kind: 'leaderboard',
+        metric: 'most_runs',
+        scope: 'season',
+        season: { competitionName: 'Austria tour of Hungary', seasonLabel: '2026' },
+      },
+      // Reading "in 2026" as part of the competition's own scope is defensible:
+      // the tour has exactly one season, so a competition-scoped ranking answers
+      // the same question. What is not acceptable is either a refusal or a
+      // different competition, and both still fail.
+      {
+        kind: 'leaderboard',
+        metric: 'most_runs',
+        scope: 'competition',
+        competition: { name: 'Austria tour of Hungary' },
+      },
+    ],
+    expectAssumptions: [],
+  },
+  {
+    id: 'named-competition-unfamiliar-wickets',
+    question: 'Who has taken the most wickets in the Austria tour of Hungary?',
+    accept: [
+      {
+        kind: 'leaderboard',
+        metric: 'most_wickets',
+        scope: 'competition',
+        competition: { name: 'Austria tour of Hungary' },
+      },
+      {
+        kind: 'leaderboard',
+        metric: 'most_wickets',
+        scope: 'season',
+        season: { competitionName: 'Austria tour of Hungary' },
+      },
+    ],
+    expectAssumptions: [],
+  },
+  // The same unfamiliar competition worded as a season, so the season branch is
+  // pinned on its own rather than only as an alternative reading above.
+  {
+    id: 'named-competition-unfamiliar-season-wording',
+    question: 'Top wicket takers in the 2026 Austria tour of Hungary season',
+    accept: [
+      {
+        kind: 'leaderboard',
+        metric: 'most_wickets',
+        scope: 'season',
+        season: { competitionName: 'Austria tour of Hungary', seasonLabel: '2026' },
+      },
+    ],
+    expectAssumptions: [],
+  },
+  // A player's figures within the unfamiliar competition, so the pass-through is
+  // tested on a kind other than a leaderboard. `MP Ainsworth` is participant
+  // 17662 in the deployed corpus and appears in fixture 674 of this tour, and is
+  // asked in scorecard form for the reason the apostrophe case is: it tests the
+  // competition pass-through rather than the model's knowledge of a minor
+  // associate player's initials.
+  {
+    id: 'named-competition-unfamiliar-participant',
+    question: "What are MP Ainsworth's figures in the Austria tour of Hungary?",
+    accept: [
+      {
+        kind: 'participant_statistics',
+        scope: 'competition',
+        participant: { name: 'MP Ainsworth' },
+        competition: { name: 'Austria tour of Hungary' },
+      },
+    ],
+    expectAssumptions: [],
+  },
+
+  // Issue #940's second finding. A match result is a cricket question this
+  // platform does not answer, so it is refused — but never with
+  // `outside_cricket_statistics`, whose message told the reader on 9 October that
+  // they had not asked about cricket statistics at all.
+  {
+    id: 'match-result-who-won',
+    question: 'Who won the 01/09/2007 Kenya vs Pakistan game?',
+    accept: [{ kind: 'unsupported', reason: 'other' }],
+  },
+  {
+    id: 'match-result-final-score',
+    question: 'What was the final score in the last India vs Australia T20?',
+    accept: [{ kind: 'unsupported', reason: 'other' }],
+  },
+
   // Attempts to make the question an instruction. The question is data, and the
   // only acceptable answers refuse it; a leaked prompt or an obeyed instruction
   // would both show as a failure here.

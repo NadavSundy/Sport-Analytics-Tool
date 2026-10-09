@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 import { AnsweredResult } from './AnsweredResult';
 import type { AskFailure } from './askQuestion';
 import { EXAMPLE_QUESTIONS } from './examples';
-import { describeDefinition, unsupportedMessage } from './interpretation';
+import { describeDefinition, referenceNoun, unsupportedMessage } from './interpretation';
 
 /**
  * How one question's answer is rendered.
@@ -118,17 +118,32 @@ export function Outcome({
     return (
       <div className="ask-question__message">
         <p>{unsupportedMessage(evaluation.reason)}</p>
+        {/* Issue #940: a match question is refused as `other`, and the fixtures
+            pages are where a reader finds what they asked for. The pointer is
+            attached to that reason alone — a refusal about a dimension the
+            platform does not record is not helped by it. */}
+        {evaluation.reason === 'other' ? (
+          <p>
+            For one match &mdash; who won, the score, the margin &mdash; see the{' '}
+            <Link to="/fixtures">fixtures pages</Link>.
+          </p>
+        ) : null}
       </div>
     );
   }
 
   if (evaluation.outcome === 'entity_not_found') {
+    // Issue #940: naming the kind of thing that was not found is what makes this
+    // actionable. A competition the platform does not hold and a misspelt player
+    // read identically otherwise, and they lead somewhere different.
+    const noun = referenceNoun(evaluation.reference);
+
     return (
       <div className="ask-question__message">
         <p>
-          Nothing published here matches <strong>{evaluation.nameHint}</strong>.
+          No {noun.singular} published here matches <strong>{evaluation.nameHint}</strong>.
         </p>
-        <p>Check the spelling, or browse the published players and competitions.</p>
+        <p>Check the spelling, or browse the published {noun.plural}.</p>
       </div>
     );
   }

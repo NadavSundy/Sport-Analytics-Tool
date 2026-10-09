@@ -1,6 +1,7 @@
 import type {
   AnalyticsQueryDefinition,
   LeaderboardMetric,
+  QueryDefinitionReference,
   UnsupportedQueryReason,
 } from '@sport-analytics/contracts';
 
@@ -39,11 +40,46 @@ const UNSUPPORTED_MESSAGES: Record<UnsupportedQueryReason, string> = {
   super_over: 'Super overs are not included in the statistics published here.',
   outside_cricket_statistics: 'That is not a question about the cricket statistics published here.',
   ambiguous: 'That question does not say which player, competition or season it means.',
-  other: 'That question cannot be answered from the statistics published here.',
+  // Issue #940. A match result — who won, the final score, the margin — is the
+  // commonest question this reason now carries, and it was being refused as
+  // `outside_cricket_statistics`, whose sentence tells a reader who asked an
+  // ordinary cricket question that they asked about something else. The wording
+  // says what is published here instead, which is true of every `other` refusal
+  // and not only of a match question.
+  other:
+    'That question cannot be answered from the statistics published here, which are player figures rather than match results.',
 };
 
 export function unsupportedMessage(reason: UnsupportedQueryReason): string {
   return UNSUPPORTED_MESSAGES[reason];
+}
+
+/**
+ * What a reference in a definition is called when the reader is told it was not
+ * found (issue #940).
+ *
+ * "Nothing published here matches Austria tour of Hungary" did not say what had
+ * been looked for, so a reader could not tell a competition the platform does not
+ * hold from a player's name they had misspelt — and the two lead somewhere
+ * different. Keyed by the contract's own reference enum, so a reference added
+ * there fails to compile rather than leaving the panel with no noun.
+ *
+ * Both sides of a comparison are "player", because the reader asked about players
+ * and not about a position in an array.
+ */
+const REFERENCE_NOUNS: Record<QueryDefinitionReference, { singular: string; plural: string }> = {
+  participant: { singular: 'player', plural: 'players' },
+  'participants.0': { singular: 'player', plural: 'players' },
+  'participants.1': { singular: 'player', plural: 'players' },
+  competition: { singular: 'competition', plural: 'competitions' },
+  season: { singular: 'season', plural: 'seasons' },
+};
+
+export function referenceNoun(reference: QueryDefinitionReference): {
+  singular: string;
+  plural: string;
+} {
+  return REFERENCE_NOUNS[reference];
 }
 
 function scopeLabel(definition: AnalyticsQueryDefinition): string | null {
