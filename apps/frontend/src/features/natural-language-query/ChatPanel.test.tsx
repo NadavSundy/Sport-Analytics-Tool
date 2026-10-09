@@ -413,8 +413,92 @@ describe('asking a question', () => {
 
     await ask('Career stats for Nobody At All');
 
-    expect(await screen.findByText(/Nothing published here matches/)).toBeInTheDocument();
+    expect(await screen.findByText(/No player published here matches/)).toBeInTheDocument();
     expect(screen.getByText('Nobody At All')).toBeInTheDocument();
+  });
+
+  /**
+   * Issue #940. "Austria tour of Hungary" is a competition the deployed corpus
+   * does hold, but a competition the resolver cannot find has to be reported as a
+   * competition. The old wording — "Nothing published here matches X" — left the
+   * reader unable to tell a missing competition from a misspelt player, and the
+   * two lead somewhere different.
+   */
+  it('names a competition that was not found as a competition', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue(
+      jsonResponse(200, {
+        data: answer({
+          outcome: 'entity_not_found',
+          definitionVersion: VERSION,
+          definition: {
+            kind: 'leaderboard',
+            metric: 'most_runs',
+            scope: 'competition',
+            competition: { name: 'Austria tour of Mars' },
+            limit: 10,
+          },
+          reference: 'competition',
+          nameHint: 'Austria tour of Mars',
+        }),
+      }),
+    );
+    renderDialog();
+
+    await ask('Who scored the most runs in the Austria tour of Mars?');
+
+    expect(await screen.findByText(/No competition published here matches/)).toBeInTheDocument();
+    expect(screen.getByText('Austria tour of Mars')).toBeInTheDocument();
+    expect(screen.getByText(/browse the published competitions/)).toBeInTheDocument();
+  });
+
+  /**
+   * Issue #940's second finding. A match result is refused with `other`, and the
+   * reader is pointed at the pages that do hold one rather than being told they
+   * asked about something other than cricket.
+   */
+  it('points a match-result question at the fixtures pages', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue(
+      jsonResponse(200, {
+        data: answer({
+          outcome: 'unsupported',
+          definitionVersion: VERSION,
+          definition: { kind: 'unsupported', reason: 'other' },
+          reason: 'other',
+        }),
+      }),
+    );
+    renderDialog();
+
+    await ask('Who won the 01/09/2007 Kenya vs Pakistan game?');
+
+    expect(await screen.findByText(/player figures rather than match results/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /fixtures pages/i })).toHaveAttribute(
+      'href',
+      '/fixtures',
+    );
+  });
+
+  // The pointer belongs to the match-result refusal alone. A refusal about a
+  // dimension the platform does not record is not helped by a fixtures link.
+  it('offers no fixtures pointer for a refusal about an unpublished dimension', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue(
+      jsonResponse(200, {
+        data: answer({
+          outcome: 'unsupported',
+          definitionVersion: VERSION,
+          definition: { kind: 'unsupported', reason: 'outside_cricket_statistics' },
+          reason: 'outside_cricket_statistics',
+        }),
+      }),
+    );
+    renderDialog();
+
+    await ask('What is the weather in Johannesburg tomorrow?');
+
+    expect(
+      await screen.findByText(/not a question about the cricket statistics published here/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /fixtures pages/i })).not.toBeInTheDocument();
   });
 
   // Candidates are offered as links rather than re-asked automatically: the

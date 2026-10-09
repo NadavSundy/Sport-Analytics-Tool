@@ -275,3 +275,127 @@ test('every question the widget offers is covered verbatim', async () => {
     assert.ok(asked.has(question), `the evaluation set does not ask: ${question}`);
   }
 });
+
+/**
+ * Issue #940. The two live findings of 9 October, each as a case that would have
+ * caught it.
+ */
+test('the issue #940 behaviours each have a case', () => {
+  for (const id of [
+    'named-competition-unfamiliar-season-runs',
+    'named-competition-unfamiliar-wickets',
+    'named-competition-unfamiliar-season-wording',
+    'named-competition-unfamiliar-participant',
+    'match-result-who-won',
+    'match-result-final-score',
+  ]) {
+    assert.ok(caseById(id), `no case for ${id}`);
+  }
+});
+
+// A case that did not pin the reader's own competition name would pass on a
+// definition scoped to the Indian Premier League, which is the defect.
+test('every unfamiliar-competition case pins the reader’s own competition name', () => {
+  const cases = NATURAL_LANGUAGE_QUERY_CASES.filter((entry) =>
+    entry.id.startsWith('named-competition-unfamiliar-'),
+  );
+  assert.ok(cases.length >= 3, 'expected at least three unfamiliar-competition cases');
+
+  for (const entry of cases) {
+    assert.ok(entry.question.includes('Austria tour of Hungary'), `${entry.id} names no tour`);
+
+    for (const matcher of entry.accept) {
+      const named = matcher.competition?.name ?? matcher.season?.competitionName;
+      assert.equal(
+        named,
+        'Austria tour of Hungary',
+        `${entry.id} accepts a definition that does not name the reader's competition`,
+      );
+      assert.notEqual(matcher.kind, 'unsupported', `${entry.id} accepts a refusal`);
+    }
+
+    // The default competition must not be substituted for a competition the
+    // reader named, so nothing may be reported as assumed.
+    assert.deepEqual(entry.expectAssumptions, [], `${entry.id} permits an assumed competition`);
+  }
+});
+
+test('a default-competition substitution fails an unfamiliar-competition case', () => {
+  const entry = caseById('named-competition-unfamiliar-wickets');
+
+  const substituted = compareTranslation(entry, {
+    kind: 'leaderboard',
+    metric: 'most_wickets',
+    scope: 'competition',
+    competition: { name: 'Indian Premier League' },
+  });
+  assert.equal(substituted.pass, false);
+  assert.match(substituted.detail, /Austria tour of Hungary/);
+
+  const refused = compareTranslation(entry, { kind: 'unsupported', reason: 'ambiguous' });
+  assert.equal(refused.pass, false);
+
+  const passed = compareTranslation(
+    entry,
+    {
+      kind: 'leaderboard',
+      metric: 'most_wickets',
+      scope: 'competition',
+      competition: { name: 'Austria tour of Hungary' },
+      limit: 10,
+    },
+    [],
+    [],
+  );
+  assert.equal(passed.pass, true);
+});
+
+// The reason label is the whole finding, so a match-result case must reject the
+// label the deployed site actually returned.
+test('a match-result case refuses outside_cricket_statistics as the reason', () => {
+  for (const id of ['match-result-who-won', 'match-result-final-score']) {
+    const entry = caseById(id);
+
+    for (const matcher of entry.accept) {
+      assert.equal(matcher.kind, 'unsupported', `${id} accepts an answer to a match result`);
+      assert.notEqual(
+        matcher.reason,
+        'outside_cricket_statistics',
+        `${id} still accepts the reason issue #940 was raised about`,
+      );
+    }
+
+    assert.equal(
+      compareTranslation(entry, { kind: 'unsupported', reason: 'outside_cricket_statistics' }).pass,
+      false,
+    );
+    assert.equal(compareTranslation(entry, { kind: 'unsupported', reason: 'other' }).pass, true);
+  }
+});
+
+// Issue #940 changes nothing about an injection attempt or a question that is
+// genuinely not about cricket: both stay `outside_cricket_statistics`.
+test('the injection and not-cricket cases still expect outside_cricket_statistics', () => {
+  for (const id of [
+    'injection-reveal-prompt',
+    'injection-other-language',
+    'injection-role-play',
+    'unsupported-not-cricket',
+  ]) {
+    const entry = caseById(id);
+    const reasons = entry.accept.map((matcher) => matcher.reason);
+
+    assert.ok(
+      reasons.includes('outside_cricket_statistics'),
+      `${id} no longer expects outside_cricket_statistics`,
+    );
+  }
+
+  // The delimiter-escape case is the documented exception: it accepts `other`
+  // alongside, because the refusal has been labelled inconsistently in every run.
+  const escape = caseById('injection-escape-delimiter');
+  assert.deepEqual(escape.accept.map((matcher) => matcher.reason).sort(), [
+    'other',
+    'outside_cricket_statistics',
+  ]);
+});

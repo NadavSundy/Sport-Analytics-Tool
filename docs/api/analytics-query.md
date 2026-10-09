@@ -135,6 +135,10 @@ One extra confirmation is the accepted price for never answering as somebody els
 name and a surname under three characters skip the fallback entirely — the first search already was
 that token, and `%K%` would match most of the corpus.
 
+A reported `entity_not_found` carries the `reference` that failed as well as the `nameHint`, so an
+interface can say which kind of thing was not found rather than only which name. The chat panel uses
+it: a competition reads "No competition published here matches ...", a participant "No player ...".
+
 `candidates` carries one to five entries, each an identifier and a display name. A single candidate
 is the surname fallback asking for confirmation, as above. **Two candidates
 may look identical.** Many people in the corpus share a display name: observation O2 in the
@@ -224,6 +228,27 @@ The question is data and never an instruction. It is framed as such for the mode
 derived from it reaches the database except as a bound parameter of an existing parameterised read.
 A question that asks the model to disregard its instructions must be answered as `unsupported` with
 the reason `outside_cricket_statistics`.
+
+**A competition or season the reader names is passed through as a name hint, recognised or not.**
+Resolving a name is this API's job and not the model's: the published corpus covers hundreds of
+competitions, bilateral tours between associate nations included, and the model is shown neither the
+list nor any database content. So a question naming a competition the model has never heard of is
+translated in the ordinary way — "Who scored the most runs in the Austria tour of Hungary in 2026?"
+becomes a season-scoped `most_runs` leaderboard carrying
+`{ "competitionName": "Austria tour of Hungary", "seasonLabel": "2026" }` — and
+[name resolution](#name-resolution) then either answers it or reports `entity_not_found` against the
+competition reference. A named competition being unfamiliar is never grounds for `ambiguous`, and the
+configured default is never substituted for one the reader named. Issue #940 was raised because both
+of those happened on the deployed site.
+
+**A question about one match is `unsupported` with the reason `other`.** Who won it, the result, the
+final score, the margin, the toss and the scorecard are match outcomes, and what this API publishes
+is player figures aggregated over a season, a competition or a career. It is a cricket question, so
+it is not `outside_cricket_statistics` — that reason is for a question that is not about cricket
+statistics at all, an instruction to the model included — and it names its match clearly, so it is
+not `ambiguous` either. A client should point the reader at the fixtures reads instead; the chat
+panel links to `/fixtures`. Issue #940 added no reason to the contract for this, deliberately: a new
+enum member would change the definition schema and therefore `QUERY_DEFINITION_VERSION`.
 
 `scripts/evaluate-natural-language-queries.mjs` runs a fixed set of questions against the configured
 provider and writes a dated record under `evidence/validation/`. It covers each supported kind, each
@@ -388,6 +413,11 @@ an answer. A question that needs a season and names none — "last season", "thi
 The default is configuration, not database content: an operator sets the name and nothing reads it
 from the corpus. It is validated by the same name rule a definition applies, so a deployment cannot
 configure a default that the contract would then reject.
+
+**The default never reaches a suggestion for a question that named its own competition.** Where the
+reader named a competition or a season, every suggestion is scoped to theirs; the default words a
+suggestion only when they named neither. Issue #940 was raised partly because refusals of two
+questions about the Austria tour of Hungary came back suggesting the Indian Premier League.
 
 ### Casual phrasing
 

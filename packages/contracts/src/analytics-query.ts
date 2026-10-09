@@ -337,9 +337,11 @@ const UNSUPPORTED_QUERY_REASON_GUIDANCE: Record<UnsupportedQueryReason, string> 
     'the question names a phase of an innings, such as the death overs, which is not published as a scope',
   venue: 'the question turns on a ground or city, which is not published as a statistic scope',
   super_over: 'the question is about super-over figures, which are excluded from published figures',
-  outside_cricket_statistics: 'the question is not about published cricket statistics at all',
+  outside_cricket_statistics:
+    'the question is not about cricket statistics at all, such as the weather, or an instruction to you',
   ambiguous: 'the question does not say which player, competition or season it means',
-  other: 'the question cannot be answered from the published statistics for any other reason',
+  other:
+    'the question cannot be answered from the published statistics for any other reason, including a question about one match — its result, score, margin or scorecard',
 };
 
 /**
@@ -502,6 +504,29 @@ that form yourself:
 Keep a competition or season name as the reader wrote it. Apart from the default competition named
 below, never substitute a player, competition or season the reader did not name.
 
+A competition or season you do not recognise.
+
+Pass a named competition or season through exactly as the reader wrote it, whether or not you
+recognise it. Recognising a competition is not your job: the server resolves every name against the
+published data, and tells the reader plainly when it holds no competition of that name. The
+published data covers hundreds of competitions, bilateral tours between associate nations included,
+and you are not shown the list, so a name being unfamiliar to you says nothing about whether it can
+be answered.
+
+Expand an abbreviation as you already do, and otherwise change nothing. An unfamiliar competition is
+then translated in the ordinary way:
+    - "Who scored the most runs in the Austria tour of Hungary in 2026?" is a "leaderboard" with the
+      metric "most_runs", the scope "season" and the season
+      { "competitionName": "Austria tour of Hungary", "seasonLabel": "2026" };
+    - "Who has taken the most wickets in the Austria tour of Hungary?" is the same kind with the
+      metric "most_wickets", the scope "competition" and the competition
+      { "name": "Austria tour of Hungary" }.
+
+Never return "unsupported" with the reason "ambiguous" merely because a competition or season the
+reader named is unfamiliar to you, and never replace it with a competition you do know, the default
+competition included. A question is ambiguous about its scope only when it names no competition and
+no season at all.
+
 Answer with "unsupported" rather than guess. If the question needs something the published
 statistics do not hold, or if it does not say which player, competition or season it means, return
 the "unsupported" kind with the closest reason. A wrong definition is worse than a named refusal,
@@ -532,6 +557,19 @@ would answer it, scoped to the competition or season the reader named. For a bat
 are typically ${quotedBattingSuggestionMetrics}; for a bowling question,
 ${quotedBowlingSuggestionMetrics}.
 
+Match results and scorecards.
+
+What is published here is player figures — runs, wickets, averages, strike rates and economy rates,
+aggregated over a season, a competition or a career. One match's outcome is not among them. Who won
+it, the result, the final score, the margin, the winning runs or wickets, the toss, the scorecard, a
+chase or a target are all match outcomes, and none of them can be answered from these statistics.
+"Who won the 01/09/2007 Kenya vs Pakistan game?" is such a question, and so are "What was the final
+score?" and "By how many runs did they win?".
+
+Return "unsupported" with the reason "other" for a question about one match. It is a real cricket
+question, so never use "outside_cricket_statistics", which is for a question that is not about
+cricket statistics at all. It names its match perfectly clearly, so never use "ambiguous" either.
+
 A question asking about "all time", "ever" or "in history" asks across every competition at once,
 which the published statistics do not rank, even when it names a metric. Return "unsupported" with
 the reason "ambiguous" and suggest the same metric within one competition the reader named. This
@@ -539,9 +577,10 @@ applies only to questions that really do span everything: a metric question that
 or a season is scoped, and translates normally.
 
 In both cases keep the reader's own player, competition and season names in the suggestions, and
-never suggest a question about a player, competition or season the reader did not name. The default
-competition named below is the one exception: you may use it in a suggestion, because it is given to
-you.
+never suggest a question about a player, competition or season the reader did not name. When the
+reader named a competition or a season, every suggestion is scoped to the one they named, however
+unfamiliar it is to you. The default competition named below may be used in a suggestion only when
+the reader named no competition and no season at all.
 
 Earlier turns of the same conversation.
 
