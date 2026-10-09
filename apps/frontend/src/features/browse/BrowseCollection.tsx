@@ -24,6 +24,7 @@ interface NameComboboxFilterField {
     query: string,
     signal: AbortSignal,
   ): Promise<NameComboboxOption[]>;
+  resolveSelectedOption?(value: string, signal: AbortSignal): Promise<NameComboboxOption | null>;
   name: string;
   placeholder?: string;
   routeValue: 'name' | 'reference';
@@ -146,6 +147,11 @@ function FilterCombobox({
       field.loadOptions(new URLSearchParams(dependencyKey), query, signal),
     [dependencyKey, field],
   );
+  const resolveSelectedOption = useCallback(
+    (signal: AbortSignal) =>
+      field.resolveSelectedOption?.(selectedValue, signal) ?? Promise.resolve(null),
+    [field, selectedValue],
+  );
 
   return (
     <NameCombobox
@@ -158,6 +164,7 @@ function FilterCombobox({
       onSelectionChange={onSelectionChange}
       onSelectionResolved={onSelectionResolved}
       placeholder={field.placeholder}
+      {...(field.resolveSelectedOption ? { resolveSelectedOption } : {})}
       selectedValue={selectedValue}
       validationMessage={validationMessage}
     />
