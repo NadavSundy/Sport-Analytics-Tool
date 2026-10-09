@@ -4286,6 +4286,13 @@ h3 {
   align-items: center;
   justify-content: space-between;
   gap: 2rem;
+  /* Issue #936: the floating launcher is fixed to the bottom-right, so the last
+     thing on the page needs room underneath it. Without this the launcher sits
+     on top of the final footer link when the page is scrolled to the bottom; an
+     end-to-end test compares their bounding boxes and fails if it does. The
+     launcher is 2.75rem tall and sits a --space-4 gap from the edge, plus the
+     safe-area inset on a device that reports one. */
+  padding-block-end: calc(2.75rem + var(--space-4) + env(safe-area-inset-bottom));
 }
 
 .site-footer p {
