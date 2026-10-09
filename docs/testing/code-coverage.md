@@ -30,9 +30,11 @@ This is deliberate: production source that no test imports is still included and
 zero covered counters rather than disappearing from the report.
 
 Coverage excludes test/spec files, test directories, fixtures/mocks, generated source, TypeScript
-declaration files, build output, dependencies, and coverage output. The batch-processing package has
-no direct test suite at present; its coverage command uses `passWithNoTests` so its production source
-still appears as uncovered rather than being omitted from the repository total.
+declaration files, build output, dependencies, and coverage output. The batch-processing package now
+has direct Vitest test files for publication, reference resolution and statistics refresh. Its
+coverage command retains `passWithNoTests` as a fallback, while the explicit `coverage.include`
+continues to count production source that those tests do not exercise rather than omitting it from
+the repository total.
 
 ## Reports
 

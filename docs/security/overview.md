@@ -113,8 +113,11 @@ Security review must include automated dependency scanning, route-level authoris
   provider dashboard, update the deployment secret store, and notify the team. The
   exposed value must be treated as compromised even if the exposure appears
   contained.
-- The generated Data API is disabled on the instance. It must not be enabled, and
-  the Supabase client library must not be added to any workspace.
+- The generated Supabase Data API is disabled on the hosted instance and must not be
+  used for application-domain data. Supabase authentication clients remain permitted:
+  the backend uses `@supabase/supabase-js` to verify managed identities and perform
+  authorised Auth Admin operations, while the frontend uses a managed Auth client.
+  Neither client bypasses the handwritten Express API for application-domain data.
 
 ## AI Declaration
 

@@ -1,6 +1,6 @@
 # Sprint 4 final structured user testing - Issue #803
 
-**Status: one reviewed public human session and one user-confirmed assisted local submitter/reviewer session, plus a separately labelled AI simulation. Issue #803 remains open; see the [completion audit](2026-10-07-completion-audit.md).**
+**Final approved scope (9 October 2026): two genuine human sessions. Both are recorded; the separate AI simulation does not count.** The earlier three-session team plan was unanimously reduced due to the 11 October submission deadline. The [7 October completion audit](2026-10-07-completion-audit.md) remains a historical snapshot; its 9 October addendum records the decision. The record does not reopen #803 or manufacture absent evidence.
 
 The [public session record](2026-10-05-P15-public.md) and [source excerpts](raw/2026-10-05-P15-public-notes.md) retain four reported task attempts and all six post-test answers. P15 allocation, reported date/time and independence are confirmed by Gabriel; all four outcomes and finding decisions are approved. Exact deployed build/browser version and original export remain unavailable.
 
@@ -14,7 +14,7 @@ Use the existing [protocol](../../../docs/testing/user-testing-protocol.md), [ta
 4. Copy the matching [public](templates/public-session-template.md), [submitter](templates/submitter-session-template.md), [reviewer](templates/reviewer-session-template.md) or [API consumer](templates/api-consumer-session-template.md) template. Record the actual date, environment/build and individual task outcomes.
 5. Review/redact evidence using the [capture checklist](evidence-capture-checklist.md). Preserve source notes in raw/, session records at this directory root, supporting files in supporting/, analysis separately, and human retests in retests/.
 6. Validate factual interpretation with the facilitator, evaluate findings in the [decision table](feedback-decisions.md), link fixes/issues and complete required [human retests](retest-template.md).
-7. Populate the [final summary](sprint-4-user-testing-summary.md) only from retained evidence. Keep #803 open until its acceptance criteria and review requirements are met.
+7. Populate the [final summary](sprint-4-user-testing-summary.md) only from retained evidence. Refer to the approved two-session scope and actual retained findings; Gitea remains authoritative for #803 status.
 
 ## Planned coverage
 
@@ -25,7 +25,7 @@ Use the existing [protocol](../../../docs/testing/user-testing-protocol.md), [ta
 | 3               | Reviewer           | AUTH-01; REV-01; REV-02; REV-04                  | Same combined session; not an additional count |
 | 4 (recommended) | API consumer       | PUB-05; API-01; API-02                           | 0                                              |
 
-Minimum: three real completed sessions representing more than one relevant workflow where practical. Automated checks and Codex walkthroughs are technical preparation only. Unattempted tasks and environmental blockers are recorded, never scored as success.
+**Revised final scope: two genuine human session events, met.** This was unanimously approved by the team on 9 October 2026 for deadline reasons; it changes the project plan, not the historical results. The combined submitter/reviewer exercise is one session, and Codex/AI runs are not counted. Unattempted tasks and known assistance/limitations stay recorded, never scored as success.
 
 ## Identifiers, naming and retention
 
@@ -47,4 +47,18 @@ AI register: Gabriel Raz's member CSV. Transcript import is pending; follow [AI 
 
 ## AI Declaration
 
-This preparation document was planned and generated with the assistance of Codex[GPT-6]. P15 outcomes and decisions were reviewed by Gabriel; further sessions and overall acceptance remain pending.
+Original preparation: Codex[GPT-6]; P15 decisions reviewed by Gabriel. The team-approved two-session scope reconciliation was drafted using ChatGPT-Web[GPT-6] on 9 October. The student auditor reported unanimous approval; no missing test evidence or review was inferred.
+
+## Team-approved final scope — 9 October 2026
+
+The team unanimously approved a time-constrained reduction of its **internal #803 plan** from three real participant sessions to **two**, as reported by the student auditor on 9 October 2026. The COMS3011A Milestone 4 rubric does not prescribe a numerical three-session minimum. This is an explicit change to the team's planned scope; it is **not** a statement that three sessions occurred or that earlier evidence gaps disappeared. The authoritative Gitea issue should retain this decision; this documentation change does not open, reopen, close or reassign any issue.
+
+The revised two-session target is **met** by the retained evidence:
+
+- **P15 public/analyst:** one human session, four facilitator-approved `Success` outcomes based on participant reports.
+- **LOCAL-01 approved submitter/reviewer:** one human session spanning two workflows, nine coached `Partial` outcomes; reviewer work is **not** counted as a third participant session.
+- **AI-SIM-01:** supplemental browser simulation, excluded from human participation totals.
+
+The team accepts the **scope and evidence limitations** for final submission: the local session was on an older isolated build, and its participant metadata/post-session opinions are not retained; original exports and five account-bearing screenshots have unresolved privacy-review/retention steps; accepted usability findings and implemented fixes are not presented as human-retested without evidence. No scores, source observations, severity ratings, participant identities, timestamps, or retest results have been invented or changed. The final release/deployment and CI disposition remain separate under #810. **No further human session is required by the team's revised #803 scope.**
+
+**Decision provenance:** unanimous team approval reported by the student on 9 October 2026; no independent meeting transcript or Gitea comment was reviewed by this audit. **AI assistance:** ChatGPT-Web[GPT-6] — documentation reconciliation; human team approves the scope and remains responsible for its accuracy.

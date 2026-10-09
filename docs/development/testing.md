@@ -1,8 +1,10 @@
 # Testing
 
 The repository keeps fast application tests and PostgreSQL integration tests in separate suites.
-The normal repository quality gate remains database-independent, while hosted CI runs the database
-suite as a separate required lane only when the change plan identifies a persisted-data risk.
+The normal local repository quality gate remains database-independent. Hosted Pull Request CI
+runs PostgreSQL integration tests within the `validation` job when change-aware planning
+requires database coverage, using a disposable PostgreSQL 16 runtime. There is no separate
+PostgreSQL CI job.
 
 ## Quick start
 

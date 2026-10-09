@@ -58,3 +58,19 @@ Local close-out validation passed: repository structure (39 required files), who
 The issue stays open and the PR stays draft until acceptance is evidenced. User authorization to complete remaining work does not establish missing participant evidence or review approval.
 
 AI declaration: Codex (GPT-6) prepared this audit from actual retained evidence, live issue criteria and fetched Git history. Decisions on AI-only observations are technical recommendations, not fabricated human feedback.
+
+## Addendum — 9 October 2026: team-approved two-session scope
+
+The team unanimously approved a time-constrained reduction of its **internal #803 plan** from three real participant sessions to **two**, as reported by the student auditor on 9 October 2026. The COMS3011A Milestone 4 rubric does not prescribe a numerical three-session minimum. This is an explicit change to the team's planned scope; it is **not** a statement that three sessions occurred or that earlier evidence gaps disappeared. The authoritative Gitea issue should retain this decision; this documentation change does not open, reopen, close or reassign any issue.
+
+The revised two-session target is **met** by the retained evidence:
+
+- **P15 public/analyst:** one human session, four facilitator-approved `Success` outcomes based on participant reports.
+- **LOCAL-01 approved submitter/reviewer:** one human session spanning two workflows, nine coached `Partial` outcomes; reviewer work is **not** counted as a third participant session.
+- **AI-SIM-01:** supplemental browser simulation, excluded from human participation totals.
+
+The team accepts the **scope and evidence limitations** for final submission: the local session was on an older isolated build, and its participant metadata/post-session opinions are not retained; original exports and five account-bearing screenshots have unresolved privacy-review/retention steps; accepted usability findings and implemented fixes are not presented as human-retested without evidence. No scores, source observations, severity ratings, participant identities, timestamps, or retest results have been invented or changed. The final release/deployment and CI disposition remain separate under #810. **No further human session is required by the team's revised #803 scope.**
+
+**Decision provenance:** unanimous team approval reported by the student on 9 October 2026; no independent meeting transcript or Gitea comment was reviewed by this audit. **AI assistance:** ChatGPT-Web[GPT-6] — documentation reconciliation; human team approves the scope and remains responsible for its accuracy.
+
+The entries above reflect the **7 October** assessment against the original three-session team plan. The decision above supersedes only that numerical target; it does not rewrite the dated audit, change the 7 October command outcomes or supply missing participant evidence.
