@@ -48,6 +48,8 @@ policy for failure handling and limitations.
 - Parameterise database queries.
 - Store secrets in deployment secret stores, never source control.
 - Minimise personal data and define deletion/retention behaviour.
+- Disclose, before the reader submits it, any input text that leaves this platform for a third
+  party, and never write that text to a log.
 
 ## API protection
 
@@ -58,6 +60,36 @@ policy for failure handling and limitations.
 - Accept API keys only in `X-API-Key`; redact credentials and never persist raw keys or key hashes in telemetry.
 - Use timeouts, retries with limits, and circuit-breaking/fallback behaviour for external APIs.
 - Return safe error messages and structured internal logs.
+- Meter any anonymous operation that spends money on every attempt rather than every success,
+  in durable storage, failing closed when the counter cannot be read.
+
+## Question text sent to a language-model provider
+
+The natural-language query feature sends the reader's question to Anthropic. This is the only place
+in the platform where text a user typed leaves our infrastructure, so it is stated here rather than
+left to the API documentation.
+
+- **What leaves.** The question text, and the earlier questions in a conversation, framed as data.
+  Nothing else a user supplied. No cricket data, identifier, credential, account detail or
+  information about who asked accompanies it, and a test asserts the absence of database content in
+  the request.
+- **It is disclosed before it is sent.** The home-page widget states, above the first question, that
+  question text is sent to Anthropic for processing and links the privacy notice. A reader is never
+  asked to submit before being told.
+- **It is not stored in logs.** One line per request records the outcome, definition kind, definition
+  version, model, token counts, elapsed time, conversation-turn count and what was assumed. **The
+  question text and the model's raw output are never written, at any level**, because the question is
+  the reader's own words and a log is the one place it would be retained. The earlier turns are
+  counted, never quoted. The client hash is not logged either.
+- **The caller is not identified.** The per-client limits key on a salted SHA-256 digest of the
+  address, with a database-generated salt rotated per UTC date, so no raw IP address is stored and a
+  client cannot be followed from one day to the next.
+- **The feature is optional.** `LLM_API_KEY` is optional in every environment. Absent, the feature
+  returns `503` and the rest of the API is unaffected.
+
+The provider decision, the full data-sent list and the $10 spend limit are recorded in
+[ADR-017](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-017-llm-provider-integration.md){ target="_blank" rel="noopener" }
+and summarised in the [technology stack](../development/technology-stack.md).
 
 ## Verification
 
@@ -88,4 +120,6 @@ Security review must include automated dependency scanning, route-level authoris
 The authentication and authorization status was updated with the assistance of
 Codex[GPT-5.6 Sol].
 The issue #821 API-key fallback and anonymous-protection guidance was documented with the assistance
-of Codex[GPT-5].
+of Codex[GPT-5]. The language-model question-text section was added with the assistance of
+Claude-Code[Claude Opus 5 (1M context)] under issue #817, from ADR-017 and the implemented logging
+behaviour.

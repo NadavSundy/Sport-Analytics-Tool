@@ -69,6 +69,11 @@ See:
 - `docs/deployment/cloudflare_pages.md`
 - `docs/development/technology-stack.md`
 
+Performance targets, reproducible API measurements and retained API evidence are documented in
+[Representative-scale API performance baseline](../development/performance-baseline.md). The public-route
+Lighthouse regression gate and its separate production-performance evidence are documented in
+[CI/CD and quality gates](../development/ci-cd.md#lighthouse-performance-regression-gate).
+
 ## Gitea Actions runner configuration
 
 The university provides global Gitea Actions runners for project CI/CD.
@@ -134,3 +139,5 @@ of Codex[GPT-5].
 The Issue #563 backend Container Apps deployment and rollback boundary was documented with the
 assistance of Codex[GPT-5].
 The documentation reading-path links were added with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The Issue #888 hosting and performance reading-path verification was completed with the assistance of
+Codex[GPT-5].

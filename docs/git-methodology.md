@@ -5,8 +5,8 @@
 | Project              | Sport Analytics Tool          |
 | Platform             | Gitea                         |
 | Methodology          | GitHub Flow adapted for Gitea |
-| Document Version     | 1.0                           |
-| Date                 | 4 August 2026                 |
+| Document Version     | 1.1                           |
+| Effective date       | 7 October 2026                |
 | Status               | Approved for Use              |
 | Team                 | Git Push Pray                 |
 
@@ -154,6 +154,24 @@ Branches must be short-lived. A normal branch should be completed within five wo
 If a branch becomes too large to review effectively, the work should be divided into smaller
 reviewable branches and Pull Requests. Where those parts represent independently trackable work,
 separate child or follow-up issues may also be created.
+
+### 5.1 Stacked Pull Requests
+
+A stacked Pull Request may target another open issue branch only when a genuine implementation
+dependency prevents it from being reviewed independently against `main`. Independent work must use
+separate issue branches and Pull Requests targeting `main`.
+
+The child Pull Request must:
+
+- identify its base branch and parent issue in the description;
+- contain only its own issue-scoped changes;
+- use `Refs #<issue-number>` rather than `Closes #<issue-number>` until it is retargeted to `main`;
+- be rebased onto its parent branch when that parent changes; and
+- be retargeted to `main` after the parent has merged, before it may be merged itself.
+
+This clarification was approved by the full team and is effective from 7 October 2026. It records
+the intended review workflow from the most recent methodology update; it does not retrospectively
+justify unrelated work being combined in one Pull Request.
 
 ## 6. How to Name Branches
 
@@ -554,3 +572,5 @@ of ChatGPT-Web[GPT-5.6 Thinking].
 
 The Issue #881 Git methodology review and multi-Pull-Request traceability clarification were reviewed
 and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+
+The stacked Pull Request clarification was added with the assistance of Codex[GPT-5].

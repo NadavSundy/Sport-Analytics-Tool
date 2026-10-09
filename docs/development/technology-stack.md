@@ -64,7 +64,7 @@ The frontend may communicate directly with Supabase Auth for managed sign-in and
 | Pino HTTP                    | `^10.3.0`        | Structured HTTP request logging.                                              | Produces machine-readable request logs and supports redaction of sensitive headers such as `Authorization`.                                                                      |
 | dotenv                       | `^17.4.2`        | Loads ignored local backend environment files.                                | Keeps local configuration outside committed source while preserving a simple developer setup.                                                                                    |
 | Multer                       | `^2.0.2`         | Parses bounded multipart file uploads for the privileged legacy import route. | Uses established multipart middleware with explicit application limits instead of maintaining a custom multipart parser. Normal submitter uploads use the staged batch pipeline. |
-| `@azure/identity`            | `4.13.1`         | Supplies `DefaultAzureCredential` for production Blob access.                 | Uses the Azure App Service managed identity without Blob account keys, connection strings, SAS tokens, or another application-held storage secret.                               |
+| `@azure/identity`            | `4.13.1`         | Supplies `DefaultAzureCredential` for production Blob access.                 | Uses the Azure Container Apps managed identity without Blob account keys, connection strings, SAS tokens, or another application-held storage secret.                            |
 | `@azure/storage-blob`        | `12.27.0`        | Streams retained object bytes to private Azure Blob Storage.                  | Implements the accepted ADR-011 provider behind the backend-owned `ObjectStore` boundary.                                                                                        |
 | `@sport-analytics/contracts` | `0.1.0`          | Shared API schemas/types.                                                     | Keeps backend responses and validation aligned with the shared contract boundary.                                                                                                |
 
@@ -149,22 +149,62 @@ ADR-005 records the database host and authentication service as separate Supabas
 
 ## Deployment, collaboration and CI/CD
 
-| Technology / service          | Purpose                                                                  | Motivation / notes                                                                                                                                                       |
-| ----------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Git                           | Version control.                                                         | Required project history and traceability mechanism.                                                                                                                     |
-| Gitea                         | Repository hosting, issues, Pull Requests, project board and milestones. | University-hosted collaboration platform used as the authoritative project record.                                                                                       |
-| GitHub Flow adapted for Gitea | Branch/PR methodology.                                                   | Selected over Git Flow to keep review and traceability without permanent `develop`/release branches. See `docs/git-methodology.md`.                                      |
-| Gitea Actions                 | Continuous integration and Azure deployment workflows.                   | Keeps automated checks and deployment definitions in the same repository.                                                                                                |
-| Azure App Service (Linux)     | Hosts the React frontend and Express backend.                            | ADR 0003 selected App Service for managed HTTPS, Node.js support and a simple Sprint 1 deployment model. Azure Container Apps and Azure Static Web Apps were considered. |
-| Cloudflare Pages              | Hosts public documentation.                                              | Keeps the documentation deployment independent from the application deployments.                                                                                         |
+| Technology / service          | Purpose                                                                  | Motivation / notes                                                                                                                                                        |
+| ----------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Git                           | Version control.                                                         | Required project history and traceability mechanism.                                                                                                                      |
+| Gitea                         | Repository hosting, issues, Pull Requests, project board and milestones. | University-hosted collaboration platform used as the authoritative project record.                                                                                        |
+| GitHub Flow adapted for Gitea | Branch/PR methodology.                                                   | Selected over Git Flow to keep review and traceability without permanent `develop`/release branches. See `docs/git-methodology.md`.                                       |
+| Gitea Actions                 | Continuous integration and change-aware deployment workflows.            | Keeps automated checks and deployment definitions in the same repository.                                                                                                 |
+| Azure Container Apps          | Hosts the Express backend API and asynchronous worker.                   | The supported backend and worker paths use immutable ACR images, Bicep, managed identities and Key Vault references. Historical Azure App Service is not current hosting. |
+| Cloudflare Pages              | Hosts the React frontend and public documentation.                       | Serves independently deployed static Vite and MkDocs output through Wrangler-based workflows.                                                                             |
 
 ## External data and integrations
 
-| Source / service | Current use                                       | Notes                                                                                                                                                                                                                          |
-| ---------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Cricsheet        | Historical event-level T20/IT20 JSON data source. | Downloaded by `scripts/download_cricsheet_t20.py`; generated bulk data remains ignored. Cricsheet is a historical file/data source rather than the course-required runtime external API integration.                           |
-| Google OAuth     | Identity provider through Supabase Auth.          | Provides the initial managed OAuth sign-in path. OAuth client secrets remain in provider dashboards and are never committed.                                                                                                   |
-| Open-Meteo       | Runtime external weather API integration.         | Selected in ADR-008 and called server-side by the Express backend through `GET /api/v1/weather`. It requires no API key. Provider failures are isolated to the weather feature through validation, timeout and error handling. |
+| Source / service | Current use                                                                | Notes                                                                                                                                                                                                                                                                                                               |
+| ---------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cricsheet        | Historical event-level T20/IT20 JSON data source.                          | Downloaded by `scripts/download_cricsheet_t20.py`; generated bulk data remains ignored. Cricsheet is a historical file/data source rather than the course-required runtime external API integration.                                                                                                                |
+| Google OAuth     | Identity provider through Supabase Auth.                                   | Provides the initial managed OAuth sign-in path. OAuth client secrets remain in provider dashboards and are never committed.                                                                                                                                                                                        |
+| Open-Meteo       | Runtime external weather API integration.                                  | Selected in ADR-008 and called server-side by the Express backend through `GET /api/v1/weather`. It requires no API key. Provider failures are isolated to the weather feature through validation, timeout and error handling.                                                                                      |
+| Anthropic Claude | Runtime language-model translation for natural-language analytics queries. | Claude Haiku 4.5 (`claude-haiku-4-5-20251001`), selected in ADR-017 and called server-side through `POST /api/v1/natural-language-queries`. It requires a server-only API key held in Key Vault. Provider failures are isolated to this feature: an absent key disables natural-language querying and nothing else. |
+
+### Anthropic Claude: what is sent, what it costs and why it was selected
+
+The natural-language query feature is the project's one language-model integration, and it is the
+only third-party service that receives text a user typed. The complete decision is
+[ADR-017](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-017-llm-provider-integration.md){ target="_blank" rel="noopener" };
+the disclosure below is the summary this document is required to carry.
+
+**Purpose.** Translation only. The model converts a question into a query definition that must
+satisfy a closed contract. It computes no statistic: a validated definition is answered from the
+published statistics by existing hand-written code. The contract, not the provider, decides what the
+platform will act on.
+
+**Data sent.** Exactly four things, asserted by a test that fails if a fifth appears:
+
+- the query-definition contract's own schema description;
+- a fixed sentence framing the next message as data;
+- the reader's question text, between delimiters; and
+- since #868, the caller's earlier questions and the definitions they were read as, as prior context.
+
+**No cricket data, identifier, column name, table name, SQL statement, credential, account detail or
+information about who asked is sent.** A test runs a forbidden-token list over a request built with a
+maximum-length conversation. The question text itself is the one substantive privacy consequence and
+is disclosed to the reader before they submit a question.
+
+**Spending limit.** A dedicated Anthropic Console workspace for this project with a **$10 monthly
+spend limit**, and an API key scoped to that workspace. The limit is the control rather than a
+forecast: it caps the blast radius of a loop, a leaked key or a load test at $10 instead of at the
+account balance. At roughly $0.0060 a question that is about 1,670 questions a month. Both the limit
+and the workspace-scoped key must exist before the feature is enabled in a deployed environment.
+
+**Reason for selection.** Claude Haiku 4.5 at $1/$5 per million tokens was chosen over cheaper
+candidates — Gemini 3.1 Flash-Lite and OpenAI GPT-5 Nano were both priced lower — because cost is not
+the binding constraint against a $10 ceiling, and the alternatives each required a new cloud project,
+billing setup and a second credential path. An existing team member's Anthropic account removed
+payment and account-setup risk, which at this point in the project was a schedule risk rather than a
+cost one. The model supports the native structured-output mode the closed contract needs. Switching
+provider is one environment variable: `LLM_MODEL` carries the identifier and no sampling parameter is
+sent, with Claude Sonnet 5.5 recorded as the named fallback.
 
 ## Type-only support packages
 
@@ -202,7 +242,9 @@ AI usage is governed separately by the course AI policy and the repository AI ev
 
 The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The issue #314 Three.js and self-hosted font dependency records were updated with the assistance of
-Codex[GPT-5.6 Sol].
+Codex[GPT-5.6 Sol]. The Anthropic Claude provider record was added with the assistance of
+Claude-Code[Claude Opus 5 (1M context)] under issue #817, summarising ADR-017 rather than restating
+the integration.
 The Azure Blob Storage and managed-identity dependency records were updated with the assistance of
 Codex[GPT-5].
 The asynchronous worker runtime and Service Bus dependency records were updated with the assistance
@@ -211,3 +253,5 @@ The Issue #364 current-state technology wording was reviewed and edited with the
 ChatGPT-Web[GPT-5.6 Sol].
 The Issue #297 Multer dependency record was reviewed and added with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The Issue #660 Swagger UI React and YAML dependency records were reviewed and added with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The Issue #888 current hosting-stack entries were corrected with the assistance of Codex[GPT-5].
+The Issue #890 Azure managed-identity attribution was corrected with the assistance of Codex[GPT-5].
