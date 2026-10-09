@@ -35,6 +35,21 @@ describe('administration entry points', () => {
     vi.unstubAllGlobals();
   });
 
+  // Issue #933: the loading status ended in three garbled characters instead of
+  // an ellipsis, because the ellipsis had been saved as its UTF-8 bytes re-read
+  // as Windows-1252.
+  it('announces the administrator access check with a correctly encoded ellipsis', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
+    render(
+      <AuthProvider client={authClient()}>
+        <MemoryRouter>
+          <AdministrationPage />
+        </MemoryRouter>
+      </AuthProvider>,
+    );
+    expect(await screen.findByRole('status')).toHaveTextContent(/^Checking administrator access…$/);
+  });
+
   it('shows API consumers alongside existing administration actions for administrators', async () => {
     vi.stubGlobal(
       'fetch',
