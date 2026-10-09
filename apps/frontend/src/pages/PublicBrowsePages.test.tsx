@@ -1,5 +1,5 @@
 import type { AuthChangeEvent, Session } from '@supabase/auth-js';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -284,11 +284,13 @@ beforeAll(async () => {
 
 describe('public browsing pages', () => {
   beforeEach(() => {
+    vi.useRealTimers();
     window.localStorage.clear();
     useSystemTheme();
   });
 
   afterEach(() => {
+    cleanup();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
@@ -824,6 +826,35 @@ describe('public browsing pages', () => {
         url.includes('/participants?fixtureId=fixture-1&competitorId=team-sa&limit=100&name=A+Pl'),
       ),
     ).toBe(true);
+  });
+
+  it.each([
+    ['/fixtures?competitorId=team-sa', 'Fixtures'],
+    ['/participants?competitorId=team-sa', 'Players'],
+  ])('keeps a valid selected team readable on %s', async (route) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: string) => {
+        const url = new URL(input);
+        if (url.pathname.endsWith('/competitors/team-sa')) {
+          return Promise.resolve(
+            response(200, { data: { competitorId: 'team-sa', name: 'South Africa' } }),
+          );
+        }
+        if (url.pathname.endsWith('/competitors')) {
+          return Promise.resolve(collection([{ competitorId: 'team-1', name: 'Wanderers' }]));
+        }
+        return Promise.resolve(collection([]));
+      }),
+    );
+
+    renderRoute(route);
+
+    const summary = await screen.findByText('Active filters');
+    await waitFor(() => expect(summary.parentElement).toHaveTextContent('Team: South Africa'));
+    expect(
+      screen.queryByText('The selected team is no longer available. Clear it or choose another.'),
+    ).not.toBeInTheDocument();
   });
 
   it('opens a fixture and exposes statistics and players through local navigation', async () => {
