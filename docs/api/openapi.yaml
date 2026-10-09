@@ -2502,6 +2502,12 @@ paths:
         The operation requires no authentication: it returns only resources the
         public statistics reads already serve anonymously.
 
+        It is anonymous but not unmetered. It resolves every name hint and reads
+        published statistics, so it is bounded by the same anonymous per-source and
+        global per-minute limits as the canonical cricket reads, keyed on an HMAC
+        digest of the caller's address. Supplying `X-API-Key` opts into consumer
+        identification instead, on the same terms as a canonical read.
+
         Every evaluated definition is answered with `200`, including one whose
         reference resolves to nothing or to more than one entity, and one the
         published statistics cannot answer. Those are outcomes rather than
@@ -2536,7 +2542,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
-        '503': { $ref: '#/components/responses/DatabaseStatementTimeout' }
+        '429': { $ref: '#/components/responses/AnonymousReadLimitExceeded' }
+        '503':
+          description: >-
+            A database statement exceeded its bound
+            (`DATABASE_STATEMENT_TIMEOUT`), or the anonymous rate-limit counter
+            could not be read (`RATE_LIMIT_UNAVAILABLE`); the limiter fails closed
+            rather than admitting an unmetered request. Either may be retried.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
 
   /api/v1/natural-language-queries:
     post:
@@ -3746,6 +3762,24 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiErrorResponse' }
 
+    AnonymousReadLimitExceeded:
+      description: >-
+        The anonymous per-source or global per-minute bound was reached
+        (`RATE_LIMIT_EXCEEDED`). A source is identified by an HMAC digest of its
+        address, never by the address, and the window is the calendar minute. The
+        bound is shared with the canonical cricket reads, because it meters a
+        client rather than an operation.
+      headers:
+        RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+        RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+        RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+        Retry-After:
+          description: Seconds to wait before retrying.
+          schema: { type: integer, minimum: 1 }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiErrorResponse' }
+
     NaturalLanguageQueryLimitExceeded:
       description: >-
         A natural-language query limit was reached: the per-client rate limit
@@ -3821,18 +3855,6 @@ components:
       description: >-
         The shared consumer rate-limit store is unavailable. The request is not
         admitted and consumers should retry with bounded backoff.
-      content:
-        application/json:
-          schema: { $ref: '#/components/schemas/ApiErrorResponse' }
-
-    DatabaseStatementTimeout:
-      description: >-
-        A database statement exceeded the configured execution bound and was
-        cancelled, so the request produced no result. The error code is
-        `DATABASE_STATEMENT_TIMEOUT`. The condition is temporary and the same
-        request may succeed on retry with bounded backoff. Any database-backed
-        operation can end this way; it is documented on the operations whose
-        reads are heavy enough for the bound to be a realistic outcome.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiErrorResponse' }
@@ -6514,7 +6536,9 @@ components:
             each is answered by posting it to
             `POST /api/v1/query-definitions/evaluate`, which makes no
             language-model call and is not subject to the limits on this
-            operation.
+            operation. That operation carries the anonymous read bounds of its
+            own, so following suggestions spends nothing here but is not
+            unmetered.
 
             Absent when nothing was suggested. A suggestion carries no label: a
             client words it from the definition itself.

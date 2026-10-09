@@ -30,6 +30,24 @@ const canonicalReadPatterns = [
   /^\/statistics\/leaderboards$/,
 ] as const;
 
+/**
+ * Canonical reads that are expressed as a POST because they carry a body.
+ *
+ * `POST /query-definitions/evaluate` (issue #924) answers a structured query
+ * definition from the statistics the platform already publishes. It is a read in
+ * everything but method: it computes nothing, stores nothing and mutates
+ * nothing. What it does do is resolve every name hint and call the published
+ * statistics services, so it costs database work on every anonymous request —
+ * and the documentation tells clients that answering a suggestion through it
+ * makes no provider call, which is an invitation to send traffic here. It
+ * therefore belongs under the same bounds as the reads it is built on.
+ *
+ * Held separately from the list above rather than relaxing that list's method
+ * check, so admitting one POST cannot start metering a POST to any of the
+ * sixteen read paths.
+ */
+const canonicalReadPostPatterns = [/^\/query-definitions\/evaluate$/] as const;
+
 export function createCanonicalReadAuthentication(
   consumerRepository: ApiConsumerRepository,
   anonymousRepository: AnonymousAccessRepository,
@@ -39,10 +57,14 @@ export function createCanonicalReadAuthentication(
   const authenticateConsumer = createConsumerAuthentication(consumerRepository, now);
 
   return (request, response, next) => {
-    if (
-      request.method !== 'GET' ||
-      !canonicalReadPatterns.some((pattern) => pattern.test(request.path))
-    ) {
+    const patterns =
+      request.method === 'GET'
+        ? canonicalReadPatterns
+        : request.method === 'POST'
+          ? canonicalReadPostPatterns
+          : undefined;
+
+    if (!patterns?.some((pattern) => pattern.test(request.path))) {
       next();
       return;
     }

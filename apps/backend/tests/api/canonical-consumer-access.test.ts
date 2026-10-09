@@ -205,6 +205,28 @@ describe('canonical cricket-resource access', () => {
     expect(anonymous.consume).not.toHaveBeenCalled();
   });
 
+  // Issue #924 admits one POST to the anonymous bounds. The method is matched
+  // per path rather than relaxed for the list as a whole, so adding it must not
+  // start metering a POST to any of the sixteen canonical read paths — none of
+  // which accepts one — or a GET to the metered POST path.
+  test('admits only the named POST path, leaving other methods and paths unmetered', async () => {
+    const anonymous = anonymousRepository();
+    const app = createCanonicalApp(consumerRepository(), anonymous);
+
+    await request(app).post('/api/v1/competitions').send({});
+    await request(app).post('/api/v1/participants').send({});
+    await request(app).get('/api/v1/query-definitions/evaluate');
+
+    expect(anonymous.consume).not.toHaveBeenCalled();
+
+    await request(app)
+      .post('/api/v1/query-definitions/evaluate')
+      .send({ kind: 'unsupported', reason: 'venue' })
+      .expect(200);
+
+    expect(anonymous.consume).toHaveBeenCalledOnce();
+  });
+
   test('keeps consumer usage key-only and deprecates authenticated cricket-resource aliases', async () => {
     const consumers = consumerRepository();
     const anonymous = anonymousRepository();
