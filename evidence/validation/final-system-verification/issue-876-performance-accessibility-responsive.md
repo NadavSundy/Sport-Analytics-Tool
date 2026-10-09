@@ -23,7 +23,7 @@
 | RESP-TECH-01    | PASS                                         | `npx playwright test tests/e2e/responsive-layout.spec.ts --project=desktop-chromium --reporter=line --workers=1`: 3/3 passed in 54.5s. Signed-out and administrator headers were checked at 320, 360, 390, 600, 768, 900, 960, 1024, 1100, 1180, 1280 and 1440 CSS pixels; reviewed routes had no page-level overflow at 320px. | None observed.                                                            | Not needed.                                                          |
 | RESP-TECH-02    | PASS                                         | The same 320px reviewed-route reflow check covered mocked administrator workspace submission and review routes without page-level horizontal overflow. This is local mocked evidence, not deployed role-session verification.                                                                                                   | None observed in supported local coverage.                                | Hosted role-session verification remains with #810.                  |
 | A11Y-TECH-01    | PASS                                         | `npx playwright test tests/e2e/accessibility.spec.ts --reporter=line --workers=1`: 69/69 passed in 2.5m. Axe found no serious or critical violation across reviewed public and administrator workspace routes, both themes, and mobile public/authentication/dialog cases.                                                      | None observed.                                                            | Not needed.                                                          |
-| A11Y-TECH-02    | PASS                                         | Focused public-navigation, mobile-menu, combobox and route-focus assertions passed in the 39-test component run. The only failing assertion was the unrelated `/fixtures` document title, retained below; no keyboard/focus assertion failed.                                                                                   | `/fixtures` title regression requires release disposition.                | Retest after title correction.                                       |
+| A11Y-TECH-02    | PASS                                         | Focused public-navigation, mobile-menu, combobox and route-focus assertions passed. An initial 38/39 run had a separate `/fixtures` title assertion failure; the exact three-file rerun passed 39/39 without a code change. No keyboard/focus assertion failed.                                                                 | No confirmed product defect.                                              | Completed; retain the initial failure and exact passing retest.      |
 | A11Y-TECH-03    | PASS                                         | The 69 Axe audits completed without serious/critical accessible-name or semantic finding. Reviewed routes wait for a visible heading and completed loading state; targeted component tests cover labelled navigation and combobox interaction.                                                                                  | None observed.                                                            | Not needed.                                                          |
 | A11Y-TECH-04    | PASS                                         | Axe's colour-contrast rule ran within the 69 audits across day/night themes and mobile coverage; no serious/critical finding was reported. Production build output included only a non-blocking large-chunk advisory.                                                                                                           | None observed.                                                            | Monitor bundle-size advisory separately.                             |
 
@@ -42,14 +42,16 @@ npx.cmd playwright test tests/e2e/accessibility.spec.ts --reporter=line --worker
 
 npm.cmd run test --workspace=@sport-analytics/frontend -- --run src/components/PublicShell.test.tsx src/components/NameCombobox.test.tsx src/RouteExperience.test.tsx --maxWorkers=1
   Result: 38 passed; 1 failed. The failure expected `Fixtures | Stat'sTheGame` but received `Untitled` for `/fixtures`.
+
+npm.cmd run test --workspace=@sport-analytics/frontend -- --run src/components/PublicShell.test.tsx src/components/NameCombobox.test.tsx src/RouteExperience.test.tsx --maxWorkers=1
+  Retest result: 39 passed; no code change was made between the two runs.
 ```
 
-## Finding and disposition
+## Retest and observations
 
-The focused keyboard/focus support run retained one non-accessibility regression: the route-title assertion for
-`/fixtures` failed. The result is not masked by the successful Axe or responsive suites. This issue does not
-change application behaviour; release ownership must either correct the title and retest, or explicitly
-accept its final-submission impact before release.
+The initial focused keyboard/focus run recorded one `/fixtures` route-title assertion failure. Its exact
+three-file retest passed 39/39 without a code change, so this record does not classify it as a confirmed
+application defect or release blocker. The original failure is retained above instead of being erased.
 
 The local production build also emitted Vite's advisory that some generated chunks exceed 500 kB after
 minification. It did not fail the build or the responsive/accessibility checks, but remains a performance
