@@ -6,18 +6,21 @@ This is the canonical onboarding guide for a clean checkout of the Sport Analyti
 
 Each independently developed or operated part of the monorepo has a repository entry point:
 
-| Component / location  | Getting-started README                                                                                                                                                      | Responsibility                                                                  |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Repository root       | [README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/README.md){ target="_blank" rel="noopener" }                                       | Overall project setup, architecture boundaries and links to specialist guides.  |
-| `apps/frontend/`      | [apps/frontend/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/apps/frontend/README.md){ target="_blank" rel="noopener" }           | React/Vite application setup, environment, run, test and build guidance.        |
-| `apps/backend/`       | [apps/backend/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/apps/backend/README.md){ target="_blank" rel="noopener" }             | Express API setup, environment, database access, run, test and build guidance.  |
-| `database/`           | [database/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/database/README.md){ target="_blank" rel="noopener" }                     | PostgreSQL migrations, development connection, seeding and database testing.    |
-| `packages/contracts/` | [packages/contracts/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/packages/contracts/README.md){ target="_blank" rel="noopener" } | Shared Zod/TypeScript contract build, test and usage boundaries.                |
-| `docs/`               | [docs/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/docs/README.md){ target="_blank" rel="noopener" }                             | MkDocs prerequisites, local serve/build and deployment guidance.                |
-| `tests/`              | [tests/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/tests/README.md){ target="_blank" rel="noopener" }                           | Unit, API, database, E2E, accessibility, performance and coverage entry points. |
-| `infra/`              | [infra/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/infra/README.md){ target="_blank" rel="noopener" }                           | Infrastructure/deployment boundaries and Azure-specific guidance.               |
-| `scripts/`            | [scripts/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/scripts/README.md){ target="_blank" rel="noopener" }                       | Developer-facing repository scripts, prerequisites and safe usage.              |
-| `evidence/`           | [evidence/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/README.md){ target="_blank" rel="noopener" }                     | Evidence artefact purpose, locations and integrity rules.                       |
+| Component / location         | Getting-started README                                                                                                                                                                    | Responsibility                                                                    |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Repository root              | [README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/README.md){ target="_blank" rel="noopener" }                                                     | Overall project setup, architecture boundaries and links to specialist guides.    |
+| `apps/frontend/`             | [apps/frontend/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/apps/frontend/README.md){ target="_blank" rel="noopener" }                         | React/Vite application setup, environment, run, test and build guidance.          |
+| `apps/backend/`              | [apps/backend/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/apps/backend/README.md){ target="_blank" rel="noopener" }                           | Express API setup, environment, database access, run, test and build guidance.    |
+| `apps/worker/`               | [apps/worker/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/apps/worker/README.md){ target="_blank" rel="noopener" }                             | Asynchronous worker setup, local database transport, health endpoints and probes. |
+| `database/`                  | [database/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/database/README.md){ target="_blank" rel="noopener" }                                   | PostgreSQL migrations, development connection, seeding and database testing.      |
+| `packages/contracts/`        | [packages/contracts/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/packages/contracts/README.md){ target="_blank" rel="noopener" }               | Shared Zod/TypeScript contract build, test and usage boundaries.                  |
+| `packages/batch-processing/` | [packages/batch-processing/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/packages/batch-processing/README.md){ target="_blank" rel="noopener" } | Batch-ingestion logic shared by the backend and worker.                           |
+| `packages/object-storage/`   | [packages/object-storage/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/packages/object-storage/README.md){ target="_blank" rel="noopener" }     | Provider-independent object-storage interface used by the backend and worker.     |
+| `docs/`                      | [docs/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/docs/README.md){ target="_blank" rel="noopener" }                                           | MkDocs prerequisites, local serve/build and deployment guidance.                  |
+| `tests/`                     | [tests/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/tests/README.md){ target="_blank" rel="noopener" }                                         | Unit, API, database, E2E, accessibility, performance and coverage entry points.   |
+| `infra/`                     | [infra/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/infra/README.md){ target="_blank" rel="noopener" }                                         | Infrastructure/deployment boundaries and Azure-specific guidance.                 |
+| `scripts/`                   | [scripts/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/scripts/README.md){ target="_blank" rel="noopener" }                                     | Developer-facing repository scripts, prerequisites and safe usage.                |
+| `evidence/`                  | [evidence/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/README.md){ target="_blank" rel="noopener" }                                   | Evidence artefact purpose, locations and integrity rules.                         |
 
 Each listed README is the component's getting-started entry point. Separate `GETTING_STARTED.md` files are intentionally not created because they would duplicate the same setup instructions.
 
@@ -83,6 +86,7 @@ Real `.env` files are ignored and must never be committed.
 ```powershell
 Copy-Item apps/backend/.env.example apps/backend/.env
 Copy-Item apps/frontend/.env.example apps/frontend/.env
+Copy-Item apps/worker/.env.example apps/worker/.env
 ```
 
 ### macOS / Linux / Git Bash
@@ -90,9 +94,15 @@ Copy-Item apps/frontend/.env.example apps/frontend/.env
 ```bash
 cp apps/backend/.env.example apps/backend/.env
 cp apps/frontend/.env.example apps/frontend/.env
+cp apps/worker/.env.example apps/worker/.env
 ```
 
 Populate the required values using the shared development configuration. See [Environment Variables](../environment.md) for the authoritative variable list.
+
+The worker file is needed only when you run the asynchronous worker (section 7). Its committed
+defaults select the local `database` transport and the filesystem object store shared with the
+backend; replace its `DATABASE_URL`, which points at the disposable test database, with the same
+development connection string the backend uses.
 
 ## 4. Backend database connection
 
@@ -147,14 +157,20 @@ keys.
 
 Google OAuth is configured in the Google and Supabase dashboards. Its client secret remains outside the repository.
 
-## 6. Build shared contracts
+## 6. Build shared packages
 
-The frontend and backend both import `@sport-analytics/contracts`.
+The frontend, backend and worker import `@sport-analytics/contracts`; the backend and worker also
+import `@sport-analytics/batch-processing` and `@sport-analytics/object-storage`.
 
-The complete root check builds contracts before repository-wide type-checking, but when running an isolated workspace check on a fresh installation it is safe to build contracts first:
+The backend and worker `dev` and `typecheck` scripts build all three packages first, and the
+complete root check builds contracts before repository-wide type-checking. The frontend scripts do
+not, so on a fresh installation build the packages explicitly, contracts first, before starting the
+frontend on its own or running any other isolated workspace command:
 
 ```bash
 npm run build --workspace=@sport-analytics/contracts
+npm run build --workspace=@sport-analytics/batch-processing
+npm run build --workspace=@sport-analytics/object-storage
 ```
 
 ## 7. Run the applications
@@ -171,6 +187,17 @@ Start the frontend in a second terminal:
 npm run dev:frontend
 ```
 
+Staged batch validation, publication and dataset-release generation are processed by the
+asynchronous worker. Start it in a third terminal when you need those workflows:
+
+```bash
+npm run dev:worker
+```
+
+No Azure resources are required locally: the worker consumes the transactional outbox directly
+(`WORKER_TRANSPORT_PROVIDER=database`). [Azure asynchronous batch worker](../deployment/azure-worker.md)
+describes the production Service Bus and Blob configuration.
+
 The root dispatcher also supports `npm run dev backend` and
 `npm run dev frontend`. Arguments after `--` are forwarded to the selected
 application, such as `npm run dev frontend -- --host 0.0.0.0`.
@@ -180,27 +207,35 @@ Default local endpoints:
 - frontend: `http://localhost:5173`
 - backend health: `http://localhost:3000/api/v1/health`
 - current user profile: `http://localhost:3000/api/v1/auth/me`
+- worker readiness, when started: `http://localhost:3001/health/ready`
 
 A basic local smoke test is successful when the frontend loads and the backend health endpoint responds without a server error.
 
 ## 8. Repository checks
 
-The normal pre-Pull-Request gate is:
+The normal pre-Pull-Request gate, as required by [CONTRIBUTING.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/CONTRIBUTING.md){ target="_blank" rel="noopener" }, is:
 
 ```bash
+npm run hygiene
 npm run check
 ```
 
-It currently runs, in order:
+`npm run hygiene` runs Knip (unused files, dependencies and exports), syncpack (workspace
+dependency-version consistency) and dependency-cruiser (circular dependencies and the documented
+application boundaries).
+
+`npm run check` currently runs, in order:
 
 1. required-file structure check;
 2. Prettier formatting check;
 3. ESLint;
 4. shared-contract build;
 5. TypeScript type-checking;
-6. unit/frontend/API/contract/deployment-helper tests;
-7. OpenAPI linting; and
-8. production builds for contracts, backend and frontend.
+6. the database-independent tests: backend unit, frontend, API, API-contract, worker, contracts,
+   deployment/documentation, CI-routing and script tests;
+7. OpenAPI linting with Redocly; and
+8. production builds for all six workspaces (contracts, batch processing, object storage, backend,
+   frontend and worker).
 
 Useful individual commands:
 
@@ -222,6 +257,11 @@ database-independent.
 
 The extended CI/testing suite also includes Playwright browser/accessibility tests and coverage
 generation. See [Testing](testing.md).
+
+To reproduce the change-aware CI plan before pushing, run `npm run ci:local`; `npm run ci:docker`
+runs it in a CI-like Linux container. `npm run hooks:install` installs the optional pre-push hook
+in `.githooks/` that runs `npm run ci:local`, and `npm run hooks:remove` removes it. See
+[Local CI](local-ci.md).
 
 ## 9. Local PostgreSQL integration tests
 
@@ -635,3 +675,5 @@ The repository evidence template is `evidence/validation/issue-12-onboarding-ver
 ## AI Declaration
 
 The preceding document was reviewed, reorganised and expanded with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The Issue #879 review added the worker and shared-package setup, the hygiene gate and the local-CI
+tooling with the assistance of Claude-Web[Claude Opus 5.5].
