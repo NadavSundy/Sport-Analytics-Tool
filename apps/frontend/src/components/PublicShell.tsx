@@ -9,6 +9,7 @@ import {
 import type { CurrentUserProfile } from '@sport-analytics/contracts';
 import { Link, NavLink, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthProvider';
+import { ChatLauncher } from '../features/natural-language-query/ChatLauncher';
 import { getPinnedShortcuts, type PinnedShortcut } from '../features/browse/pinned-shortcuts';
 import { ThemeToggle } from './ThemeToggle';
 import { useHeaderLayout } from './useHeaderLayout';
@@ -453,6 +454,10 @@ export function PublicShell({ children }: PublicShellProps) {
           </nav>
         </div>
       </footer>
+      {/* Issue #936: mounted once here so the assistant is reachable from every
+          route. Last in the shell, after the footer, so it is last in the tab
+          order rather than between the page and its footer links. */}
+      <ChatLauncher />
     </div>
   );
 }

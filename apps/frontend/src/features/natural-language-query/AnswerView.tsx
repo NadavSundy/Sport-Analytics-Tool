@@ -3,30 +3,23 @@ import type {
   QueryDefinitionEvaluation,
   QuerySuggestion,
 } from '@sport-analytics/contracts';
-import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { AnsweredResult } from './AnsweredResult';
-import {
-  MAX_QUESTION_LENGTH,
-  askQuestion,
-  AskQuestionError,
-  evaluateDefinition,
-  type AskFailure,
-} from './askQuestion';
+import type { AskFailure } from './askQuestion';
 import { EXAMPLE_QUESTIONS } from './examples';
 import { describeDefinition, unsupportedMessage } from './interpretation';
 
 /**
- * One question, one answer.
+ * How one question's answer is rendered.
  *
- * This holds no conversation: each question is answered on its own and replaces
- * the last answer, because the endpoint behind it keeps no history and an
- * interface that looked like a chat would promise one. Every answer shows the
- * definition the question was read as before the figures, so a reader can see the
- * interpretation before trusting the result.
+ * Moved out of `AskQuestionDialog` under issue #936 so the chat panel renders an
+ * answer exactly as the home-page widget did. The code is unchanged: the
+ * behaviour a reader sees for an outcome, a refusal, a suggestion or a failure is
+ * the behaviour the issue #816, #851 and #868 tests already pin down, and this is
+ * the only copy of it.
  */
 
-interface Answer {
+export interface Answer {
   /** The reader's words, or the wording of the suggestion they clicked. */
   question: string;
   evaluation: QueryDefinitionEvaluation;
@@ -38,13 +31,7 @@ interface Answer {
   assumptions?: NaturalLanguageQueryResult['assumptions'];
 }
 
-interface AskState {
-  status: 'idle' | 'loading' | 'answered' | 'failed';
-  answer?: Answer;
-  failure?: AskFailure;
-}
-
-function answerFrom(result: NaturalLanguageQueryResult): Answer {
+export function answerFrom(result: NaturalLanguageQueryResult): Answer {
   return {
     question: result.question,
     evaluation: result.evaluation,
@@ -64,7 +51,7 @@ function retryWording(seconds: number | undefined): string {
   return `Please try again in about ${minutes} minute${minutes === 1 ? '' : 's'}.`;
 }
 
-function FailureMessage({ failure }: { failure: AskFailure }) {
+export function FailureMessage({ failure }: { failure: AskFailure }) {
   if (failure.kind === 'not_understood') {
     return (
       <div className="ask-question__message" role="status">
@@ -120,7 +107,7 @@ function FailureMessage({ failure }: { failure: AskFailure }) {
   );
 }
 
-function Outcome({
+export function Outcome({
   evaluation,
   assumptions,
 }: {
@@ -197,7 +184,7 @@ function Outcome({
  * a label that does not come over the wire cannot disagree with the definition it
  * describes. Each has already passed the definition contract before being offered.
  */
-function Suggestions({
+export function Suggestions({
   onChoose,
   suggestions,
 }: {
@@ -232,7 +219,7 @@ function Suggestions({
  * rather than being answered directly, because they are questions rather than
  * definitions.
  */
-function ExampleFallback({ onChoose }: { onChoose: (question: string) => void }) {
+export function ExampleFallback({ onChoose }: { onChoose: (question: string) => void }) {
   return (
     <div className="ask-question__suggestions">
       <p>Questions this can answer:</p>
@@ -245,148 +232,6 @@ function ExampleFallback({ onChoose }: { onChoose: (question: string) => void })
           </li>
         ))}
       </ul>
-    </div>
-  );
-}
-
-export function AskQuestionDialog({ onClose }: { onClose: () => void }) {
-  const titleId = useId();
-  const countId = useId();
-  const [question, setQuestion] = useState('');
-  const [state, setState] = useState<AskState>({ status: 'idle' });
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-
-  // Focus moves into the dialog on open, so a keyboard visitor is where the
-  // question is typed rather than back at the top of the page.
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  const trimmed = question.trim();
-  const tooLong = question.length > MAX_QUESTION_LENGTH;
-  const canSubmit = trimmed.length > 0 && !tooLong && state.status !== 'loading';
-
-  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key === 'Escape') {
-      event.stopPropagation();
-      onClose();
-    }
-  }
-
-  function handleSubmit(event: FormEvent) {
-    event.preventDefault();
-    if (!canSubmit) {
-      return;
-    }
-
-    setState({ status: 'loading' });
-    void askQuestion(trimmed)
-      .then((result) => setState({ status: 'answered', answer: answerFrom(result) }))
-      .catch(reportFailure);
-  }
-
-  function reportFailure(error: unknown) {
-    const failure =
-      error instanceof AskQuestionError ? error.failure : ({ kind: 'network' } as AskFailure);
-    setState({ status: 'failed', failure });
-  }
-
-  /**
-   * Answers a suggestion without asking the model again.
-   *
-   * The definition is already known and already validated, so it goes straight to
-   * the evaluation endpoint. That costs nothing against the question limits and
-   * makes no provider call.
-   */
-  function handleSuggestion(suggestion: QuerySuggestion) {
-    setState({ status: 'loading' });
-    void evaluateDefinition(suggestion)
-      .then((evaluation) =>
-        setState({
-          status: 'answered',
-          answer: { question: describeDefinition(suggestion), evaluation, suggestions: [] },
-        }),
-      )
-      .catch(reportFailure);
-  }
-
-  return (
-    <div className="ask-question__overlay" onKeyDown={handleKeyDown}>
-      <div
-        aria-labelledby={titleId}
-        aria-modal="true"
-        className="ask-question__dialog"
-        ref={panelRef}
-        role="dialog"
-      >
-        <div className="ask-question__dialog-header">
-          <h2 id={titleId}>Ask a stats question</h2>
-          <button className="button button--secondary" onClick={onClose} type="button">
-            Close
-          </button>
-        </div>
-
-        <p className="ask-question__examples-label">For example:</p>
-        <ul className="ask-question__examples">
-          {EXAMPLE_QUESTIONS.map((example) => (
-            <li key={example.question}>
-              <button onClick={() => setQuestion(example.question)} type="button">
-                {example.question}
-              </button>
-            </li>
-          ))}
-        </ul>
-
-        <form onSubmit={handleSubmit}>
-          <label htmlFor={`${titleId}-input`}>Your question</label>
-          <textarea
-            aria-describedby={countId}
-            id={`${titleId}-input`}
-            maxLength={MAX_QUESTION_LENGTH}
-            onChange={(event) => setQuestion(event.target.value)}
-            ref={inputRef}
-            rows={2}
-            value={question}
-          />
-          <p className="ask-question__count" id={countId}>
-            {question.length} of {MAX_QUESTION_LENGTH} characters
-          </p>
-          {/* ADR-017: the question text leaves this platform, so it is said before
-              the first question rather than after it. */}
-          <p className="ask-question__disclosure">
-            Your question text is sent to Anthropic for processing. No cricket data and no account
-            information is sent with it. See the <Link to="/privacy">privacy notice</Link>.
-          </p>
-          <button className="button button--primary" disabled={!canSubmit} type="submit">
-            {state.status === 'loading' ? 'Asking…' : 'Ask'}
-          </button>
-        </form>
-
-        <div aria-live="polite" className="ask-question__result" role="region">
-          {state.status === 'loading' ? <p>Working out the answer…</p> : null}
-          {state.status === 'answered' && state.answer ? (
-            <>
-              <p className="ask-question__interpretation">
-                Read as: <strong>{describeDefinition(state.answer.evaluation.definition)}</strong>
-              </p>
-              <Outcome
-                evaluation={state.answer.evaluation}
-                assumptions={state.answer.assumptions}
-              />
-              <Suggestions suggestions={state.answer.suggestions} onChoose={handleSuggestion} />
-            </>
-          ) : null}
-          {state.status === 'failed' && state.failure ? (
-            <>
-              <FailureMessage failure={state.failure} />
-              {state.failure.kind === 'not_understood' ? (
-                <ExampleFallback onChoose={setQuestion} />
-              ) : null}
-            </>
-          ) : null}
-        </div>
-      </div>
     </div>
   );
 }

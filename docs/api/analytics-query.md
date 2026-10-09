@@ -323,7 +323,10 @@ what was already asked:
 
 Each turn is the question that was asked and the definition it was read as; take the definition from
 that turn's own `evaluation.definition`. `conversation` is optional, so a client that keeps no
-history — the home-page widget — sends only `question`.
+history sends only `question`, which is what the first question of any conversation sends.
+
+The floating chat assistant (issue #936) is the client that holds one: it keeps the conversation in
+memory for as long as the panel is open and sends up to the last five turns with each follow-up.
 
 Both halves are the existing contracts rather than looser copies. An earlier question obeys the same
 300-character rule as the current one, because it is the same kind of thing: text the reader wrote.
@@ -561,10 +564,10 @@ metric, a scope and a season, and the player the pronoun refers to exists only i
 the model never reads. A follow-up of that kind comes back `unsupported` or resolves against the
 wrong thing, and a client should expect the reader to name the player again.
 
-**The home-page widget sends no conversation.** It answers one question at a time, each answer
-replacing the last, so follow-ups are available to API callers and are not exercised by the
-reader-facing surface. A client that wants them has to keep the history itself and send it on each
-request.
+**A conversation lives only in the client.** The platform stores none of it: the floating chat
+assistant holds the turns in memory and re-sends them, so closing the panel or reloading the page
+starts a new conversation. Nothing is written to storage, and a reader cannot return to an earlier
+conversation.
 
 **Suggestion generation varies between runs.** Suggestions come from the same non-deterministic
 translation step as the definition, so the same refused question can come back with three
@@ -624,4 +627,5 @@ were added with the assistance of Claude-Code[Claude Opus 5 (1M context)] under 
 figures are the ones ADR-017 already records and the limitations are drawn from the evaluation runs
 rather than restated from the implementation. The anonymous rate limiting on definition evaluation
 was documented with the assistance of Claude-Code[Claude Opus 5 (1M context)] under issue #924, from
-the limiter's implemented behaviour rather than from its description.
+the limiter's implemented behaviour rather than from its description. The floating chat assistant
+replacing the home-page widget was documented with the same assistance under issue #936.
