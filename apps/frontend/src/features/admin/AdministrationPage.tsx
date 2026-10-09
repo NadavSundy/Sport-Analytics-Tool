@@ -43,7 +43,7 @@ export function AdministrationPage() {
         <p>Manage existing access controls and dataset publishing.</p>
       </header>
       {isLoading || (!profile && !failed) ? (
-        <p role="status">Checking administrator accessâ€¦</p>
+        <p role="status">Checking administrator access…</p>
       ) : null}
       {failed ? <p role="alert">Administrator access could not be confirmed.</p> : null}
       {profile && profile.role !== 'admin' ? (
