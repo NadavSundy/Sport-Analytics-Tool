@@ -1344,8 +1344,8 @@ Run the repository response-time measurement against the approved representative
 - Measurements record endpoint, environment/data size and timings.
 - Regressions beyond documented targets/baseline are dispositioned rather than ignored.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `BLOCKED`
+**Evidence / defect / retest:** #876 execution record: no approved isolated representative database, imported corpus, running backend and safe fixture/participant identifiers were available. The runner was not pointed at an unapproved endpoint.
 
 ### PERF-TECH-02 — Production-scale acceptance
 
@@ -1360,8 +1360,8 @@ Run the production-scale deployment acceptance procedure against the intended en
 - Representative-scale workflow meets the acceptance criteria recorded by the script/runbook.
 - Failure is retained as evidence/bug rather than rerun until green without explanation.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `BLOCKED`
+**Evidence / defect / retest:** #876 execution record: the supported runner needs a runtime administrator token and creates or reuses a dataset release. Final release mutation and hosted verification remain owned by #810.
 
 ### PERF-TECH-03 — Frontend Lighthouse measurement
 
@@ -1376,8 +1376,8 @@ Run the final supported Lighthouse path on representative public routes and auth
 - Final measurements are retained with environment/context.
 - Severe performance/accessibility regression is dispositioned.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `BLOCKED`
+**Evidence / defect / retest:** Retained #797 production-preview evidence has a passing representative public-route baseline, but it does not establish Production Performance >=90 for every frontend page: four parameterised mobile routes were below target and protected routes were not audited. No new final-candidate hosted audit or role storage state was available.
 
 ### PERF-TECH-04 — API/background-work coexistence
 
@@ -1389,8 +1389,8 @@ During representative background ingestion/release work, make representative hea
 
 - Background processing does not make normal API health/read paths unusable beyond documented capacity limits.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `BLOCKED`
+**Evidence / defect / retest:** #876 execution record: this requires a live representative background release/ingestion run and concurrent API reads. It was not simulated or run against an unapproved environment.
 
 ### RESP-TECH-01 — Public responsive layout
 
@@ -1405,8 +1405,8 @@ Exercise primary public routes at representative desktop, tablet and mobile view
 - Supported layouts remain usable without unintended page-level horizontal overflow.
 - If a form factor is intentionally unsupported, the product gives the documented clear warning.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #876 execution record: `tests/e2e/responsive-layout.spec.ts` passed 3/3 against a local production preview. It checks signed-out and administrator headers at 320, 360, 390, 600, 768, 900, 960, 1024, 1100, 1180, 1280 and 1440 CSS pixels, plus no page-level overflow at 320px across the reviewed routes.
 
 ### RESP-TECH-02 — Authenticated workflow responsiveness
 
@@ -1420,8 +1420,8 @@ Exercise representative submitter/reviewer screens at supported narrow/wide view
 
 - Required controls, validation and status information remain usable.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #876 execution record: the 320px reviewed-route reflow check includes the mocked administrator workspace routes for submission and review. It found no page-level horizontal overflow; it is local mocked evidence, not deployed role-session verification.
 
 ### A11Y-TECH-01 — Automated accessibility regression
 
@@ -1433,8 +1433,8 @@ Run the project's Playwright/axe accessibility coverage on the final candidate.
 
 - No unresolved serious/critical project-owned accessibility violation remains without disposition.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #876 execution record: `tests/e2e/accessibility.spec.ts` passed 69/69 local Chromium audits. It found no serious or critical Axe violation across reviewed public and administrator workspace routes, both themes, and the mobile public/authentication/dialog cases.
 
 ### A11Y-TECH-02 — Keyboard navigation and focus
 
@@ -1448,8 +1448,8 @@ Keyboard-only navigate primary public/authentication/form/reviewer paths.
 - Focus is visible.
 - No keyboard trap is present in project-owned UI.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #876 execution record: targeted public-navigation, mobile-menu, combobox and route-focus tests passed within the focused 39-test run. The run also exposed one separate `/fixtures` document-title failure, retained for disposition; no keyboard/focus assertion failed.
 
 ### A11Y-TECH-03 — Labels, semantics and accessible names
 
@@ -1462,8 +1462,8 @@ Inspect primary forms/navigation/status regions with browser accessibility tree/
 - Inputs/controls have accessible labels.
 - Semantic/ARIA usage supports the intended control/region meaning.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** #876 execution record: the 69 Axe checks completed without a serious/critical semantic or accessible-name finding. Its reviewed routes assert visible headings and loading-state completion before the audit; targeted component tests also cover labelled navigation and combobox interaction.
 
 ### A11Y-TECH-04 — Contrast/readability
 
@@ -1475,8 +1475,8 @@ Run automated contrast checks and review final project-owned text/control states
 
 - No unresolved severe contrast/readability problem remains without disposition.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** Axe's colour-contrast rule ran within the 69 audits across day/night themes and mobile coverage; no serious/critical violation was reported. The production build reported a non-blocking large-chunk advisory, not a contrast/readability finding.
 
 ---
 
@@ -1685,26 +1685,28 @@ Run the repository's final dependency/security audit commands/policy and review 
 
 Do not complete this table while #870 is only establishing the bank. #871–#877 update it from retained evidence.
 
-| Lane                                    | Issue | Status    | Candidate                                  | Evidence                                                                                                                                                                                                                        | Open defects / blockers                                               |
-| --------------------------------------- | ----- | --------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Frontend/auth/roles                     | #871  | `PASS`    | `955f30105ed02858e42ccf9f3605d48d136c0717` | [#871 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-871-frontend-auth-roles.md){ target="_blank" rel="noopener" }          | None observed                                                         |
-| Submission/review/batch/corrections     | #872  | `PASS`    | `9b1dbf5fbaa933f682f24f08bed1edf32507a01a` | [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" } | None observed                                                         |
-| Statistics/data/provenance/releases     | #873  | `PASS`    | `d963e138d`                                | [#873 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-873-statistics-data-releases.md){ target="_blank" rel="noopener" }     | None observed                                                         |
-| API/contracts/consumer/integration      | #874  | `NOT RUN` | —                                          | —                                                                                                                                                                                                                               | —                                                                     |
-| Database/worker/reliability             | #875  | `PASS`    | `ed28ee025`                                | [#875 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-875-database-worker.md){ target="_blank" rel="noopener" }              | None blocking; retained logs did not expose the second probe receipt. |
-| Performance/accessibility/responsive    | #876  | `NOT RUN` | —                                          | —                                                                                                                                                                                                                               | —                                                                     |
-| Automated suites/coverage/CI/deployment | #877  | `PASS`    | `26fc2857b`                                | [#877 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-877-automated-quality-audit.md){ target="_blank" rel="noopener" }      | Hosted CI and final deployment smoke remain external                  |
+| Lane                                    | Issue | Status    | Candidate                                  | Evidence                                                                                                                                                                                                                                | Open defects / blockers                                                                           |
+| --------------------------------------- | ----- | --------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Frontend/auth/roles                     | #871  | `PASS`    | `955f30105ed02858e42ccf9f3605d48d136c0717` | [#871 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-871-frontend-auth-roles.md){ target="_blank" rel="noopener" }                  | None observed                                                                                     |
+| Submission/review/batch/corrections     | #872  | `PASS`    | `9b1dbf5fbaa933f682f24f08bed1edf32507a01a` | [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }         | None observed                                                                                     |
+| Statistics/data/provenance/releases     | #873  | `PASS`    | `d963e138d`                                | [#873 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-873-statistics-data-releases.md){ target="_blank" rel="noopener" }             | None observed                                                                                     |
+| API/contracts/consumer/integration      | #874  | `NOT RUN` | —                                          | —                                                                                                                                                                                                                                       | —                                                                                                 |
+| Database/worker/reliability             | #875  | `PASS`    | `ed28ee025`                                | [#875 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-875-database-worker.md){ target="_blank" rel="noopener" }                      | None blocking; retained logs did not expose the second probe receipt.                             |
+| Performance/accessibility/responsive    | #876  | `BLOCKED` | `83d02d5803cba7ecefd074cbb0a89dd5eb02c130` | [#876 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-876-performance-accessibility-responsive.md){ target="_blank" rel="noopener" } | Performance/hosted checks require an approved environment; `/fixtures` title regression retained. |
+| Automated suites/coverage/CI/deployment | #877  | `PASS`    | `26fc2857b`                                | [#877 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-877-automated-quality-audit.md){ target="_blank" rel="noopener" }              | Hosted CI and final deployment smoke remain external                                              |
 
 ## Known untested / partially tested areas
 
 #877 owns the final consolidation of this register.
 
-| Area                                            | Reason                                                                                                          | Risk / mitigation                                                                              | Owner / linked issue |
-| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | -------------------- |
-| Final automated release-candidate matrix        | The frontend suite is green, but the remaining final gates have not yet been rerun from this amended candidate. | Run every blocked #877 command from a clean install.                                           | #877                 |
-| Production dependency advisories                | Post-fix audit retains 4 moderate Swagger dependency-chain advisories; no high/critical finding remains.        | Plan the breaking Swagger remediation separately; do not force it during the final audit.      | #877                 |
-| Hosted CI and deployed smoke                    | No exact #877 candidate has been pushed or deployed.                                                            | Push only after local repair and approval; retain hosted SHA/run and release smoke under #810. | #877; #810           |
-| _Populate only from actual execution evidence._ | —                                                                                                               | —                                                                                              | #877                 |
+| Area                                            | Reason                                                                                                                 | Risk / mitigation                                                                                                                        | Owner / linked issue |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| Final automated release-candidate matrix        | The frontend suite is green, but the remaining final gates have not yet been rerun from this amended candidate.        | Run every blocked #877 command from a clean install.                                                                                     | #877                 |
+| Production dependency advisories                | Post-fix audit retains 4 moderate Swagger dependency-chain advisories; no high/critical finding remains.               | Plan the breaking Swagger remediation separately; do not force it during the final audit.                                                | #877                 |
+| Hosted CI and deployed smoke                    | No exact #877 candidate has been pushed or deployed.                                                                   | Push only after local repair and approval; retain hosted SHA/run and release smoke under #810.                                           | #877; #810           |
+| #876 performance and hosted verification        | No approved representative API/database, final hosted preview or authenticated Lighthouse storage state was available. | Run the blocked measurement, Lighthouse and background-work checks only in the approved environment; retain the results under #876/#810. | #876; #810           |
+| `/fixtures` document title                      | Focused final accessibility support run found the expected `Fixtures \| Stat'sTheGame` title remained `Untitled`.      | Disposition before release; the failure is retained in #876 rather than suppressed.                                                      | #876; release owner  |
+| _Populate only from actual execution evidence._ | —                                                                                                                      | —                                                                                                                                        | #877                 |
 
 ## #870 closure checklist
 

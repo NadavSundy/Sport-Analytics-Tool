@@ -18,6 +18,43 @@ const issue877Evidence = readFileSync(
   'utf8',
 );
 
+test('issue 876 records every performance, accessibility, and responsive outcome explicitly', () => {
+  const record = readFileSync(
+    'evidence/validation/final-system-verification/issue-876-performance-accessibility-responsive.md',
+    'utf8',
+  );
+
+  for (const verificationId of [
+    'PERF-TECH-01',
+    'PERF-TECH-02',
+    'PERF-TECH-03',
+    'PERF-TECH-04',
+    'RESP-TECH-01',
+    'RESP-TECH-02',
+    'A11Y-TECH-01',
+    'A11Y-TECH-02',
+    'A11Y-TECH-03',
+    'A11Y-TECH-04',
+  ]) {
+    assert.match(
+      record,
+      new RegExp(`\\|\\s+${verificationId}\\s+\\|\\s+(?:PASS|FAIL|BLOCKED|N\\/A)\\s+\\|`),
+    );
+    assert.match(
+      bank,
+      new RegExp(
+        String.raw`### ${verificationId}(?:(?!### )[\s\S])*?\*\*Status:\*\* \x60?(?:PASS|FAIL|BLOCKED|N\/A)\x60?`,
+      ),
+    );
+  }
+
+  assert.match(record, /does not treat local automated evidence as deployed verification/i);
+  assert.match(
+    record,
+    /no passwords, bearer tokens, OAuth credentials, API keys or service secrets/i,
+  );
+});
+
 test('final verification bank is explicit non-user technical verification', () => {
   assert.match(bank, /authoritative \*\*final non-user technical verification bank\*\*/i);
   assert.match(bank, /separate from formal user testing/i);
