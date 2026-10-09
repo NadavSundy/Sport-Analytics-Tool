@@ -1,7 +1,9 @@
 import {
+  MAX_CONVERSATION_TURNS,
   NATURAL_LANGUAGE_QUESTION_MAX_LENGTH,
   naturalLanguageQueryResponseSchema,
   queryDefinitionEvaluationResponseSchema,
+  type AnalyticsQueryDefinition,
   type NaturalLanguageQueryResult,
   type QueryDefinitionEvaluation,
   type QuerySuggestion,
@@ -19,6 +21,18 @@ import { ApiContractError, postPublicApi } from '../../api/public-read';
  */
 
 export const MAX_QUESTION_LENGTH = NATURAL_LANGUAGE_QUESTION_MAX_LENGTH;
+export const MAX_TURNS = MAX_CONVERSATION_TURNS;
+
+/**
+ * One earlier turn, as the issue #868 request contract defines it: the question
+ * that was asked and the definition it was read as. The definition is taken from
+ * that turn's own `evaluation.definition`, never rebuilt here, so what is sent
+ * back is what the backend already validated.
+ */
+export interface ConversationTurn {
+  question: string;
+  definition: AnalyticsQueryDefinition;
+}
 
 export type AskFailure =
   | { kind: 'not_understood' }
@@ -58,12 +72,19 @@ function failureFor(error: ApiResponseError): AskFailure {
 
 export async function askQuestion(
   question: string,
+  conversation: readonly ConversationTurn[] = [],
   signal?: AbortSignal,
 ): Promise<NaturalLanguageQueryResult> {
+  // Only the most recent turns are sent. The contract caps it at five, and every
+  // turn is re-sent on every question, so a long conversation must not grow the
+  // request without bound.
+  const recent = conversation.slice(-MAX_CONVERSATION_TURNS);
   try {
     const response = await postPublicApi(
       '/natural-language-queries',
-      { question },
+      // Omitted rather than sent empty, so a first question is byte-for-byte the
+      // request this endpoint has always received.
+      recent.length > 0 ? { question, conversation: recent } : { question },
       naturalLanguageQueryResponseSchema,
       signal,
     );

@@ -7,8 +7,8 @@ import type {
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AskQuestionDialog } from './AskQuestionDialog';
-import { AskQuestionPrompt } from './AskQuestionPrompt';
+import { ChatLauncher } from './ChatLauncher';
+import { ChatPanel } from './ChatPanel';
 
 const VERSION = `qdv1_${'a'.repeat(43)}`;
 
@@ -93,7 +93,7 @@ const ANSWERED_LEADERBOARD: QueryDefinitionEvaluation = {
 function renderDialog(onClose = vi.fn()) {
   render(
     <MemoryRouter>
-      <AskQuestionDialog onClose={onClose} />
+      <ChatPanel onClose={onClose} />
     </MemoryRouter>,
   );
   return onClose;
@@ -101,7 +101,7 @@ function renderDialog(onClose = vi.fn()) {
 
 function type(value: string) {
   const input = screen.getByLabelText('Your question') as HTMLTextAreaElement;
-  // The dialog bounds the question with maxLength, which fireEvent does not apply
+  // The panel bounds the question with maxLength, which fireEvent does not apply
   // for us, so the browser's truncation is reproduced here.
   fireEvent.change(input, { target: { value: value.slice(0, input.maxLength) } });
 }
@@ -113,7 +113,7 @@ async function ask(question = 'Who scored most runs?') {
   });
 }
 
-describe('ask a stats question trigger', () => {
+describe('floating chat launcher (issue #936)', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
@@ -127,7 +127,7 @@ describe('ask a stats question trigger', () => {
 
     render(
       <MemoryRouter>
-        <AskQuestionPrompt />
+        <ChatLauncher />
       </MemoryRouter>,
     );
 
@@ -140,7 +140,7 @@ describe('ask a stats question trigger', () => {
   it('opens the dialog on click and moves focus to the question', async () => {
     render(
       <MemoryRouter>
-        <AskQuestionPrompt />
+        <ChatLauncher />
       </MemoryRouter>,
     );
 
@@ -156,7 +156,7 @@ describe('ask a stats question trigger', () => {
   it('returns focus to the trigger when the dialog closes', async () => {
     render(
       <MemoryRouter>
-        <AskQuestionPrompt />
+        <ChatLauncher />
       </MemoryRouter>,
     );
     const trigger = screen.getByRole('button', { name: 'Ask a stats question' });
@@ -174,7 +174,7 @@ describe('ask a stats question trigger', () => {
   it('closes on Escape and returns focus to the trigger', async () => {
     render(
       <MemoryRouter>
-        <AskQuestionPrompt />
+        <ChatLauncher />
       </MemoryRouter>,
     );
     const trigger = screen.getByRole('button', { name: 'Ask a stats question' });
@@ -267,10 +267,13 @@ describe('asking a question', () => {
     );
   });
 
-  it('announces results in a live region', () => {
+  // The conversation is a log rather than a plain region: it is a chronological
+  // sequence a reader is added to, which is what `role="log"` means, and it is
+  // announced politely so an answer never interrupts what is being read.
+  it('announces results politely in the conversation log', () => {
     renderDialog();
 
-    expect(screen.getByRole('region')).toHaveAttribute('aria-live', 'polite');
+    expect(screen.getByRole('log')).toHaveAttribute('aria-live', 'polite');
   });
 
   describe('answered', () => {
@@ -561,7 +564,10 @@ describe('asking a question', () => {
     });
   });
 
-  it('replaces the previous answer rather than building a transcript', async () => {
+  // Issue #936 inverts what the widget did. The widget replaced each answer and a
+  // test pinned that down; a chat keeps the conversation, so the same scenario
+  // now asserts that both turns are still on screen.
+  it('keeps earlier turns rather than replacing the previous answer', async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
     fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: answer(ANSWERED_LEADERBOARD) }));
     fetchMock.mockResolvedValueOnce(
@@ -582,8 +588,159 @@ describe('asking a question', () => {
     await ask('Which ground sees most sixes?');
 
     expect(await screen.findByText(/Venues are not recorded/i)).toBeInTheDocument();
+    // The first answer is still there.
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.getAllByText(/Read as:/)).toHaveLength(2);
+  });
+});
+
+describe('conversation (issue #936)', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  function requestBodyOf(call: number): Record<string, unknown> {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const [, init] = fetchMock.mock.calls[call] as [string, RequestInit];
+    return JSON.parse(String(init.body)) as Record<string, unknown>;
+  }
+
+  it('sends no conversation with the first question', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue(
+      jsonResponse(200, { data: answer(ANSWERED_LEADERBOARD) }),
+    );
+    renderDialog();
+
+    await ask('Who scored most runs?');
+
+    // Absent rather than empty, so a first question is the request this endpoint
+    // has always received.
+    expect(requestBodyOf(0)).toEqual({ question: 'Who scored most runs?' });
+  });
+
+  it('sends the previous turn as conversation on a follow-up', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue(
+      jsonResponse(200, { data: answer(ANSWERED_LEADERBOARD) }),
+    );
+    renderDialog();
+
+    await ask('Who scored most runs in 2024?');
+    await screen.findByRole('table');
+    await ask('What about his strike rate?');
+
+    expect(requestBodyOf(1)).toEqual({
+      question: 'What about his strike rate?',
+      conversation: [
+        {
+          question: 'Who scored most runs in 2024?',
+          // The definition from that turn's own evaluation, not one rebuilt here.
+          definition: ANSWERED_LEADERBOARD.definition,
+        },
+      ],
+    });
+  });
+
+  it('sends at most the last five turns', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue(
+      jsonResponse(200, { data: answer(ANSWERED_LEADERBOARD) }),
+    );
+    renderDialog();
+
+    for (let turn = 1; turn <= 6; turn += 1) {
+      await ask('Question ' + turn + '?');
+    }
+
+    const sent = requestBodyOf(5).conversation as { question: string }[];
+    expect(sent).toHaveLength(5);
+    // The oldest is dropped, not the newest.
+    expect(sent.map((turn) => turn.question)).toEqual([
+      'Question 1?',
+      'Question 2?',
+      'Question 3?',
+      'Question 4?',
+      'Question 5?',
+    ]);
+  });
+
+  it('does not send a turn for a question that failed', async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: answer(ANSWERED_LEADERBOARD) }));
+    fetchMock.mockRejectedValueOnce(new Error('offline'));
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: answer(ANSWERED_LEADERBOARD) }));
+    renderDialog();
+
+    await ask('Who scored most runs?');
+    await screen.findByRole('table');
+    await ask('A question that fails?');
+    await screen.findByText(/could not be sent/i);
+    await ask('And another?');
+
+    // A failed question has no definition, so it cannot be a turn: only the
+    // answered one is sent back.
+    const sent = requestBodyOf(2).conversation as { question: string }[];
+    expect(sent.map((turn) => turn.question)).toEqual(['Who scored most runs?']);
+  });
+
+  it('clears the conversation, and the next question sends none', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue(
+      jsonResponse(200, { data: answer(ANSWERED_LEADERBOARD) }),
+    );
+    renderDialog();
+
+    await ask('Who scored most runs?');
+    await screen.findByRole('table');
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'New conversation' }));
+    });
+
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
-    expect(screen.getAllByText(/Read as:/)).toHaveLength(1);
+    expect(screen.queryByText(/Read as:/)).not.toBeInTheDocument();
+
+    await ask('A fresh question?');
+    expect(requestBodyOf(1)).toEqual({ question: 'A fresh question?' });
+  });
+
+  it('offers nothing to clear until a question has been asked', () => {
+    renderDialog();
+
+    expect(screen.queryByRole('button', { name: 'New conversation' })).not.toBeInTheDocument();
+  });
+
+  it('shows each question above its own answer, oldest first', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue(
+      jsonResponse(200, { data: answer(ANSWERED_LEADERBOARD) }),
+    );
+    renderDialog();
+
+    await ask('First question?');
+    await screen.findByRole('table');
+    await ask('Second question?');
+
+    const transcript = screen.getByRole('log');
+    const text = transcript.textContent ?? '';
+    expect(text.indexOf('First question?')).toBeGreaterThanOrEqual(0);
+    expect(text.indexOf('Second question?')).toBeGreaterThan(text.indexOf('First question?'));
+  });
+
+  it('keeps the conversation in memory only', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue(
+      jsonResponse(200, { data: answer(ANSWERED_LEADERBOARD) }),
+    );
+    const setItem = vi.spyOn(window.localStorage, 'setItem');
+    const sessionSetItem = vi.spyOn(window.sessionStorage, 'setItem');
+    renderDialog();
+
+    await ask('Who scored most runs?');
+    await screen.findByRole('table');
+
+    expect(setItem).not.toHaveBeenCalled();
+    expect(sessionSetItem).not.toHaveBeenCalled();
   });
 });
 
@@ -692,7 +849,10 @@ describe('suggestions (issue #851)', () => {
       fireEvent.click(await screen.findByRole('button', { name: SUGGESTION_LABEL }));
     });
 
-    expect(await screen.findByText(/Read as:/)).toHaveTextContent(SUGGESTION_LABEL);
+    // Two turns are on screen now, so it is the newest that must read back as the
+    // suggestion rather than as the question that was refused.
+    const readings = await screen.findAllByText(/Read as:/);
+    expect(readings[readings.length - 1]).toHaveTextContent(SUGGESTION_LABEL);
   });
 
   it('offers nothing when the response carries no suggestions', async () => {

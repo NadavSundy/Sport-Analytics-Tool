@@ -6617,55 +6617,159 @@ h3 {
    The section reserves its height so arriving with the rest of the lazy home
    content shifts nothing below it, and the dialog is an overlay so opening it
    shifts nothing either. */
-.ask-question {
-  border-block: 1px solid var(--colour-border);
-  background: var(--colour-surface-soft);
-}
+/* Issue #936: the floating launcher, on every page.
 
-.ask-question__layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+   `z-index: 20` is deliberate and sits below three things it must never cover:
+   the mobile navigation panel (30), the dialog backdrops (50) and the skip link
+   (100). The panel's own overlay is 50, so an open panel covers the launcher as
+   any dialog does.
+
+   The bottom offset is `max()` of a fixed gap and the safe-area inset, so it
+   clears an iPhone home indicator where one is reported and keeps the ordinary
+   gap everywhere else. The footer is not fixed, so the only overlap is with the
+   last of the page: the footer reserves room for the launcher below. */
+.chat-launcher {
+  position: fixed;
+  right: max(var(--space-4), env(safe-area-inset-right));
+  bottom: max(var(--space-4), env(safe-area-inset-bottom));
+  z-index: 20;
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-8);
-  padding-block: var(--space-12);
-  min-height: 14rem;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--colour-border);
+  border-radius: 999px;
+  background: var(--colour-surface);
+  box-shadow: var(--shadow-overlay);
+  color: var(--colour-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.ask-question__summary {
-  color: var(--colour-text-secondary);
-  margin-block-end: 0;
-  max-width: 48rem;
+.chat-launcher:hover {
+  border-color: var(--colour-primary);
 }
 
-.ask-question__overlay {
+.chat-launcher__icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+}
+
+.chat-panel__overlay {
   position: fixed;
   inset: 0;
   z-index: 50;
   display: grid;
-  place-items: start center;
-  padding: var(--space-6);
-  overflow-y: auto;
+  place-items: end center;
+  padding: var(--space-4);
   background: rgb(16 32 38 / 55%);
 }
 
-.ask-question__dialog {
-  width: min(100%, 48rem);
-  padding: var(--space-8);
-  border-radius: var(--radius-card);
+.chat-panel {
+  display: flex;
+  width: min(100%, 34rem);
+  max-height: min(42rem, calc(100dvh - var(--space-8)));
+  flex-direction: column;
+  padding: var(--space-5);
   border: 1px solid var(--colour-border);
+  border-radius: var(--radius-card);
   background: var(--colour-surface);
   box-shadow: var(--shadow-overlay);
+  /* Clears the home indicator when the panel sits against the bottom edge. */
+  margin-bottom: env(safe-area-inset-bottom);
 }
 
-.ask-question__dialog-header {
+.chat-panel__header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-4);
 }
 
-.ask-question__dialog-header h2 {
+.chat-panel__header h2 {
   margin: 0;
+  font-size: var(--font-size-5);
+}
+
+.chat-panel__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* The conversation, newest at the bottom. It is the only part that scrolls, so
+   the composer stays reachable however long the conversation gets. */
+.chat-panel__transcript {
+  display: flex;
+  min-height: 6rem;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-block: var(--space-4);
+  overflow-y: auto;
+}
+
+.chat-panel__turn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.chat-panel__question {
+  margin: 0;
+  align-self: flex-end;
+  max-width: 85%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-card);
+  background: var(--colour-surface-soft);
+  font-weight: 600;
+}
+
+.chat-panel__answer > :first-child {
+  margin-top: 0;
+}
+
+.chat-panel__pending,
+.chat-panel__intro p:first-child {
+  margin: 0;
+}
+
+.chat-panel__composer {
+  flex: none;
+  border-top: 1px solid var(--colour-border);
+  padding-top: var(--space-4);
+}
+
+@media (max-width: 47.9375rem) {
+  .chat-launcher__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .chat-launcher {
+    padding: var(--space-3);
+  }
+
+  .chat-panel__overlay {
+    padding: 0;
+  }
+
+  .chat-panel {
+    width: 100%;
+    max-height: 100dvh;
+    height: 100dvh;
+    border: 0;
+    border-radius: 0;
+    margin-bottom: 0;
+    padding-bottom: max(var(--space-5), env(safe-area-inset-bottom));
+  }
 }
 
 .ask-question__examples-label {
@@ -6743,17 +6847,8 @@ h3 {
 }
 
 @media (max-width: 47.9375rem) {
-  .ask-question__layout {
-    grid-template-columns: 1fr;
-    min-height: 18rem;
-  }
-
-  .ask-question__overlay {
-    padding: var(--space-3);
-  }
-
-  .ask-question__dialog {
-    padding: var(--space-5);
+  .ask-question__examples {
+    gap: var(--space-2);
   }
 }
 

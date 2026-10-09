@@ -6,7 +6,7 @@ import type {
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AskQuestionDialog } from './AskQuestionDialog';
+import { ChatPanel } from './ChatPanel';
 
 /**
  * Issue #868 in the widget.
@@ -78,7 +78,7 @@ function respondWith(body: unknown) {
 async function ask(question: string) {
   render(
     <MemoryRouter>
-      <AskQuestionDialog onClose={vi.fn()} />
+      <ChatPanel onClose={vi.fn()} />
     </MemoryRouter>,
   );
 
