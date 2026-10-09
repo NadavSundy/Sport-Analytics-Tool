@@ -1,24 +1,31 @@
 # Stat'sTheGame
 
-Event-driven sports analytics platform providing validated submissions, derived statistics, dataset exports, and a versioned public API for COMS3011A.
+Event-driven T20 cricket analytics platform providing validated submissions, derived statistics, dataset exports, and a versioned public API for COMS3011A.
+
+**Public documentation:** [sports-analytics-tool.pages.dev](https://sports-analytics-tool.pages.dev/) ·
+**Web application:** [sport-analytics-tool-web.pages.dev](https://sport-analytics-tool-web.pages.dev/) ·
+**Local setup:** [Getting started](#getting-started)
 
 [![Repository coverage](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/raw/branch/coverage-badge/badge.svg)](https://sports-analytics-tool.pages.dev/testing/code-coverage/)
 
-> **Current status:** The Express API validates Supabase identities, synchronizes provider-neutral application accounts, exposes the current user profile, and enforces `viewer`, `submitter`, and `admin` roles with competition-scoped submissions. Administrators can review users and manage submitter access. Approved submitters use the staged batch workflow for season and back-catalogue packages, with asynchronous validation, reference resolution, reviewer decisions, correction resubmission, and publication; administrators retain privileged direct/import routes. Public competition, season, fixture, event, competitor, participant, derived fixture-statistics, and participant season/competition/career aggregate reads are available without authentication. Filtered fixture-event and calculation-trace exports are available as JSON and CSV, and immutable versioned dataset releases can be generated and downloaded. External consumers can use administrator-issued API keys with per-minute rate limits and UTC daily quotas. The backend also provides the required runtime external API integration through Open-Meteo via `GET /api/v1/weather`. Advanced analyst-defined statistics, live-feed and bitemporal processing, change feeds, and other Advanced-tier functionality remain future work.
+> **Current status:** The Express API validates Supabase identities, synchronizes provider-neutral application accounts, exposes the current user profile, and enforces `viewer`, `submitter`, and `admin` roles with competition-scoped submissions. Administrators can review users and manage submitter access. Approved submitters use the staged batch workflow for season and back-catalogue packages, with asynchronous validation, reference resolution, reviewer decisions, correction resubmission, and publication; administrators retain privileged direct/import routes. Public competition, season, fixture, event, competitor, participant, derived fixture-statistics, and participant season/competition/career aggregate reads are available without authentication. Filtered fixture-event and calculation-trace exports are available as JSON and CSV, and immutable versioned dataset releases can be generated and downloaded by the separately deployed asynchronous worker. External consumers can use administrator-issued API keys with per-minute rate limits and UTC daily quotas. Readers can ask bounded natural-language questions through `POST /api/v1/natural-language-queries`, which translates a question into a closed query definition answered only from the already published statistics (`POST /api/v1/query-definitions/evaluate` accepts such a definition directly). The backend also provides the required runtime external API integration through Open-Meteo via `GET /api/v1/weather`. Advanced analyst-defined statistics, live-feed and bitemporal processing, change feeds, and other Advanced-tier functionality remain future work.
 
 ## Repository structure
 
 ```text
-apps/frontend       React web application
-apps/backend        Hand-written Node.js HTTP API
-apps/worker         Independently deployable asynchronous ingestion worker
-packages/contracts  Shared API schemas and TypeScript types
-database            Migrations, seeds, and schema documentation
-docs                Source for the public MkDocs documentation site
-evidence            Stakeholder, sprint, testing, decision, and AI evidence
-infra                Deployment and infrastructure documentation
-scripts              Repository validation scripts
-tests                Cross-application and non-unit testing assets
+apps/frontend               React web application (Vite)
+apps/backend                Handwritten Express HTTP API
+apps/worker                 Independently deployable asynchronous ingestion worker
+packages/contracts          Shared API schemas and TypeScript types
+packages/batch-processing   Batch-ingestion logic shared by the backend and worker
+packages/object-storage     Provider-independent object-storage interface
+database                    Migrations, seeds, and schema documentation
+docs                        Source for the public MkDocs documentation site
+evidence                    Stakeholder, sprint, testing, decision, and AI evidence
+infra                       Azure Bicep templates and deployment documentation
+scripts                     Development, CI, verification, and data-support scripts
+testing                     Facilitated user-testing packs and session inputs
+tests                       Cross-application E2E, accessibility, performance, and CI tests
 ```
 
 The frontend and backend are separate applications. The frontend may contact Supabase Auth for managed sign-in, but all application data must pass through the handwritten backend HTTP API. Generated Supabase data endpoints must not be used as the application API.
@@ -62,6 +69,7 @@ On Windows PowerShell:
 ```powershell
 Copy-Item apps/backend/.env.example apps/backend/.env
 Copy-Item apps/frontend/.env.example apps/frontend/.env
+Copy-Item apps/worker/.env.example apps/worker/.env
 ```
 
 On macOS, Linux or Git Bash:
@@ -69,6 +77,7 @@ On macOS, Linux or Git Bash:
 ```bash
 cp apps/backend/.env.example apps/backend/.env
 cp apps/frontend/.env.example apps/frontend/.env
+cp apps/worker/.env.example apps/worker/.env
 ```
 
 Populate the required values using the team's approved development configuration and the
@@ -87,21 +96,24 @@ npm run dev:backend
 npm run dev:frontend
 ```
 
-The asynchronous worker is started separately after its PostgreSQL, Service Bus, Blob and Azure
-identity settings are configured:
+Staged batch validation, publication and dataset-release generation run in the asynchronous worker.
+Start it in a third terminal when you need those workflows:
 
 ```bash
 npm run dev:worker
 ```
 
-See [Azure asynchronous batch worker](docs/deployment/azure-worker.md) for the local dependency and
-recovery walkthrough.
+Locally the worker uses `WORKER_TRANSPORT_PROVIDER=database` and the filesystem object store shared
+with the backend, so no Azure resources are needed. Set its `DATABASE_URL` to the same development
+database as the backend. See [Azure asynchronous batch worker](docs/deployment/azure-worker.md) for
+the production Service Bus and Blob configuration and the recovery walkthrough.
 
-Once both are running, verify the local services:
+Once the backend and frontend are running, verify the local services:
 
 - Frontend: [http://localhost:5173](http://localhost:5173)
 - Backend health: [http://localhost:3000/api/v1/health](http://localhost:3000/api/v1/health)
 - Current-user endpoint: [http://localhost:3000/api/v1/auth/me](http://localhost:3000/api/v1/auth/me)
+- Worker readiness (when started): [http://localhost:3001/health/ready](http://localhost:3001/health/ready)
 
 The root development dispatcher also accepts the application name, so `npm run dev frontend` and
 `npm run dev backend` are equivalent. Additional arguments are forwarded to the selected workspace
@@ -118,7 +130,11 @@ npm run check
 
 The separate hygiene command checks for unused monorepo files, dependencies and exports with Knip,
 checks workspace dependency-version consistency with syncpack, and validates circular dependencies
-and documented application boundaries with dependency-cruiser.
+and documented application boundaries with dependency-cruiser. `npm run check` runs the
+required-file check, Prettier, ESLint, TypeScript, the database-independent tests, Redocly OpenAPI
+linting and every workspace build. `npm run ci:local` reproduces the change-aware CI plan before a
+push, and `npm run hooks:install` installs it as an optional pre-push hook; see
+[Local CI](docs/development/local-ci.md).
 
 The normal database-independent test suite can also be run directly:
 
@@ -195,7 +211,7 @@ URL: https://sport-analytics-tool-web.pages.dev/
 
 ### Asynchronous ingestion worker
 
-- Platform: Azure Container Apps
+- Platform: Azure Container Apps (internal only; no public endpoint)
 - Runtime: Node.js 22 LTS container
 - Job delivery: Azure Service Bus Standard with peek-lock and bounded KEDA scaling
 - Data access: Supabase PostgreSQL and private Azure Blob Storage
@@ -223,12 +239,8 @@ secrets, artifact contents and failure behaviour.
 
 ## Documentation
 
-Project documentation is stored in the [`docs`](docs/) directory and is configured as a public MkDocs site.
-
-```bash
-python -m pip install -r requirements-docs.txt
-python -m mkdocs serve
-```
+The public documentation site is **[sports-analytics-tool.pages.dev](https://sports-analytics-tool.pages.dev/)**.
+Its source is the [`docs`](docs/) directory, built with MkDocs Material.
 
 ### Component guides
 
@@ -245,28 +257,26 @@ python -m mkdocs serve
 
 Documentation paths:
 
-- [Getting Started](docs/getting-started.md) — setup, environment, repository structure and component guides
-- [Product & API](docs/product-and-api.md) — public API, submissions, statistics, exports and contracts
-- [Architecture & Data](docs/architecture-and-data.md) — architecture, database, event model and security
-- [Development](docs/development/index.md) — contributor workflow, tooling, CI/CD and design references
-- [Deployment & Operations](docs/deployment/overview.md) — hosting, recovery, capacity and deployment
+- [Getting Started](docs/getting-started.md) — setup, technology stack, environment and repository structure
+- [Product & API](docs/product-and-api.md) — public API, submissions, statistics, exports, analytics query and weather
+- [Architecture, Data & Security](docs/architecture-and-data.md) — architecture, database, event model and security
 - [Testing & Quality](docs/testing/index.md) — automated testing, coverage, performance and user testing
-- [Project Process & Evidence](docs/process/index.md) — Sprint evidence, decisions, validation and AI evidence
-
-The project documentation is publicly available at:
-
-https://sports-analytics-tool.pages.dev
+- [Deployment & CI/CD](docs/deployment/overview.md) — hosting, CI/CD quality gates, recovery and deployment
+- [Methodology](docs/process/methodology-overview.md) — project and Git methodology in practice
+- [Project Records & Evidence](docs/process/index.md) — decisions, stakeholder records, validation and AI evidence
+- [Final Submission](docs/final-submission.md) — final review path, traceability and verification bank
 
 The documentation is built with MkDocs and deployed to Cloudflare Pages using Wrangler.
 
-To build locally:
+To preview or build locally:
 
 ```bash
 python -m pip install -r requirements-docs.txt
+python -m mkdocs serve
 python -m mkdocs build --strict
 ```
 
-To deploy:
+To deploy manually (CI normally deploys `docs/` changes merged to `main`):
 
 ```bash
 npx wrangler pages deploy site --project-name=sports-analytics-tool
@@ -303,3 +313,5 @@ The Issue #563 backend Container Apps deployment summary was updated with the as
 The Claude-Code[Claude Opus 5 (1M context)] code-generation declaration was added for issue #817 with
 the assistance of that same tool and model, after reconciling the natural-language query feature's
 register rows against this list.
+The Issue #879 documentation review (overview, repository structure, worker quick start, documentation
+paths and tooling summary) was carried out with the assistance of Claude-Web[Claude Opus 5.5].

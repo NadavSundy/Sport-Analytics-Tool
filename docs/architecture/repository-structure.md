@@ -3,14 +3,17 @@
 ## Design decision
 
 Use an npm-workspace monorepo with separately deployable frontend, backend and asynchronous worker
-applications and a small shared contracts package.
+applications and three small shared packages: API contracts, server-side batch processing and an
+object-storage interface.
 
 ```text
 Sport-Analytics-Tool/
 ├── .gitea/
 │   ├── ISSUE_TEMPLATE/
 │   ├── PULL_REQUEST_TEMPLATE.md
-│   └── workflows/ci.yml
+│   └── workflows/          # ci.yml and deploy-{frontend,backend,worker,docs}.yml
+├── .githooks/
+│   └── pre-push            # optional local CI hook (npm run hooks:install)
 ├── apps/
 │   ├── backend/
 │   │   ├── src/
@@ -22,13 +25,13 @@ Sport-Analytics-Tool/
 │   │   │   └── index.ts
 │   │   └── tests/
 │   ├── frontend/
-│       ├── public/
-│       └── src/
-│           ├── api/
-│           ├── components/
-│           ├── features/
-│           ├── pages/
-│           └── test/
+│   │   ├── public/
+│   │   └── src/
+│   │       ├── api/
+│   │       ├── components/
+│   │       ├── features/
+│   │       ├── pages/
+│   │       └── test/
 │   └── worker/
 │       ├── src/
 │       │   ├── batch-validation-job.ts
@@ -47,8 +50,10 @@ Sport-Analytics-Tool/
 │   └── seeds/
 ├── docs/
 ├── evidence/
+│   ├── acceptance/
 │   ├── ai/
 │   ├── decisions/
+│   ├── design/
 │   ├── stakeholder-meetings/
 │   ├── sprints/
 │   ├── user-testing/
@@ -58,12 +63,17 @@ Sport-Analytics-Tool/
 │       ├── backend/
 │       └── worker/
 ├── scripts/
+├── testing/
+│   └── user-testing/       # facilitated user-testing packs and session inputs
 ├── tests/
+│   ├── accessibility/
+│   ├── ci/
+│   ├── deployment/         # deployment, workflow and documentation tests
 │   ├── e2e/
-│   ├── performance/
-│   └── accessibility/
-├── package.json
+│   └── performance/
+├── compose.test.yml        # optional Docker PostgreSQL test database
 ├── mkdocs.yml
+├── package.json
 └── README.md
 ```
 
@@ -75,6 +85,8 @@ Sport-Analytics-Tool/
 4. `apps/worker` is a separate Node.js process boundary for durable asynchronous work. It has no
    browser or HTTP-backend dependency.
 5. `packages/contracts` contains schemas and types only; it is not an application or service.
+   `packages/batch-processing` and `packages/object-storage` hold server-side code shared by the
+   backend and worker and must not import from `apps/`.
 6. Database migrations are team-controlled and versioned under `database/migrations`.
 7. Cross-application end-to-end, performance, and accessibility tests live under `tests/`; unit and integration tests stay close to the application they test.
 8. Evidence files are records, not marketing claims. Store only genuine meetings, results, decisions, and contributions.
@@ -99,3 +111,5 @@ of Codex[GPT-5.6 Sol].
 The independently deployable worker boundary was added with the assistance of Codex[GPT-5].
 The Issue #883 final repository-structure reconciliation was reviewed and edited with the
 assistance of Codex[GPT-5].
+The Issue #879 review corrected the tree connectors and added the shared packages, workflows,
+Git hook, `testing/` and test directories with the assistance of Claude-Web[Claude Opus 5.5].
