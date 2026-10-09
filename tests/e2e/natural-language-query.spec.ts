@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 /**
- * The home-page "Ask a stats question" widget (issue #816).
+ * The floating chat assistant (issue #936), which replaced the home-page widget.
  *
  * The backend is mocked throughout: the deployed natural-language endpoint calls a
  * paid provider, so no test may reach it.
@@ -62,13 +62,24 @@ async function expectNoHorizontalOverflow(page: Page) {
   ).toBe(false);
 }
 
-async function openWidget(page: Page) {
-  await page.goto('/');
+/**
+ * Opens the assistant from whatever route is given.
+ *
+ * The launcher is in the shared shell, so it is reachable without going to the
+ * home page first and without scrolling: it is fixed to the viewport.
+ */
+async function openWidget(page: Page, route = '/') {
+  await page.goto(route);
   const trigger = page.getByRole('button', { name: 'Ask a stats question' });
-  await trigger.scrollIntoViewIfNeeded();
   await trigger.click();
   await expect(page.getByRole('dialog', { name: 'Ask a stats question' })).toBeVisible();
   return trigger;
+}
+
+async function answerOnce(page: Page, json: unknown) {
+  await page.route(ASK_ENDPOINT, async (route) => {
+    await route.fulfill({ json });
+  });
 }
 
 test(
@@ -417,4 +428,132 @@ test('a refused question offers something answerable, with no further model call
   await expect(page.getByRole('link', { name: 'V Kohli' })).toBeVisible();
   expect(askCalls).toBe(1);
   expect(evaluateCalls).toBe(1);
+});
+
+/**
+ * Issue #936. The launcher is in the shared shell, the panel holds a
+ * conversation, and both have to work at phone width.
+ */
+
+const FOLLOW_UP = {
+  data: {
+    question: 'What about his strike rate?',
+    model: 'claude-haiku-4-5-20251001',
+    evaluation: {
+      outcome: 'unsupported',
+      definitionVersion: `qdv1_${'b'.repeat(43)}`,
+      definition: { kind: 'unsupported', reason: 'ambiguous' },
+      reason: 'ambiguous',
+    },
+  },
+};
+
+test(
+  'the assistant is reachable from a page that is not the home page',
+  { tag: '@mobile' },
+  async ({ page }) => {
+    await answerOnce(page, ANSWERED);
+
+    const trigger = await openWidget(page, '/competitions');
+
+    await expect(trigger).toBeVisible();
+    await page.getByLabel('Your question').fill('Who scored the most runs in the 2024 IPL season?');
+    await page.getByRole('button', { name: 'Ask', exact: true }).click();
+
+    await expect(page.getByText('Most runs · Indian Premier League 2024 · top 10')).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  },
+);
+
+test(
+  'a follow-up sends the previous turn and both stay on screen',
+  { tag: '@mobile' },
+  async ({ page }) => {
+    const bodies: Record<string, unknown>[] = [];
+
+    await page.route(ASK_ENDPOINT, async (route) => {
+      bodies.push(route.request().postDataJSON() as Record<string, unknown>);
+      await route.fulfill({ json: bodies.length === 1 ? ANSWERED : FOLLOW_UP });
+    });
+
+    await openWidget(page);
+
+    await page.getByLabel('Your question').fill('Who scored the most runs in the 2024 IPL season?');
+    await page.getByRole('button', { name: 'Ask', exact: true }).click();
+    await expect(page.getByText('Most runs · Indian Premier League 2024 · top 10')).toBeVisible();
+
+    await page.getByLabel('Your question').fill('What about his strike rate?');
+    await page.getByRole('button', { name: 'Ask', exact: true }).click();
+    await expect(page.getByText(/does not say which player, competition or season/i)).toBeVisible();
+
+    // The first request carries no history; the second carries exactly the turn
+    // before it, with the definition that turn was read as.
+    expect(bodies[0]).toEqual({
+      question: 'Who scored the most runs in the 2024 IPL season?',
+    });
+    expect(bodies[1]).toMatchObject({
+      question: 'What about his strike rate?',
+      conversation: [
+        {
+          question: 'Who scored the most runs in the 2024 IPL season?',
+          definition: ANSWERED.data.evaluation.definition,
+        },
+      ],
+    });
+
+    // Both turns are still in the conversation.
+    await expect(page.getByText('Most runs · Indian Premier League 2024 · top 10')).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  },
+);
+
+test('New conversation clears the panel and the next question sends no history', async ({
+  page,
+}) => {
+  const bodies: Record<string, unknown>[] = [];
+
+  await page.route(ASK_ENDPOINT, async (route) => {
+    bodies.push(route.request().postDataJSON() as Record<string, unknown>);
+    await route.fulfill({ json: ANSWERED });
+  });
+
+  await openWidget(page);
+  await page.getByLabel('Your question').fill('Who scored the most runs in the 2024 IPL season?');
+  await page.getByRole('button', { name: 'Ask', exact: true }).click();
+  await expect(page.getByText('Most runs · Indian Premier League 2024 · top 10')).toBeVisible();
+
+  await page.getByRole('button', { name: 'New conversation' }).click();
+  await expect(page.getByText('Most runs · Indian Premier League 2024 · top 10')).toBeHidden();
+
+  await page.getByLabel('Your question').fill('Who has taken the most wickets?');
+  await page.getByRole('button', { name: 'Ask', exact: true }).click();
+  await expect(page.getByText('Most runs · Indian Premier League 2024 · top 10')).toBeVisible();
+
+  expect(bodies[1]).toEqual({ question: 'Who has taken the most wickets?' });
+});
+
+test('the launcher does not cover the footer links', { tag: '@mobile' }, async ({ page }) => {
+  await page.goto('/');
+
+  const trigger = page.getByRole('button', { name: 'Ask a stats question' });
+  await expect(trigger).toBeVisible();
+
+  // Scrolled to the very bottom, every footer link must still be clickable:
+  // nothing of the launcher may sit on top of one.
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  const launcher = await trigger.boundingBox();
+  expect(launcher).not.toBeNull();
+
+  for (const name of ['Privacy Notice', 'Terms of Use', 'Accessibility']) {
+    const link = page.getByRole('link', { name });
+    await expect(link).toBeVisible();
+    const box = await link.boundingBox();
+    expect(box).not.toBeNull();
+    const overlaps =
+      box!.x < launcher!.x + launcher!.width &&
+      box!.x + box!.width > launcher!.x &&
+      box!.y < launcher!.y + launcher!.height &&
+      box!.y + box!.height > launcher!.y;
+    expect(overlaps, `the launcher overlaps the ${name} link`).toBe(false);
+  }
 });

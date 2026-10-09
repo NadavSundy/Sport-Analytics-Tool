@@ -73,9 +73,10 @@ left to the API documentation.
   Nothing else a user supplied. No cricket data, identifier, credential, account detail or
   information about who asked accompanies it, and a test asserts the absence of database content in
   the request.
-- **It is disclosed before it is sent.** The home-page widget states, above the first question, that
-  question text is sent to Anthropic for processing and links the privacy notice. A reader is never
-  asked to submit before being told.
+- **It is disclosed before it is sent.** The chat assistant states, above the first question, that
+  question text is sent to Anthropic for processing along with up to five earlier questions from the
+  same conversation, and links the privacy notice. A reader is never asked to submit before being
+  told.
 - **It is not stored in logs.** One line per request records the outcome, definition kind, definition
   version, model, token counts, elapsed time, conversation-turn count and what was assumed. **The
   question text and the model's raw output are never written, at any level**, because the question is
