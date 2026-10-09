@@ -151,7 +151,7 @@ export function NameCombobox({
   const shouldResolveSelected =
     Boolean(selectedValue) &&
     !inputValue.trim() &&
-    state.status === 'idle' &&
+    (state.status === 'idle' || state.status === 'loading') &&
     Boolean(resolveSelectedOption);
   const shouldLoad =
     (open && loadedRequestKeyRef.current !== requestKey) ||

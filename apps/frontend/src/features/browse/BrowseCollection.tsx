@@ -148,9 +148,9 @@ function FilterCombobox({
     [dependencyKey, field],
   );
   const resolveSelectedOption = useCallback(
-    (signal: AbortSignal) =>
-      field.resolveSelectedOption?.(selectedValue, signal) ?? Promise.resolve(null),
-    [field, selectedValue],
+    (value: string, signal: AbortSignal) =>
+      field.resolveSelectedOption?.(value, signal) ?? Promise.resolve(null),
+    [field],
   );
 
   return (
