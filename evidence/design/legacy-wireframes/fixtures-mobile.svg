@@ -37,4 +37,11 @@
 <text x="28" y="703.0" font-size="11" font-weight="bold" font-style="normal" fill="#627078" text-anchor="start">Empty: no fixtures match filters</text>
 <rect x="16" y="732" width="343" height="46" rx="4" fill="#FBE3E5" stroke="#D64251" stroke-width="1.5"/>
 <text x="28" y="759.0" font-size="11" font-weight="bold" font-style="normal" fill="#D64251" text-anchor="start">Error: retry banner + Retry button</text>
+
+  <!-- Issue #894: historical label added when archived; original drawing above is unchanged (see README). -->
+  <title>HISTORICAL / SUPERSEDED issue #56 wireframe (fixtures-mobile) - not the final product design</title>
+  <g pointer-events="none" transform="rotate(-28 187.5 450)" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="700">
+    <text x="187.5" y="450" font-size="24" fill="#B42318" fill-opacity="0.22">HISTORICAL · SUPERSEDED</text>
+    <text x="187.5" y="468" font-size="9" fill="#B42318" fill-opacity="0.35">Sprint 1 wireframe (#56) · archived by #894 · not the final design</text>
+  </g>
 </svg>

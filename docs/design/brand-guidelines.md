@@ -13,6 +13,29 @@
 
 > This document defines the approved visual identity and frontend presentation standard for Stat’sTheGame. Project-team approval of the design documents was confirmed during issue #191 on 19 August 2026. Future changes continue through the normal project issue and Pull Request process.
 
+## Implementation status at Milestone 4
+
+The guidance below remains the approved standard. This table records, for the final submission
+(#894), what the shipped product implements so the guidelines are not read as a description of
+features that do not exist. Screen structure is in the
+[final information architecture and wireframes](information-architecture-and-wireframes.md);
+component-level conventions are in the [frontend component baseline](frontend-component-baseline.md).
+
+| Guidance                                                | Final status                  | Where implemented or why not                                                                                                |
+| ------------------------------------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Themes (§6–9)                                           | Implemented                   | Day Match and Night Match semantic tokens in `styles.css`; `ThemeToggle` in the header                                      |
+| Typography (§10)                                        | Implemented                   | Barlow Condensed, IBM Plex Sans and IBM Plex Mono self-hosted through `fonts.css`                                           |
+| Logo and favicon (§4–5)                                 | Implemented                   | `apps/frontend/public/brand/*.svg` and `favicon.ico`                                                                        |
+| Layout and spacing (§11)                                | Implemented                   | 4 px scale and 1600 px content boundary; header width tiers and narrow-screen gutters                                       |
+| Navigation (§13.3)                                      | Implemented as top navigation | Top header with Explore Data, Pinned and role menus; no left rail; labelled mobile Menu                                     |
+| Tables, forms and states (§13.4–13.6)                   | Implemented                   | `DataTable`, labelled fields, plain-language validation; loading, empty, error, no-access and partial states                |
+| Cricket data visualisation (§14)                        | Not implemented as charts     | Figures ship as scorecards, tables and summary cards; no chart library is used. §14 applies if charts are added             |
+| Motion tokens and restrictions (§15.1–15.3, §15.5–15.6) | Implemented                   | `--ease-fast`/`--ease-hit`, 0.97 press feedback, short menu entrance, global reduced-motion rule                            |
+| Signature animations (§15.4)                            | Not implemented               | Score update, delivery insertion, wicket and chart reveal assume live scoring or charts, which the product does not provide |
+| Hero imagery (§17.2)                                    | Implemented with fallback     | Illustrative Three.js delivery on Home with an SVG fallback for reduced motion or no WebGL (#314)                           |
+| Accessibility (§16)                                     | Implemented and audited       | #800 polish and the [final frontend UX audit](final-frontend-ux-audit.md) (#889)                                            |
+| Third-party sign-in button                              | Exception                     | "Continue with Google" follows Google's published button styling (Google Sans, neutral pill) rather than brand tokens       |
+
 ---
 
 ## 1. Purpose and project alignment
@@ -1164,3 +1187,5 @@ Do not claim that a visual change has been approved until the relevant team revi
 ## 24. AI declaration
 
 The preceding document was generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol]. Its approved status was recorded with the assistance of Codex[GPT-5.6 Sol].
+The Milestone 4 implementation-status section (#894) was prepared with the assistance of
+Claude-Web[Claude Opus 5.5].

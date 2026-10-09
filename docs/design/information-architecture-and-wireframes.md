@@ -1,32 +1,42 @@
-# Information architecture, user journeys and responsive wireframes
+# Final design: information architecture, journeys and wireframes
 
-**Issues:** #56, #581
+**Issues:** #56 (original design), #581 (navigation restructure), #894 (final alignment)
+**Status:** Final — describes the implemented product at Milestone 4 submission.
 
-> This document defines the navigation structure, the main user journeys, and low-fidelity
-> responsive wireframes for Stat'sTheGame. It covers presentation and flow only; it does not
-> change the access model, the event/statistic domain, or the API contract, and it must stay
-> consistent with the approved [brand and interface guidelines](brand-guidelines.md). Wireframes
-> are intentionally low-fidelity (structure and content, not final visual styling) so the team can
-> review flow and states before detailed page implementation begins.
+!!! info "Final design, not a plan"
+
+    Everything on this page before [§8 Design evolution](#8-design-evolution-and-traceability) describes what the application does
+    now. Routes and labels are checked against the frontend source by
+    `tests/deployment/final-design-documentation.test.mjs` (run by `npm run test:deployment`), so
+    the page fails CI if it drifts from the implementation. The superseded Sprint 1 wireframes are
+    preserved as historical evidence in
+    [`evidence/design/legacy-wireframes/`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/design/legacy-wireframes/README.md){ target="_blank" rel="noopener" }
+    and are not part of this design.
+
+Visual identity is governed by the [brand guidelines](brand-guidelines.md) and implementation
+conventions by the [frontend component baseline](frontend-component-baseline.md). This page owns
+structure and flow only; it does not change the access model, the event/statistic domain or the API
+contract.
 
 ---
 
-## 1. Scope and audiences
+## 1. Audiences and role-specific areas
 
-Four audiences use the same application, distinguished by `app_user.application_role` and,
-for submitters, `submitter_competition_scope` (see
-[Roles and permissions](../security/roles-and-permissions.md)):
+One application serves every audience. Roles come from `app_user.application_role` and, for
+submitters, `submitter_competition_scope` (see [Roles and permissions](../security/roles-and-permissions.md)).
+**Frontend visibility is never the security boundary**; the backend re-checks role and scope on every
+request.
 
-| Audience               | Sign-in required | Role                                         |
-| ---------------------- | ---------------- | -------------------------------------------- |
-| **Public visitor**     | No               | Unauthenticated                              |
-| **Signed-in viewer**   | Yes              | `viewer` (default for any new account)       |
-| **Approved submitter** | Yes              | `submitter`, scoped to specific competitions |
-| **Administrator**      | Yes              | `admin`                                      |
+| Audience               | Sign-in | Role and scope                                | Areas they see                                                                     |
+| ---------------------- | ------- | --------------------------------------------- | ---------------------------------------------------------------------------------- |
+| **Public visitor**     | No      | Unauthenticated                               | Home, Explore Data, statistics, Compare players, Downloads, API Explorer, policies |
+| **Signed-in viewer**   | Yes     | `viewer` (default for every new account)      | Public areas, **Pinned** shortcuts, Account                                        |
+| **Approved submitter** | Yes     | `submitter`, limited to approved competitions | Viewer areas plus **Manage Submission**: Submit data, My submissions               |
+| **Administrator**      | Yes     | `admin`                                       | Submitter areas plus **Review** and **Administration**                             |
+| **API consumer**       | Key     | Consumer key approved by an administrator     | `/api/v1/consumer/*` endpoints; onboarding from API Explorer and Account           |
 
-The frontend may use role/scope to decide what to show, but — consistent with the security
-boundary in the roles document — **frontend visibility is never the security boundary**; every
-wireframe below assumes the backend re-checks role and scope on every request.
+There is **no separate reviewer role**: batch review is an administrator workflow inside Manage
+Submission.
 
 ---
 
@@ -34,380 +44,363 @@ wireframe below assumes the backend re-checks role and scope on every request.
 
 ### 2.1 Site map
 
-The current application separates stable public navigation from Account and role-specific
-Manage Submission navigation. Public browsing routes require no session; submission routes require a
-`submitter` or `admin`; review and administration routes require an `admin`. The backend remains
-the authorization boundary.
+Every implemented frontend route is shown. Concrete paths under `/account/` are the four sections of
+`/account/:section`.
 
 ```mermaid
 flowchart TD
-    Home["/ — Landing"]
+    Home["/ — Home + Ask a stats question"]
 
-    subgraph Public["Public product (no sign-in)"]
-        Api["/api — API Explorer"]
-        Competitions["/competitions"] --> CompetitionDetail["/competitions/:id"]
-        Seasons["/seasons"] --> SeasonDetail["/seasons/:id"]
-        Fixtures["/fixtures"] --> FixtureDetail["/fixtures/:id"]
-        FixtureDetail --> FixtureStats["/fixtures/:id/statistics"]
-        FixtureDetail --> FixturePlayers["/fixtures/:id/players"]
-        FixtureStats --> FixtureStatDetail["/fixtures/:id/statistics/:statisticId"]
-        Competitors["/competitors"] --> CompetitorDetail["/competitors/:id"]
-        Participants["/participants"] --> ParticipantDetail["/participants/:id"]
+    subgraph Explore["Explore Data — public"]
+        Fixtures["/fixtures"] --> FixtureDetail["/fixtures/:fixtureId — Overview"]
+        FixtureDetail --> FixtureStats["/fixtures/:fixtureId/statistics"]
+        FixtureDetail --> FixturePlayers["/fixtures/:fixtureId/players"]
+        FixtureStats --> StatDetail["/fixtures/:fixtureId/statistics/:statisticId"]
+        Competitions["/competitions"] --> CompetitionDetail["/competitions/:competitionId"]
+        Seasons["/seasons"] --> SeasonDetail["/seasons/:seasonId"]
+        Teams["/competitors"] --> TeamDetail["/competitors/:competitorId"]
+        Players["/participants"] --> PlayerDetail["/participants/:participantId"]
+        Compare["/participants/compare"]
+    end
+
+    subgraph PublicData["Downloads and API — public"]
         Releases["/dataset-releases"] --> ReleaseDetail["/dataset-releases/:version"]
+        Api["/api — API Explorer"]
     end
 
-    subgraph Auth["Authentication"]
+    subgraph Auth["Sign-in and Account — any signed-in user"]
         SignIn["/sign-in"] --> Callback["/auth/callback"]
-        Callback --> Account["/account/overview"]
-        Account --> AccountAccess["/account/access"]
-        Account --> AccountSecurity["/account/security"]
+        Callback --> AccountRedirect["/account"]
+        AccountRedirect --> Overview["/account/overview"]
+        Overview --> Access["/account/access"]
+        Overview --> ApiAccess["/account/api-access"]
+        Overview --> Security["/account/security"]
     end
 
-    subgraph Submitter["Manage Submission — submitter/admin"]
+    subgraph Manage["Manage Submission — submitter or admin"]
         Submit["/submissions/new"]
-        SubmissionHistory["/submissions/batches"] --> SubmissionReport["/submissions/batches/:batchReference"]
-    end
-
-    subgraph Admin["Administrator (role: admin)"]
+        LegacyUpload["/submissions/batches/new"] -. redirects .-> Submit
+        Submit --> History["/submissions/batches"]
+        History --> Report["/submissions/batches/:batchReference"]
         ReviewQueue["/reviews/batches"] --> ReviewDetail["/reviews/batches/:batchReference"]
-        Administration["/admin"]
-        AdminUsers["/admin/users"]
-        AdminConsumers["/admin/api-consumers"] --> AdminConsumerDetail["/admin/api-consumers/:consumerId"]
-        PublishRelease["/admin/dataset-releases/new"]
-        Administration --> AdminUsers
-        Administration --> AdminConsumers
-        Administration --> PublishRelease
     end
 
-    Home --> Competitions
+    subgraph Admin["Administration — admin"]
+        AdminHub["/admin"] --> AdminUsers["/admin/users"]
+        AdminHub --> Consumers["/admin/api-consumers"] --> ConsumerDetail["/admin/api-consumers/:consumerId"]
+        AdminHub --> Publish["/admin/dataset-releases/new"]
+    end
+
+    subgraph Footer["Footer — public"]
+        Privacy["/privacy"]
+        Terms["/terms"]
+        Accessibility["/accessibility"]
+    end
+
     Home --> Fixtures
-    Home --> Seasons
-    Home --> Competitors
-    Home --> Participants
-    Home --> SignIn
+    Home --> Competitions
+    Home --> Players
     Home --> Api
-    Submit --> SubmissionHistory
-    NotFound["* — 404 Not Found"]
+    FixtureStats --> Compare
+    PlayerDetail --> Compare
+    Publish --> ReleaseDetail
+    NotFound["* — shared 404 page"]
 ```
 
-### 2.2 Navigation rules
+### 2.2 Primary navigation
 
-- The global header remains stable before and after sign-in: **Explore Data** (Fixtures,
-  Competitions, Seasons, Teams, Players), **Downloads**, and **API**. API links directly to the
-  internal `/api` explorer.
-- The header shows **Sign in** for an unauthenticated visitor, and **Account** (leading to
-  `/account/overview`) once authenticated.
-- **Downloads** exposes the public dataset-release catalogue to every audience without requiring a
-  session.
-- Account contains **Overview**, **Access**, and **Settings**. It is not the launcher for private
-  product workflows.
-- A submitter **Manage Submission** menu exposes **Submit data**, **My submissions**, and
-  **Access & scope**. An administrator **Manage Submission** menu exposes **Submit data**,
-  **Submission history**, and **Review**. **Administration** is a separate administrator-only
-  navigation item.
-- Administration organises **Users & access**, **API consumers**, and **Data governance** surfaces. Review
-  decisions remain administrator-only; no reviewer application role exists.
-- The mobile menu exposes the same public and permitted Manage Submission destinations as labelled direct
-  links, without depending on icon recognition or nested entity grids.
-- Protected deep links carry a validated internal return path through sign-in. External and
+| Location         | Item                     | Destinations                                                                                                                     | Shown to                                  |
+| ---------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Header (records) | **Explore Data** menu    | Fixtures, Competitions, Seasons, Teams (`/competitors`), Players (`/participants`)                                               | Everyone                                  |
+|                  | **Pinned** menu          | `Team: …` / `League: …` shortcuts pinned from team and competition pages                                                         | Signed-in users who have pinned something |
+|                  | **Downloads**            | Dataset releases catalogue (`/dataset-releases`) with download and verify detail                                                 | Everyone                                  |
+|                  | **API**                  | `/api` API Explorer                                                                                                              | Everyone                                  |
+| Header (account) | **Sign in**              | `/sign-in`                                                                                                                       | Signed-out visitors                       |
+|                  | **Manage Submission**    | Submitter: Submit data, My submissions, Access & scope. Admin: Submit data, Submission history, Review                           | Submitters and administrators             |
+|                  | **Administration**       | `/admin` hub                                                                                                                     | Administrators                            |
+|                  | **Manage account**       | `/account/overview`                                                                                                              | Signed-in users                           |
+| Header           | Theme control            | Day Match / Night Match                                                                                                          | Everyone                                  |
+| Footer           | Footer navigation        | API Explorer, API Documentation (docs site), Privacy Notice, Terms of Use, Accessibility                                         | Everyone                                  |
+| Page level       | Local section navigation | Fixture: Overview, Statistics, Players. Account: Overview, Access, API access, Account management. Review: Needs review, History | Per page                                  |
+
+Navigation rules:
+
+- The header stays stable before and after sign-in; role items are added, never rearranged.
+- Mobile uses a **Menu** button that opens labelled sections — Public, Manage Submission,
+  Administration, Pinned and Account — with text links rather than icon-only items.
+- Protected deep links carry a validated internal return path through sign-in; external and
   protocol-relative return targets are rejected.
-- Deep links to any public detail page (`/fixtures/:id`, `/participants/:id`, etc.) work directly,
-  without first visiting the list page, since these are the URLs likely to be shared or indexed.
-- An unknown path, or a public ID that does not resolve, renders the shared 404 page rather than
-  redirecting silently.
+- Every public detail URL works as a direct deep link. An unknown path, or a public ID that does not
+  resolve, renders the shared 404 page.
+- `/account` redirects to `/account/overview`; the retired `/submissions/batches/new` upload URL
+  redirects to `/submissions/new`.
 
-The navigation, Account/Manage Submission separation, and route additions in this section supersede older
-account-launcher wording in the original issue #56 journey diagrams below. Those diagrams remain
-useful as task-state wireframes and do not change backend role or scope semantics.
+### 2.3 Page hierarchy by page type
 
-### 2.3 Content hierarchy per page type
+| Page type                      | Hierarchy                                                                                                    |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| Home                           | Hero → Ask a stats question → principles → delivery-to-statistic story → Explore gateway → API feature → CTA |
+| List (Fixtures, Players, …)    | Eyebrow + title → readable searchable filters → result count → card/row list → Previous/Next pagination      |
+| Detail (fixture, team, player) | Breadcrumbs → title + key facts → local section navigation → sections → related collections                  |
+| Statistics                     | Breadcrumbs → Match statistics → summary cards → innings/extras/powerplay → leaders → scorecards → notices   |
+| Form (Submit data, publish)    | Access check → title + scope help → choice of workflow → single-column form → primary action → result region |
+| Workspace (Review)             | Title → Needs review / History → batch list → batch detail sections → Review decision                        |
+| Administration                 | Hub of three areas → list/create view → detail view with explicit confirmation for destructive actions       |
+| API Explorer                   | Major version + resources → How to access the API → implementation status → interactive explorer             |
 
-| Page type                  | Hierarchy                                                                                      |
-| -------------------------- | ---------------------------------------------------------------------------------------------- |
-| API Explorer               | Page title → version/resources → public/consumer/application access guide → operation explorer |
-| List page (e.g. Fixtures)  | Page title → filters → paginated card/row grid → pagination                                    |
-| Detail page (e.g. Fixture) | Breadcrumb → title/summary → tabs (Overview / Statistics / Squads / Timeline) → tab content    |
-| Form page (Submission)     | Title → scope/help copy → single-column form → primary action → result region                  |
-| Admin page                 | Title → one card per account → request state → scope controls → role-transition actions        |
+Competition and season detail pages add scoped statistics leaderboards; team and competition pages
+offer a **Pin** shortcut; player detail shows career totals and match history with a **Compare
+players** link; fixture Overview shows match facts and contextual weather.
 
 ---
 
-## 3. User journeys
+## 3. Major user journeys
 
-### 3.1 Public visitor — browse fixtures, events and statistics without an account
-
-Confirms the acceptance criterion that public fixture, event and statistic pages are reachable
-without sign-in.
+### 3.1 Public visitor — discover a fixture, its statistics and the source events
 
 ```mermaid
 flowchart LR
-    A[Land on Home] --> B[Open Fixtures]
-    B --> C{Filter by competition/season/team?}
-    C -- yes --> B
-    C -- no --> D[Open a fixture]
-    D --> E[View fixture Overview]
-    E --> F[Open Statistics tab]
-    F --> G[Open a statistic detail]
-    G --> H[Open a linked participant or competitor]
+    A[Home] --> B[Explore Data: Fixtures]
+    B --> C[Filter by competition, season, team or date]
+    C --> D[Fixture Overview]
+    D --> E[Statistics section]
+    E --> F[Open one statistic]
+    F --> G[Published result and contributing events]
+    G --> H[Export events as JSON or CSV]
+    E --> I[Compare players]
 ```
 
-- No step in this journey requires authentication; **Sign in** remains visible but is never
-  forced.
-- Every list and detail page independently handles its own loading, empty and error states (§4),
-  since the visitor may deep-link directly into any page.
+No step requires sign-in. Every list and detail page owns its loading, empty and error states (§4)
+because a visitor may deep-link into any of them.
 
-### 3.2 Signed-in viewer — request submitter access
+### 3.2 Public visitor — Ask a stats question
 
 ```mermaid
 flowchart LR
-    A[Sign in with Google] --> B[Land on /auth/callback]
-    B --> C[Redirected to /account]
-    C --> D[Request submitter access for a competition]
+    A[Home: Ask a stats question] --> B[Type a question or choose an example]
+    B --> C{Interpreted?}
+    C -- yes --> D[Answer dialog: scoped figures or comparison, with stated assumptions]
+    C -- no --> E[Suggestions to rephrase]
+    D --> F[Follow-up question in the same dialog]
+```
+
+Answers are computed from published aggregates through `POST /api/v1/natural-language-queries`; the
+dialog shows the scope it assumed rather than presenting a guess as fact.
+
+### 3.3 Signed-in user — account, submitter access and API access
+
+```mermaid
+flowchart LR
+    A[Sign in with Google] --> B["/auth/callback"]
+    B --> C[Return to requested page or Account Overview]
+    C --> D[Access: request submitter access for a competition]
     D --> E{Administrator decision}
-    E -- approved --> F[Role becomes submitter; scope assigned]
-    E -- rejected --> G[Stays viewer; may request again]
+    E -- approved --> F[Role becomes submitter with scope]
+    E -- rejected --> G[Remains viewer; may request again]
+    C --> H[API access: request consumer access]
+    H --> I{Administrator decision}
+    I -- approved --> J[Copy API key once]
 ```
 
-- Authentication is Supabase Auth with Google OAuth (per
-  [System architecture](../architecture/system-architecture.md)); the frontend never assigns a
-  role itself.
-- A pending request is visible on the account page as "Pending review"; the account remains a
-  `viewer` — and therefore cannot submit — until an administrator approves it.
+Approved competition scopes are visible from Account Overview; Account management holds sign-out and
+confirmed account deletion.
 
-### 3.3 Approved submitter — submit fixture, season or back-catalogue events
+### 3.4 Approved submitter — submit fixture, season or back-catalogue data
 
 ```mermaid
 flowchart LR
-    A[Open Submit events] --> B{Choose submission scope}
+    A[Manage Submission: Submit data] --> B{What are you submitting?}
     B --> C[Single fixture]
     B --> D[Season]
     B --> E[Back catalogue]
     B --> F[Advanced technical JSON]
-    C --> G[Choose readable fixture and package]
-    D --> H[Choose competition and season context]
-    E --> I[Choose competition context]
-    F --> J[Choose fixture and paste canonical events]
-    G --> K[Upload and receive durable receipt]
-    H --> K
-    I --> K
-    J --> L[Validate and store synchronously]
+    C --> G[Choose readable fixture or Propose a new fixture]
+    D --> H[Choose competition; season named in file]
+    E --> H
+    G --> I[Upload package]
+    H --> I
+    I --> J[Durable receipt]
+    J --> K[My submissions: plain-language report]
+    K --> L{Returned for correction?}
+    L -- yes --> M[Replacement upload keeps original history]
+    F --> N[Validate and store synchronously]
 ```
 
-- The page is opened by the account area's single **Submit events** action. The legacy batch-upload
-  URL redirects here and no second upload action is presented.
-- Fixture, competition and season choices are only those returned for the account's backend-owned
-  scope. Single-fixture packages are checked against the selected date and team names before upload.
-- When a reviewer returns a season batch for correction, its report and submission-history entry
-  provide the replacement action. The normal season form identifies the original batch, locks its
-  competition choice and preserves navigable original-to-replacement history after upload.
-- Final statistic totals are never entered directly; they are always derived from accepted
-  events, consistent with the event-sourced design in the
-  [system architecture](../architecture/system-architecture.md).
-- On rejection, focus moves to the result heading and every field-level reason is listed, so the
-  submitter can correct and resubmit without losing their pasted JSON.
+- Choices are limited to the backend-owned scope; selectors are searchable and show dates and team
+  names, not database IDs.
+- Single fixture accepts JSON or CSV; Season and Back catalogue also accept NDJSON. Limits (50 MB,
+  50,000 events) and templates precede the file control.
+- Background processing does not depend on the page staying open. Validation failures name readable
+  fields; rule codes stay in collapsed **Technical details**.
+- Final statistic totals are never entered; they are derived from accepted events.
 
-### 3.4 Administrator — approve, reject or revoke submitter access
+### 3.5 Administrator — review a batch
 
 ```mermaid
 flowchart LR
-    A[Open Manage users] --> B[Find account with pending request]
-    B --> C[Select one or more competition scopes]
-    C --> D[Approve and assign scope]
-    D --> E[Role becomes submitter; scope saved]
-
-    B --> F[Reject pending request]
-    F --> G[Role stays viewer; may request again later]
-
-    H[Find approved submitter] --> I[Revoke]
-    I --> J[Role reverts to viewer; scope cleared]
-    H --> K[Change competition scope]
-    K --> L[Save scope changes]
+    A[Manage Submission: Review] --> B[Needs review list]
+    B --> C[Batch detail]
+    C --> D[Provenance, validation, rejections by rule]
+    C --> E[Reviewer actions: reference mapping, participants to onboard, conflicts]
+    E --> F{Review decision}
+    F --> G[Approve and publish accepted subset]
+    F --> H[Return for correction with reason]
+    F --> I[Reject batch with reason]
 ```
 
-- Approval and scope assignment happen as one action; approval is blocked until at least one
-  scope is selected (§4 validation states).
-- Rejection, revocation and scope changes are separate, permitted only for the lifecycle states
-  the backend allows (pending → approved/rejected; approved → revoked/rescoped) — an
-  administrator cannot approve their own account or an already-admin account.
-- Every transition is visible immediately in the account's card; no page reload is required.
-
-### 3.5 Administrator — generate and publish a dataset release
+### 3.6 Administrator — users, API consumers and dataset releases
 
 ```mermaid
 flowchart LR
-    A[Open Account] --> B[Choose Publish dataset release]
-    B --> C[Review immutable public-action warning]
-    C --> D[Enter a stable release version]
-    D --> E{Version valid?}
-    E -- no --> F[Correct focused validation feedback]
-    E -- yes --> G[Generate and publish snapshot]
-    G --> H[View metadata and checksum]
-    H --> I[Open public detail, download or catalogue]
+    A[Administration] --> B[Users & access]
+    B --> B1[Approve with scope, reject, revoke or rescope]
+    A --> C[API consumers]
+    C --> C1[Approve access requests, create consumer]
+    C1 --> C2[Configuration, usage, rotate or revoke keys]
+    A --> D[Data governance]
+    D --> D1[Publish dataset release]
+    D1 --> D2[Immutable public release: metadata, checksum, download]
 ```
 
-- The workflow verifies the current application role before rendering its form; frontend visibility
-  supplements rather than replaces the backend administrator guard.
-- Publication is presented as an immediate public and immutable operation. Reusing a version returns
-  its existing release, while corrections require a new version.
-- Validation and request failures retain the entered version. Successful publication moves focus to
-  the result containing creation time, event count, checksum and public follow-up links.
+Approval requires at least one competition scope; an administrator cannot approve their own account.
+Raw API keys are shown once in memory and disappear when dismissed. A release version cannot be
+reused; corrections need a new version.
+
+### 3.7 API consumer — from explorer to keyed requests
+
+```mermaid
+flowchart LR
+    A[API Explorer] --> B[How to access the API]
+    B --> C[Public API: no key]
+    B --> D[Identified consumer access]
+    D --> E[Account: API access request]
+    E --> F[Key issued after administrator approval]
+    F --> G["Keyed /api/v1/consumer/* requests with rate-limit headers"]
+```
 
 ---
 
-## 4. States considered per page
+## 4. Page states
 
-Every list, detail, form and admin page in this document is designed against the same four
-states, shown as annotated strips beneath each wireframe in §5:
-
-| State          | Pattern used across pages                                                                                                                                                                                                  |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Loading**    | Skeleton/placeholder content in place, with a status-role announcement (e.g. "Loading fixture…", "Checking submission access") for assistive technology.                                                                   |
-| **Empty**      | A specific, non-alarming message naming what is absent (e.g. "No published fixtures match the current filters.", "No in-scope fixtures.") rather than a generic blank page.                                                |
-| **Validation** | Errors surface next to the offending field where the field is identifiable, plus a summary region that receives focus (submission and admin-approval forms).                                                               |
-| **Error**      | An alert-role message distinct from "empty" (e.g. failed fetch vs. genuinely no data), with a retry action where the failure is retryable. Unresolvable public IDs render the shared 404 page rather than an error banner. |
-
----
-
-## 5. Responsive wireframes
-
-Wireframes are intentionally low-fidelity (structure, hierarchy and states — not final visual
-styling, which is governed by the [brand and interface guidelines](brand-guidelines.md)). Desktop
-frames are shown at a 1280px reference width; mobile frames at a 375px reference width. Source
-SVGs are stored in `docs/design/assets/wireframes/` and can be reopened and edited directly.
-
-### 5.1 Home (public)
-
-Landing page — static hero and principles content; no data fetch, so no loading state applies.
-
-Issue #314 extends the approved low-fidelity structure into an editorial landing-page narrative:
-
-- one headline and immediate links to Fixtures and Competitions, with Players at lower emphasis;
-- the Explosive, Exact and Traceable principles presented as a paced broadcast-style sequence;
-- a semantic delivery-to-statistic example using supported `runs.offBat`, extras, team-total and
-  player-statistic relationships;
-- public gateways to Fixtures, Competitions, Players and Teams;
-- a restrained technical section containing only implemented public API paths; and
-- a final return to public fixture browsing.
-
-The hero's moving delivery is explicitly illustrative because the source model contains no physical
-ball trajectory or pitch-location coordinates. The SVG fallback carries the same event-to-derived
-value idea at first paint, with reduced motion, without WebGL, or if the lazy Three.js enhancement
-cannot load. Mobile stacks copy before a simplified visual rather than shrinking the desktop split.
-
-![Home – desktop](assets/wireframes/home-desktop.svg)
-![Home – mobile](assets/wireframes/home-mobile.svg)
-
-### 5.2 Fixtures (public list)
-
-Filterable list of published fixtures. Available without sign-in.
-
-![Fixtures – desktop](assets/wireframes/fixtures-desktop.svg)
-![Fixtures – mobile](assets/wireframes/fixtures-mobile.svg)
-
-### 5.3 Fixture detail and statistics (public detail)
-
-Tabbed detail page; the Statistics tab is what published event-derived statistics roll up into.
-
-![Fixture detail – desktop](assets/wireframes/fixture-detail-desktop.svg)
-![Fixture detail – mobile](assets/wireframes/fixture-detail-mobile.svg)
-
-### 5.4 Sign in
-
-Single sign-in method (Google, via Supabase Auth), reached from any page's header.
-
-![Sign in – desktop](assets/wireframes/signin-desktop.svg)
-![Sign in – mobile](assets/wireframes/signin-mobile.svg)
-
-### 5.5 Submit delivery events (submitter)
-
-One page at `/submissions/new` presents four labeled scopes: single fixture, season, back catalogue,
-and advanced technical JSON. It is reached from the account area's **Submit events** action; the old
-`/submissions/batches/new` URL redirects to it. The fixture selector presents date, teams,
-competition, season and match type instead of database IDs, while season and catalogue modes use
-readable competition and season context. Supported formats, the 50 MB and 50,000-event limits,
-required readable fields, and the shared JSON/spreadsheet templates precede each file control.
-
-![Submission – desktop](assets/wireframes/submission-desktop.svg)
-![Submission – mobile](assets/wireframes/submission-mobile.svg)
-
-All guided package scopes use the same durable batch receipt, background processing, readable report
-and reference-mapping path. Single-fixture mode accepts JSON and CSV and verifies that exactly one
-fixture's date and teams match the readable selection. Season and back-catalogue modes additionally
-accept NDJSON. The advanced canonical JSON editor and accepted-event correction workspace remain
-available for integrations that already hold application references.
-
-The single-fixture workflow presents a separate **Propose a new fixture** action for an approved
-submitter, rather than placing it among existing fixture choices. Proposal mode hides the
-existing-fixture selector and provides a clear return action. It collects the required fixture
-metadata and converts a matching JSON or CSV package to the version 1.1 proposal contract. When the
-proposal's competition, season, date and two team names match an accessible existing fixture, the
-browser warns the submitter and offers to use that fixture instead. Canonical creation remains an
-administrator decision in the batch review workspace, and the submission is revalidated after that
-decision. Enumerated fixture metadata uses dropdowns:
-match type is fixed to the platform's supported `T20` value, team type offers `club` and
-`international`, and gender offers `female` and `male`.
-The file control precedes the new-fixture metadata and prefills competition, season, date and teams
-from the selected package so the submitter does not re-enter context already present in the file.
-
-An indeterminate upload indicator covers transfer time, then an accessible durable-receipt panel
-links to submission history. History and detail views use plain-language lifecycle descriptions,
-source row/field links, downloadable complete reports and labeled reference-mapping controls.
-Validation failures name readable fields and explain the next corrective action instead of leading with
-schema paths or rule codes; those identifiers remain available in collapsed **Technical details** for
-debugging and support. Empty, partial, unavailable and error states retain the standard state patterns
-in §4. Background processing does not depend on the page remaining open.
-
-The implemented workflow and its desktop/mobile accessibility journey are ready to be exercised by
-the formal submitter-testing activity tracked under #417. Issue #361 does not record a separate
-participant session.
-
-### 5.6 Manage users (administrator)
-
-One card per account; scope selection and role-transition actions gated by current lifecycle
-state.
-
-![Admin users – desktop](assets/wireframes/admin-users-desktop.svg)
-![Admin users – mobile](assets/wireframes/admin-users-mobile.svg)
-
-### 5.7 Publish dataset release (administrator)
-
-The responsive form follows the shared admin-page hierarchy: permission-check state, a prominent
-immutable-publication warning, one labelled version field, one primary publish action and a focused
-result region. On narrow screens, controls and result links become single-column and long checksums
-wrap without horizontal page overflow.
-
-### 5.8 Manage API consumers (administrator)
-
-The Administration entry point opens a responsive list and creation form. The consumer detail view
-shows safe configuration, key prefixes and lifecycle dates, with explicit confirmation for key
-rotation and individual-key revocation. Raw keys appear only in the in-memory one-time view returned
-by creation or rotation and disappear when that view is dismissed. Both pages link to the public API
-Explorer rather than reproducing the OpenAPI documentation. The detail view also presents
-owner-scoped historical usage by inclusive UTC date window, normalized operation, response status
-class and request count. It distinguishes empty usage from a loading failure and labels configured
-quota/rate policy as context rather than current remaining capacity. No consumer secret is required.
+| State          | Pattern used across pages                                                                                                              |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| **Loading**    | Structure renders immediately with a status-role message (e.g. "Loading fixture…", "Checking administrator access").                   |
+| **Empty**      | A specific message naming what is absent (e.g. "No dataset releases are available") rather than a blank page.                          |
+| **Validation** | Errors next to the field where identifiable plus a summary that receives focus; entered values are retained.                           |
+| **Error**      | An alert distinct from "empty", with retry where the failure is retryable. Unresolvable public IDs render the shared 404 page.         |
+| **No access**  | Role-gated pages explain the missing role ("Administrator access required", "Submitter role required"); the backend still enforces it. |
+| **Partial**    | Statistics pages label partial or unavailable figures in **Data notices** instead of showing zeros.                                    |
 
 ---
 
-## 6. Open questions for review
+## 5. Responsive and accessible behaviour
 
-- Should the public site expose a global search across fixtures/competitors/participants, or is
-  filtered browsing on each list page sufficient for the current scope?
-- Does the account page need a visible history of past submissions, or is that deferred to a
-  later issue?
-- Confirm pagination style (numbered pages vs. "load more") for large public lists before
-  implementation.
+Implementation detail lives in the [component baseline](frontend-component-baseline.md#shell-and-route-conventions);
+the design-level rules are:
 
-## 7. Review and sign-off
+- The header moves through **full → compact → menu** tiers by available width, so role links never
+  overflow; the mobile menu exposes the same destinations as labelled text links.
+- Content stacks into one column before type shrinks; summary cards stack on narrow screens.
+- Wide scorecards and data tables scroll horizontally inside their own focusable region, with an edge
+  shadow, and the page itself never scrolls sideways at 320 px.
+- Route changes move focus to `<main>` and set a page title; every page has one visible `<h1>`.
+- Day Match and Night Match themes, visible focus and reduced-motion handling apply to every route.
 
-| Reviewer | Decision | Date | Notes |
-| -------- | -------- | ---- | ----- |
-|          |          |      |       |
+---
 
-This document is merged through the Pull Request referenced by `Closes #56`, per the project's
-git methodology. Detailed page implementation should not begin until this document has been
-reviewed by the team, per the acceptance criteria on #56.
+## 6. Final wireframes
 
+These are annotated low-fidelity frames of the **implemented** screens (structure and hierarchy, not
+pixel styling). Numbered markers refer to the annotations beneath each frame. Desktop frames use a
+1280 px reference width and mobile frames 375 px. Sources are editable SVGs in
+`docs/design/assets/final-wireframes/`.
+
+### 6.1 Home
+
+![Final wireframe: public home page, desktop](assets/final-wireframes/final-home-desktop.svg)
+
+### 6.2 Fixture statistics
+
+![Final wireframe: fixture match statistics, desktop](assets/final-wireframes/final-fixture-statistics-desktop.svg)
+
+![Final wireframe: fixture match statistics, mobile](assets/final-wireframes/final-fixture-statistics-mobile.svg){ width="375" }
+
+### 6.3 Compare players
+
+![Final wireframe: Compare players, desktop](assets/final-wireframes/final-player-comparison-desktop.svg)
+
+### 6.4 API Explorer
+
+![Final wireframe: API Explorer, desktop](assets/final-wireframes/final-api-explorer-desktop.svg)
+
+### 6.5 Account and sign-in
+
+![Final wireframe: Account area, desktop](assets/final-wireframes/final-account-desktop.svg)
+
+### 6.6 Submit data
+
+![Final wireframe: Submit data, desktop](assets/final-wireframes/final-submission-desktop.svg)
+
+### 6.7 Review workspace
+
+![Final wireframe: batch review workspace, desktop](assets/final-wireframes/final-review-workspace-desktop.svg)
+
+### 6.8 Administration
+
+![Final wireframe: Administration hub, desktop](assets/final-wireframes/final-administration-desktop.svg)
+
+### 6.9 Mobile navigation
+
+![Final wireframe: mobile navigation menu](assets/final-wireframes/final-navigation-mobile.svg){ width="375" }
+
+---
+
+## 7. Related evidence
+
+- [Final frontend UX, accessibility and responsiveness audit](final-frontend-ux-audit.md) (#889)
+- [Roles and permissions](../security/roles-and-permissions.md) and
+  [Authentication & authorisation](../security/authentication.md)
+- [OpenAPI & API Explorer](../api/openapi.md) and [Consumer API access](../api/consumer-keys.md)
+- [Stakeholder & user-feedback review](../process/stakeholder-and-user-feedback-review.md)
+- [Final system verification bank](../testing/final-system-verification.md)
+
+## 8. Design evolution and traceability
+
+The Sprint 1 design (#56) set the direction: public-first browsing, event-derived statistics and a
+small role model. Implementation, stakeholder reviews and formal user testing then reshaped it. The
+superseded frames are archived with a per-artefact status in the
+[legacy wireframe register](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/design/legacy-wireframes/README.md){ target="_blank" rel="noopener" }.
+
+| Area                               | Early design (Sprint 1)                                                 | Final implementation                                                                                                    | Driver and evidence                                                                   |
+| ---------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Navigation                         | Flat header: Competitions, Seasons, Fixtures, Competitors, Participants | Explore Data, Pinned, Downloads and API; separate Manage Submission, Administration and Manage account; mobile Menu     | ADR-007 readable cricket names (#191); restructure #581; pinning #802; P07-F01 → #713 |
+| Authentication and roles           | Google sign-in; account page as launcher; reviewer implied              | Google sign-in with safe return paths; Account sections; viewer/submitter/admin only; consumer keys as a separate model | #39, #64, #154, #581; consumer access model #820; P07-F02 scopes → #714               |
+| Submission                         | Paste delivery-event JSON for one in-scope fixture                      | Guided Single fixture, Season and Back catalogue; Advanced technical JSON set apart; new-fixture proposals              | #266, #435, #437, #571, #703; Sprint 2 finding "too technical" → #499                 |
+| Batch and back-catalogue ingestion | Not in the Sprint 1 design                                              | Durable receipt, background worker, readable reports, reference mapping, correction resubmission, multi-season          | #275, #361, #425, #539, #589                                                          |
+| Review and administration          | One Manage users page with approve/reject/revoke                        | Administration hub; batch review workspace with participant onboarding; API consumers; dataset releases                 | #342, #362, #458, #708, #775, #776; P11-F01 → #770                                    |
+| Statistics and analytics           | One statistics table in a fixture tab; Squads and Timeline tabs planned | Overview/Statistics/Players; scorecards and leaders; statistic → events with export; leaderboards; Compare players; Ask | #54, #270, #635; P08-F01 → #716; natural-language queries #816, #851, #868            |
+| API Explorer                       | Not designed; API visible only in documentation                         | `/api` in the header with consumer onboarding and visible rate-limit/retry headers                                      | #660, #661, #783; P09-F01 → #743                                                      |
+| Responsive and accessibility       | Two reference widths and annotated state strips                         | Header tiers, labelled mobile menu, contained table scrolling, focus and title on navigation, automated Axe checks      | #57, #355, #800, #889                                                                 |
+
+Two Sprint 1 ideas were not built: the planned Squads/Timeline fixture tabs (replaced by Players and
+statistic-to-event traceability) and the global search left as an open question in #56 (filtered
+browsing, Pinned and Ask a stats question cover the need).
+
+Some feedback is accepted but not fully closed. P08-F01 (#716) was implemented after Sprint 3 with no
+participant retest. Sprint 4 findings P15-F01 (team context in Compare players) and P15-F03 (short
+scorecard scrolling) are linked to #800; its polish merged through #896, but a specific fix and human
+retest are not established.
+
+Evidence: [Sprint 2](../testing/user-testing-sprint-2-summary.md),
+[Sprint 3](../testing/user-testing-sprint-3-summary.md) and
+[Sprint 4](../testing/user-testing-sprint-4-summary.md) user-testing summaries;
+[stakeholder & user-feedback review](../process/stakeholder-and-user-feedback-review.md);
+[ADR-007 public information architecture](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-007-public-information-architecture.md){ target="_blank" rel="noopener" }.
+
+## AI Declaration
+
+The original issue #56 information architecture, journeys and wireframes were produced with the
+assistance of Claude.ai[Claude Sonnet 5].
 The issue #266 guided file-submission interface was documented with the assistance of Codex[GPT-5].
 The issue #314 homepage narrative, illustrative-trajectory constraint and progressive fallback were
 documented with the assistance of Codex[GPT-5.6 Sol].
@@ -430,3 +423,5 @@ The issue #776 administrator consumer-usage information architecture was documen
 assistance of Codex[GPT-5.6 Sol].
 The issue #783 public API consumer-onboarding hierarchy was documented with the assistance of
 Codex[GPT-5].
+The issue #894 final alignment, final wireframes and design-evolution record were prepared with the assistance of
+Claude-Web[Claude Opus 5.5] and checked against the frontend source.

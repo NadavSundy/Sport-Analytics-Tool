@@ -63,6 +63,7 @@ nav:
       - Consumer API Access: api/consumer-keys.md
       - Analytics Query: api/analytics-query.md
       - Weather Integration: api/weather.md
+      - Final Design & Wireframes: design/information-architecture-and-wireframes.md
 
   - Architecture, Data & Security:
       - Overview: architecture-and-data.md
@@ -148,7 +149,6 @@ nav:
           - Design & UX Reference:
               - Brand Guidelines: design/brand-guidelines.md
               - Frontend Component Baseline: design/frontend-component-baseline.md
-              - Information Architecture & Wireframes: design/information-architecture-and-wireframes.md
               - Final Frontend UX Audit: design/final-frontend-ux-audit.md
 
           - Deployment & Operations History:
