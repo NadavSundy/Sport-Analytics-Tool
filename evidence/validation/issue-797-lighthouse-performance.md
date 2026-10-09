@@ -381,6 +381,27 @@ rejects a Performance score one point below its configured floor.
 | Automated Lighthouse and CI tests      | PASS      | 68 CI tests and 17 Lighthouse tests passed.                                                                                                             |
 | Evidence documentation                 | PASS      | This record.                                                                                                                                            |
 
+## Final acceptance disposition
+
+**Decision date:** 2026-10-09
+**Decision owner:** Dean Feldman
+
+Issue #797 is accepted as the completed Lighthouse regression-gate and
+performance-evidence workstream for final submission. The retained implementation
+provides repeated desktop and mobile representative public-route audits, persisted
+fail-closed Performance floors, and retained Lighthouse reports.
+
+This is a qualified closure, not a statement that the original all-pages
+Production Performance >=90 criterion passed. The historical production-preview
+evidence retains four parameterised public mobile routes below 90, and no
+legitimate authenticated/protected-route Lighthouse audit was obtained.
+
+**Final-submission impact:** the project can demonstrate a repeatable
+representative public-route regression gate, but cannot claim that every frontend
+page has demonstrated Production Performance >=90. The retained limitations and
+this disposition remain subject to independent audit in #808 and final-release
+acceptance in #810.
+
 ## Known limitations and follow-up
 
 The following retained observations do not change the hosted-CI result and are non-blocking for
