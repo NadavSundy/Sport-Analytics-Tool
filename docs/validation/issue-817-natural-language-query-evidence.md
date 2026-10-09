@@ -154,6 +154,7 @@ ordinary suites, which do not call the provider:
 
 Four pieces of work were identified while building this feature and deliberately left out of it.
 They are recorded here so the reason survives independently of whoever remembers the conversation.
+The first has since been done; three remain.
 
 > **All of this is tracked by [issue #924](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/924){ target="\_blank" rel="noopener" },
 > "Natural-language query follow-up work"**, which holds the feature's remaining work as a single
@@ -162,18 +163,21 @@ They are recorded here so the reason survives independently of whoever remembers
 > resolution after a leaderboard and the empty-suggestions fallback to be useful, and those are
 > separate entries on the same list.
 
-### Rate limiting for the free definition-evaluation path
+### Rate limiting for the free definition-evaluation path — done
 
-`POST /api/v1/query-definitions/evaluate` is mounted with **no limiter at all**. It is not one of the
-canonical-read paths that carry the anonymous HMAC-pseudonymised bounds, and the natural-language
+`POST /api/v1/query-definitions/evaluate` had **no limiter at all**. It was not one of the
+canonical-read paths carrying the anonymous HMAC-pseudonymised bounds, and the natural-language
 limiter does not cover it because it makes no provider call.
 
 **Why it was deferred.** The limits built for this feature were sized to protect a _paid_ provider,
-and this path spends nothing, so it was not the urgent case. **Why it still matters:** it is not
-free of cost, only free of provider cost. It resolves names and calls the published statistics
-services, so it does real database work, and the documentation actively encourages traffic to it by
-telling clients that following a suggestion costs a reader nothing. An unmetered anonymous POST that
-does database work is the gap, not the absence of a token bill.
+and this path spends nothing there. That turned out to be the wrong test: it is free of provider
+cost, not free. It resolves names and reads published statistics on every anonymous request, and the
+documentation was actively directing traffic to it.
+
+**Done under issue #924.** It now goes through the same anonymous canonical-read middleware as the
+reads it is built on: **30 requests per minute per source and 600 per minute across all sources**,
+keyed on an HMAC digest of the address rather than the address, counted per attempt and failing
+closed. No new limiter, migration or configuration was needed.
 
 ### A lint rule for SQL interpolation
 
@@ -231,4 +235,5 @@ comparison was taken by diffing those two records. The evaluation runs themselve
 Ben Swartz, and the 6 October demonstration feedback is his own record of that session rather than
 anything the tool observed. The deferred-work reasons were recorded with the same assistance under
 issue #817; each was checked against the repository rather than taken on trust, which is how the
-unlimited definition-evaluation path was confirmed.
+unlimited definition-evaluation path was confirmed. That entry was updated to record the limit as
+delivered with the assistance of Claude-Code[Claude Opus 5 (1M context)] under issue #924.
