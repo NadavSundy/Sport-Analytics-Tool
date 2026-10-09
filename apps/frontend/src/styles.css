@@ -6613,10 +6613,10 @@ h3 {
   white-space: pre-wrap;
 }
 
-/* Issue #816: the "Ask a stats question" home-page widget.
-   The section reserves its height so arriving with the rest of the lazy home
-   content shifts nothing below it, and the dialog is an overlay so opening it
-   shifts nothing either. */
+/* The answer view, shared by every surface that renders one. These `ask-question__`
+   classes date from the issue #816 home-page widget; issue #936 replaced that
+   widget with the floating assistant and kept the class names, because the markup
+   they style is the same markup, now rendered by `AnswerView`. */
 /* Issue #936: the floating launcher, on every page.
 
    `z-index: 20` is deliberate and sits below three things it must never cover:
@@ -6796,7 +6796,7 @@ h3 {
   cursor: pointer;
 }
 
-.ask-question__dialog textarea {
+.chat-panel textarea {
   width: 100%;
   margin-block-start: var(--space-2);
   padding: var(--space-3);
@@ -6813,10 +6813,6 @@ h3 {
   color: var(--colour-text-secondary);
   font-size: 0.875rem;
   margin-block: var(--space-2);
-}
-
-.ask-question__result {
-  margin-block-start: var(--space-6);
 }
 
 .ask-question__interpretation {
