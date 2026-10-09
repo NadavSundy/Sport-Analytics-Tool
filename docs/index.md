@@ -6,23 +6,25 @@ versioned handwritten HTTP API.
 
 ## Choose a path
 
-| I want to…                                                      | Start here                                        |
-| --------------------------------------------------------------- | ------------------------------------------------- |
-| Run the project locally                                         | [Getting Started](getting-started.md)             |
-| Use or understand the public API                                | [Product & API](product-and-api.md)               |
-| Understand the architecture, database or security model         | [Architecture & Data](architecture-and-data.md)   |
-| Contribute code or documentation                                | [Development](development/index.md)               |
-| Understand hosting, recovery or deployment                      | [Deployment & Operations](deployment/overview.md) |
-| Review automated testing, coverage, performance or user testing | [Testing & Quality](testing/index.md)             |
-| Understand the project and Git methodology                      | [Methodology](process/methodology-overview.md)    |
-| Review decisions, stakeholder records and retained evidence     | [Project Records & Evidence](process/index.md)    |
+| I want to…                                                      | Start here                                                |
+| --------------------------------------------------------------- | --------------------------------------------------------- |
+| Run the project locally                                         | [Getting Started](getting-started.md)                     |
+| Use or understand the public API                                | [Product & API](product-and-api.md)                       |
+| Understand the architecture, database or security model         | [Architecture, Data & Security](architecture-and-data.md) |
+| Contribute code or documentation                                | [Local Setup](development/setup.md)                       |
+| Understand hosting, recovery or deployment                      | [Deployment & CI/CD](deployment/overview.md)              |
+| Review automated testing, coverage, performance or user testing | [Testing & Quality](testing/index.md)                     |
+| Understand the project and Git methodology                      | [Methodology](process/methodology-overview.md)            |
+| Review decisions, stakeholder records and retained evidence     | [Project Records & Evidence](process/index.md)            |
+| Review the final release and requirements traceability          | [Final Submission](final-submission.md)                   |
 
 ## What is implemented
 
 The current platform includes scoped authenticated submission, staged batch ingestion and review,
 public competition/season/fixture/event/team/player reads, event-derived fixture and participant
-statistics, JSON/CSV exports, versioned dataset releases, consumer API controls, and the runtime
-weather integration. The detailed implemented route surface is maintained in the
+statistics, JSON/CSV exports, versioned dataset releases, consumer API controls, bounded
+natural-language analytics queries over the published statistics, and the runtime weather
+integration. The detailed implemented route surface is maintained in the
 [API overview](api/overview.md), while later-tier and planned areas remain identified there rather
 than being presented as completed features.
 
@@ -33,7 +35,7 @@ validation, authorisation, business rules, database access, external API calls a
 behaviour. Shared contracts support consistency but do not replace backend validation. Generated
 Supabase data endpoints are not used as the application API.
 
-For the component-level view, read [Architecture & Data](architecture-and-data.md). For a clean local
+For the component-level view, read [Architecture, Data & Security](architecture-and-data.md). For a clean local
 checkout, start with [Getting Started](getting-started.md).
 
 ## Documentation and evidence
@@ -49,3 +51,5 @@ Use [Methodology](process/methodology-overview.md) to understand how the team wo
 
 The documentation homepage and human-oriented reader paths were reorganised with the assistance of
 ChatGPT-Web[GPT-5.6 Sol].
+The Issue #879 review aligned the section labels with the live navigation with the assistance of
+Claude-Web[Claude Opus 5.5].

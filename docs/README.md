@@ -79,10 +79,11 @@ See:
 ## Information architecture
 
 The public navigation is organised by reader intent rather than by repository folder. The main
-entry points are Getting Started, Product & API, Architecture & Data, Development, Deployment &
-Operations, Testing & Quality, and Project Records & Evidence. Detailed reference pages remain
-searchable and are linked from the relevant hub instead of all competing at the first navigation
-level.
+entry points are Getting Started, Product & API, Architecture, Data & Security, Testing & Quality,
+Deployment & CI/CD, Methodology, Project Records & Evidence, and Final Submission. Detailed
+reference pages, including the Development guide index, remain searchable under Project Records &
+Evidence → Historical & Reference and are linked from the relevant hub instead of all competing at
+the first navigation level.
 
 When adding a new page, first decide which reader goal owns it, link it from that section's overview,
 and add it to the primary navigation only when it is a normal starting point rather than specialist
@@ -103,4 +104,6 @@ Run `python -m mkdocs build --strict` after any theming change and check both th
 The preceding document was planned, generated, reviewed and edited with the assistance of
 ChatGPT-Web[GPT-5.6 Sol]. The Theming section, and the branding/external-link implementation it
 describes, were added with the assistance of Claude[Claude Sonnet 5]. The information-architecture
-guidance was updated with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+guidance was updated with the assistance of ChatGPT-Web[GPT-5.6 Sol]. The Issue #879 review aligned
+the information-architecture section with the live navigation with the assistance of
+Claude-Web[Claude Opus 5.5].

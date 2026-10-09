@@ -1,5 +1,10 @@
 # Repository restructuring migration guide
 
+> **Historical record.** This guide describes how the initial August 2026 scaffold was applied and is
+> retained only as project history. Do not follow it to set up the repository: use the
+> [README quick start](README.md#getting-started) and the canonical
+> [Local Development Setup](docs/development/setup.md) instead.
+
 ## What was found
 
 The uploaded `main` branch contained four files:
