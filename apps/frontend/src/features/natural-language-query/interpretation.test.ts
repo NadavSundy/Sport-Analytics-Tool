@@ -1,10 +1,11 @@
 import {
+  queryDefinitionReferenceSchema,
   unsupportedQueryReasonSchema,
   type AnalyticsQueryDefinition,
 } from '@sport-analytics/contracts';
 import { describe, expect, it } from 'vitest';
 import { EXAMPLE_QUESTIONS } from './examples';
-import { describeDefinition, unsupportedMessage } from './interpretation';
+import { describeDefinition, referenceNoun, unsupportedMessage } from './interpretation';
 
 describe('interpreting a definition in plain English', () => {
   it('reads a season leaderboard back as a sentence a reader can check', () => {
@@ -132,5 +133,64 @@ describe('example questions', () => {
       expect(example.question.length).toBeGreaterThan(0);
       expect(example.question.length).toBeLessThanOrEqual(300);
     }
+  });
+});
+
+/**
+ * Issue #940. A reader who named a competition the platform does not hold was
+ * told "Nothing published here matches Austria tour of Hungary", which does not
+ * say what kind of thing was looked for. Naming it is what makes the message
+ * actionable: a competition that was not found is a different problem from a
+ * player that was not found, and leads somewhere different.
+ */
+describe('naming what was not found', () => {
+  // Keyed by the contract's own enum, so a reference added there cannot leave
+  // the panel with no noun to use.
+  it.each(queryDefinitionReferenceSchema.options)(
+    'has a noun for the %s reference',
+    (reference) => {
+      const noun = referenceNoun(reference);
+
+      expect(noun.singular.length).toBeGreaterThan(0);
+      expect(noun.plural.length).toBeGreaterThan(0);
+      expect(noun.plural).not.toBe(noun.singular);
+    },
+  );
+
+  it('calls either side of a comparison a player, as the reader would', () => {
+    expect(referenceNoun('participant').singular).toBe('player');
+    expect(referenceNoun('participants.0').singular).toBe('player');
+    expect(referenceNoun('participants.1').singular).toBe('player');
+  });
+
+  it('names a competition and a season as themselves', () => {
+    expect(referenceNoun('competition')).toEqual({
+      singular: 'competition',
+      plural: 'competitions',
+    });
+    expect(referenceNoun('season')).toEqual({ singular: 'season', plural: 'seasons' });
+  });
+});
+
+/**
+ * Issue #940's second finding. "Who won the 01/09/2007 Kenya vs Pakistan game?"
+ * was refused with `outside_cricket_statistics`, whose sentence tells the reader
+ * they did not ask a cricket question. A match result is a cricket question this
+ * platform does not answer, which is the `other` reason — so that reason's
+ * sentence has to say what is and is not published here.
+ */
+describe('a match-result question', () => {
+  it('says the published figures are player figures rather than match results', () => {
+    expect(unsupportedMessage('other')).toMatch(/player figures/i);
+    expect(unsupportedMessage('other')).toMatch(/match results/i);
+  });
+
+  // The wrong label is the defect, so the two sentences must not be confusable.
+  it('does not tell the reader they asked about something other than cricket', () => {
+    expect(unsupportedMessage('other')).not.toMatch(/not a question about/i);
+  });
+
+  it('leaves outside_cricket_statistics for a question that really is not one', () => {
+    expect(unsupportedMessage('outside_cricket_statistics')).toMatch(/not a question about/i);
   });
 });
