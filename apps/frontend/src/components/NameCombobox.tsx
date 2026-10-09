@@ -27,6 +27,7 @@ interface NameComboboxProps {
   onSelectionChange(option: NameComboboxOption | null): void;
   onSelectionResolved(option: NameComboboxOption | null): void;
   placeholder?: string | undefined;
+  resolveSelectedOption?(value: string, signal: AbortSignal): Promise<NameComboboxOption | null>;
   selectedValue: string;
   validationMessage?: string | undefined;
 }
@@ -131,6 +132,7 @@ export function NameCombobox({
   onSelectionChange,
   onSelectionResolved,
   placeholder,
+  resolveSelectedOption,
   selectedValue,
   validationMessage,
 }: NameComboboxProps) {
@@ -146,29 +148,44 @@ export function NameCombobox({
   const [requestVersion, setRequestVersion] = useState(0);
   const [state, setState] = useState<OptionsState>({ status: 'idle', options: [] });
   const requestKey = `${dependencyKey}\u0000${inputValue.trim()}`;
+  const shouldResolveSelected =
+    Boolean(selectedValue) &&
+    !inputValue.trim() &&
+    (state.status === 'idle' || state.status === 'loading') &&
+    Boolean(resolveSelectedOption);
   const shouldLoad =
     (open && loadedRequestKeyRef.current !== requestKey) ||
-    (Boolean(selectedValue) && (state.status === 'idle' || state.status === 'loading'));
+    (Boolean(selectedValue) &&
+      !resolveSelectedOption &&
+      (state.status === 'idle' || state.status === 'loading'));
 
   useEffect(() => {
     onSelectionResolvedRef.current = onSelectionResolved;
   }, [onSelectionResolved]);
 
   useEffect(() => {
-    if (!shouldLoad) {
+    if (!shouldLoad && !shouldResolveSelected) {
       return;
     }
 
     const controller = new AbortController();
     setState((current) => ({ status: 'loading', options: current.options }));
 
-    void loadOptions(inputValue.trim(), controller.signal)
+    const load = shouldResolveSelected
+      ? resolveSelectedOption!(selectedValue, controller.signal).then((option) =>
+          option ? [option] : [],
+        )
+      : loadOptions(inputValue.trim(), controller.signal);
+
+    void load
       .then((options) => {
         if (controller.signal.aborted) {
           return;
         }
 
-        loadedRequestKeyRef.current = requestKey;
+        if (!shouldResolveSelected) {
+          loadedRequestKeyRef.current = requestKey;
+        }
         setState({ status: 'ready', options });
         if (selectedValue && !inputValue.trim()) {
           onSelectionResolvedRef.current(
@@ -184,7 +201,16 @@ export function NameCombobox({
       });
 
     return () => controller.abort();
-  }, [inputValue, loadOptions, requestKey, requestVersion, selectedValue, shouldLoad]);
+  }, [
+    inputValue,
+    loadOptions,
+    requestKey,
+    requestVersion,
+    resolveSelectedOption,
+    selectedValue,
+    shouldLoad,
+    shouldResolveSelected,
+  ]);
 
   useEffect(() => {
     if (!open) {
