@@ -91,10 +91,15 @@ security and support obligations.
 When a user cannot access the application because they have forgotten their Google Account
 password:
 
-1. the application directs them to Google Account recovery;
-2. Google verifies that they own the account;
-3. Google changes the Google Account password; and
-4. the user returns and selects **Login or Sign up** to complete Google OAuth again.
+1. they use Google's own account-recovery option during external Google sign-in (when offered), or open [Google Account recovery](https://support.google.com/accounts/answer/41078) directly;
+2. Google verifies ownership and provides the appropriate recovery process;
+3. after recovering access, they return to the Sport Analytics Tool; and
+4. they select **Login or Sign up** to authenticate with Google again.
+
+The application's `/sign-in` page intentionally offers Google OAuth sign-in, not an
+application-owned password-reset control or a direct account-recovery link. Password
+recovery is provided externally by Google; this application cannot reset a Google
+Account password.
 
 The Sport Analytics Tool must not collect a Google password, send a password-reset email that
 claims to reset Google, or provide a form that suggests it can change Gmail credentials.

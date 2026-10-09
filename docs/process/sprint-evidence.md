@@ -85,8 +85,8 @@ an additional formal Sprint.
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 30 Sep 2026 | Final Submission planning and scope - [Source record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/final-submission/2026-09-30-planning.md){ target="_blank" rel="noopener" } |
 
-Historical repository index:
-[`evidence/final-submission/README.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-4/README.md){ target="_blank" rel="noopener" }
+Current Final Submission evidence index:
+[Final Submission Evidence Index](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/final-submission/README.md){ target="_blank" rel="noopener" }
 
 The planning record captures the refined Final Submission backlog, early completed work,
 sequencing, scope decisions, known risks and the relationship between the original roadmap and the

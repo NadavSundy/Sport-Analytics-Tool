@@ -54,7 +54,7 @@ and its linked acceptance/recovery pages.
 
 ## Sprint 4 final user testing
 
-See [Sprint 4 status and preparation](user-testing-sprint-4-summary.md). Technical preparation does not replace the three required real sessions.
+See [Sprint 4 final user-testing evidence](user-testing-sprint-4-summary.md). The team approved two real human sessions as the final scope on 9 October 2026, and both are recorded; AI simulation is excluded from that count. Source and privacy limitations remain disclosed.
 
 ## AI Declaration
 
@@ -64,3 +64,5 @@ assistance of ChatGPT-Web[GPT-5.6 Sol].
 The Sprint 4 preparation links were added with the assistance of Codex[GPT-6].
 The Issue #887 final technical-verification discovery link was added with the assistance of
 Codex[GPT-5].
+
+The 9 October final-session scope wording was reconciled with the team-reported decision using ChatGPT-Web[GPT-6].

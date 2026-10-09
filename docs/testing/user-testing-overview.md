@@ -90,10 +90,12 @@ The decision to use task-based, repository-retained evidence and retire the Micr
 
 ## Sprint 4 final testing
 
-[Sprint 4 preparation and final summary](user-testing-sprint-4-summary.md) tracks Issue #803. At least three genuine final sessions are required. One public human session and one assisted local submitter/reviewer session are recorded; a separately labelled AI simulation is supplemental evidence. Final acceptance remains pending.
+[Sprint 4 final human-testing summary](user-testing-sprint-4-summary.md) documents the **team-approved two-session scope** for #803 (9 October 2026). The retained human evidence meets that revised target: one public/analyst session and one assisted local submitter/reviewer session. The AI simulation does not count as a human session. Participant/build/privacy limitations remain stated explicitly; no issue is reopened by this scope reconciliation.
 
 ## AI Declaration
 
 The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 
 The Sprint 4 preparation links were added with the assistance of Codex[GPT-6].
+
+The 9 October final-session scope wording was reconciled with the team-reported decision using ChatGPT-Web[GPT-6].

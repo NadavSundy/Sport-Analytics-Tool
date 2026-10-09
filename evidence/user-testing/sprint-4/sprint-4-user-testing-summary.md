@@ -1,6 +1,6 @@
-# Sprint 4 final user-testing summary — provisional
+# Sprint 4 final user-testing summary — approved two-session scope
 
-Issue #803 has one reviewed public human session, one user-confirmed assisted local submitter/reviewer session, and one separately labelled AI browser simulation. The functional local upload/recovery/publication goals completed. The minimum real-session count and final acceptance remain outstanding; see the [completion audit](2026-10-07-completion-audit.md).
+The team unanimously approved reducing the internal #803 final human-testing target to **two sessions** on 9 October 2026, citing the 11 October submission deadline. Both were completed: one reviewed P15 public session and one assisted LOCAL-01 submitter/reviewer session. The separate AI browser simulation does not count. The functional local upload/recovery/publication goals completed; the evidence limitations below are not silently resolved by this scope decision.
 
 ## Scope and builds
 
@@ -61,12 +61,26 @@ Five original screenshots with an account name remain local pending privacy reda
 
 Public and assisted local sessions cover complementary workflows. Repeated human difficulties cannot yet be established without local participant feedback. AI comparison observations technically corroborate P15 F01 but do not establish a second human occurrence. Deliberate invalid input is not an application defect.
 
-No S1/S2 product fix was introduced from these sessions. Existing S3/S4 follow-ups retain explicit implementation/retest states; no human retest was fabricated. Further session feedback and practical important-fix retests must be reconciled before the final conclusion.
+No S1/S2 product fix was introduced from these sessions. Existing S3/S4 follow-ups retain their actual implementation/retest states; no human retest was fabricated. The team accepted the two-session scope and its limited ability to assess recurring issues; follow-up fixes remain tracked without claiming that the missing feedback or human retests were obtained.
 
 ## Completion status
 
-Preparation, retained actual local results, assistance disclosure, supplemental AI observations and provisional analysis are complete. #803 remains open because its three-real-session requirement, full participant metadata/feedback, near-final tested-build evidence, required export/privacy review and final acceptance/review are not complete. Detailed criterion-by-criterion status and next inputs are in the [completion audit](2026-10-07-completion-audit.md).
+The **revised two-session human-testing target is satisfied**, as unanimously approved by the team on 9 October 2026. The original 7 October completion audit remains an accurate record of the earlier plan, with a dated approval addendum. Real session evidence and outcomes remain unchanged: four public `Success`, nine coached `Partial`; no third human session or simulated user is counted. The team accepts the narrower evidence sample for submission. Outstanding participant metadata/feedback, source-export/privacy review, exact near-final build equivalence and unperformed human retests are transparently reported as limitations, not claimed complete; Gitea remains authoritative for issue status and #810 for final release verification.
 
 ## AI declaration
 
 Codex (GPT-6) organized and analysed retained evidence and wrote this summary. P15 outcomes/decisions were approved by the facilitator. The user confirmed the local exercise was a real participant session. AI simulation is separately attributed and excluded from human counts; missing evidence and review are explicit.
+
+## Team-approved final human-testing scope — 9 October 2026
+
+The team unanimously approved a time-constrained reduction of its **internal #803 plan** from three real participant sessions to **two**, as reported by the student auditor on 9 October 2026. The COMS3011A Milestone 4 rubric does not prescribe a numerical three-session minimum. This is an explicit change to the team's planned scope; it is **not** a statement that three sessions occurred or that earlier evidence gaps disappeared. The authoritative Gitea issue should retain this decision; this documentation change does not open, reopen, close or reassign any issue.
+
+The revised two-session target is **met** by the retained evidence:
+
+- **P15 public/analyst:** one human session, four facilitator-approved `Success` outcomes based on participant reports.
+- **LOCAL-01 approved submitter/reviewer:** one human session spanning two workflows, nine coached `Partial` outcomes; reviewer work is **not** counted as a third participant session.
+- **AI-SIM-01:** supplemental browser simulation, excluded from human participation totals.
+
+The team accepts the **scope and evidence limitations** for final submission: the local session was on an older isolated build, and its participant metadata/post-session opinions are not retained; original exports and five account-bearing screenshots have unresolved privacy-review/retention steps; accepted usability findings and implemented fixes are not presented as human-retested without evidence. No scores, source observations, severity ratings, participant identities, timestamps, or retest results have been invented or changed. The final release/deployment and CI disposition remain separate under #810. **No further human session is required by the team's revised #803 scope.**
+
+**Decision provenance:** unanimous team approval reported by the student on 9 October 2026; no independent meeting transcript or Gitea comment was reviewed by this audit. **AI assistance:** ChatGPT-Web[GPT-6] — documentation reconciliation; human team approves the scope and remains responsible for its accuracy.

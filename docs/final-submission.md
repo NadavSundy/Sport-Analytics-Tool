@@ -7,6 +7,21 @@ sections remain the primary explanation of the system. This page brings together
 release-specific evidence and verification material that is most useful when reviewing the completed
 project.
 
+## Documented reviewer entry points
+
+These are the repository's documented submission-facing URLs, **not independently
+verified final-release deployment evidence**. Issue #810 must confirm the final
+approved revisions, availability and smoke-test results before submission.
+
+- **Web application:** [Stat'sTheGame](https://sport-analytics-tool-web.pages.dev/)
+- **Interactive API Explorer:** [API Explorer](https://sport-analytics-tool-web.pages.dev/api)
+- **Backend API health:** [Health endpoint](https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io/api/v1/health)
+- **Public documentation:** [Documentation site](https://sports-analytics-tool.pages.dev/)
+- **Authoritative project repository:** [Gitea repository](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool)
+
+The asynchronous worker has internal-only ingress and deliberately has no public
+reviewer URL. Its verified deployment revision and health evidence belong to #810.
+
 ## Final review path
 
 | Review area                                 | Primary reference                                                                                |
@@ -22,6 +37,13 @@ project.
 | Formal user-testing outcomes                | [User Testing Overview](testing/user-testing-overview.md)                                        |
 | Requirements and rubric traceability        | [Final Requirements and Rubric Traceability](planning/final-requirements-rubric-traceability.md) |
 | Project records and retained evidence       | [Project Records & Evidence](process/index.md)                                                   |
+
+For the recorded final-test **results**, use the
+[Final Execution Summary](testing/final-system-verification.md#6-final-execution-summary)
+rather than treating the verification procedures alone as passing evidence. For
+final human-testing coverage, outcomes and outstanding acceptance items, see
+[Sprint 4 Final User Testing](testing/user-testing-sprint-4-summary.md).
+Neither page should be interpreted as final release approval while statuses remain pending.
 
 ## Verification principle
 

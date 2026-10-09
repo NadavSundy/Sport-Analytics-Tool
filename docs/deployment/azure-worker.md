@@ -1,7 +1,7 @@
 # Azure asynchronous batch worker
 
 Issue #365 provisions the deployment target selected by accepted ADR-010. The target is a Node.js 22
-Azure Container App, separate from the Express App Service, consuming Azure Service Bus Standard in
+Azure Container App, separate from the Express backend Azure Container App, consuming Azure Service Bus Standard in
 peek-lock mode. Supabase PostgreSQL remains authoritative and staged bytes remain in a private Azure
 Blob container. Issue #278 adds the transactional outbox relay and the `batch.validate` version 1
 handler for package expansion, reference resolution, bounded validation chunks and durable resume.
