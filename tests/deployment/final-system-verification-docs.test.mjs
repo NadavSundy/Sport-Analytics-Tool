@@ -49,6 +49,7 @@ test('issue 876 records every performance, accessibility, and responsive outcome
   }
 
   assert.match(record, /does not treat local automated evidence as deployed verification/i);
+  assert.match(record, /#876 is CLOSED BY OWNER SCOPE DISPOSITION/i);
   assert.match(
     record,
     /no passwords, bearer tokens, OAuth credentials, API keys or service secrets/i,

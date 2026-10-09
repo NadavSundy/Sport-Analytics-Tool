@@ -1345,7 +1345,7 @@ Run the repository response-time measurement against the approved representative
 - Regressions beyond documented targets/baseline are dispositioned rather than ignored.
 
 **Status:** `BLOCKED`
-**Evidence / defect / retest:** #876 execution record: no approved isolated representative database, imported corpus, running backend and safe fixture/participant identifiers were available. The runner was not pointed at an unapproved endpoint.
+**Evidence / defect / retest:** #876 execution record retains two local ten-sample reports. Their configured #289 targets were missed, and the environment was not established as an approved isolated representative database. The owner scope disposition accepts that residual risk for #876; it is not a `PASS` result.
 
 ### PERF-TECH-02 — Production-scale acceptance
 
@@ -1391,6 +1391,8 @@ During representative background ingestion/release work, make representative hea
 
 **Status:** `BLOCKED`
 **Evidence / defect / retest:** #876 execution record: this requires a live representative background release/ingestion run and concurrent API reads. It was not simulated or run against an unapproved environment.
+
+**Final #876 disposition:** Closed by owner scope disposition dated 2026-10-09. The `BLOCKED` performance statuses remain accurate technical results and are not converted to `PASS`. Their residual risks are accepted for this issue only; final production deployment and release acceptance remain with #810.
 
 ### RESP-TECH-01 — Public responsive layout
 
