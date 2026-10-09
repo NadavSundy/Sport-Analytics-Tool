@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 375 860" width="375" height="860" role="img" aria-labelledby="final-navigation-mobile-title final-navigation-mobile-desc" font-family="Helvetica, Arial, sans-serif">
+  <title id="final-navigation-mobile-title">Final wireframe: mobile navigation menu</title>
+  <desc id="final-navigation-mobile-desc">Implemented narrow-screen header: brand and Menu button opening labelled sections for Public, Manage Submission, Pinned and Account destinations.</desc>
+  <rect x="0" y="0" width="375" height="860" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="2"/>
+  <rect x="0" y="0" width="375" height="60" fill="#14202B"/>
+  <text x="16" y="38" font-size="18" font-weight="700" fill="#FFFFFF" text-anchor="start">Stat&#x27;sTheGame</text>
+  <rect x="272" y="14" width="88" height="32" rx="6" fill="#22313E" stroke="#4A5866" stroke-width="1.5"/>
+  <text x="316" y="35" font-size="13" font-weight="600" fill="#FFFFFF" text-anchor="middle">✕  Menu</text>
+  <rect x="8" y="68" width="359" height="636" rx="8" fill="#FFFFFF" stroke="#14202B" stroke-width="1.5"/>
+  <text x="24" y="96" font-size="11" font-weight="700" fill="#5E7F00" text-anchor="start">PUBLIC</text>
+  <line x1="24" y1="106" x2="351" y2="106" stroke="#E2E5E8"/>
+  <text x="24" y="130" font-size="15" font-weight="400" fill="#14202B" text-anchor="start">Fixtures</text>
+  <line x1="24" y1="140" x2="351" y2="140" stroke="#E2E5E8"/>
+  <text x="24" y="164" font-size="15" font-weight="400" fill="#14202B" text-anchor="start">Competitions</text>
+  <line x1="24" y1="174" x2="351" y2="174" stroke="#E2E5E8"/>
+  <text x="24" y="198" font-size="15" font-weight="400" fill="#14202B" text-anchor="start">Seasons</text>
+  <line x1="24" y1="208" x2="351" y2="208" stroke="#E2E5E8"/>
+  <text x="24" y="232" font-size="15" font-weight="400" fill="#14202B" text-anchor="start">Teams</text>
+  <line x1="24" y1="242" x2="351" y2="242" stroke="#E2E5E8"/>
+  <text x="24" y="266" font-size="15" font-weight="400" fill="#14202B" text-anchor="start">Players</text>
+  <line x1="24" y1="276" x2="351" y2="276" stroke="#E2E5E8"/>
+  <text x="24" y="300" font-size="15" font-weight="400" fill="#14202B" text-anchor="start">Downloads</text>
+  <line x1="24" y1="310" x2="351" y2="310" stroke="#E2E5E8"/>
+  <text x="24" y="334" font-size="15" font-weight="400" fill="#14202B" text-anchor="start">API</text>
+  <text x="24" y="364" font-size="11" font-weight="700" fill="#5E7F00" text-anchor="start">MANAGE SUBMISSION</text>
+  <line x1="24" y1="374" x2="351" y2="374" stroke="#E2E5E8"/>
+  <text x="24" y="398" font-size="15" font-weight="400" fill="#14202B" text-anchor="start">Submit data</text>
+  <line x1="24" y1="408" x2="351" y2="408" stroke="#E2E5E8"/>
+  <text x="24" y="432" font-size="15" font-weight="400" fill="#14202B" text-anchor="start">My submissions</text>
+  <line x1="24" y1="442" x2="351" y2="442" stroke="#E2E5E8"/>
+  <text x="24" y="466" font-size="15" font-weight="400" fill="#14202B" text-anchor="start">Access &amp; scope</text>
+  <text x="24" y="496" font-size="11" font-weight="700" fill="#5E7F00" text-anchor="start">PINNED</text>
+  <line x1="24" y1="506" x2="351" y2="506" stroke="#E2E5E8"/>
+  <text x="24" y="530" font-size="15" font-weight="400" fill="#14202B" text-anchor="start">Team: Example XI</text>
+  <text x="24" y="560" font-size="11" font-weight="700" fill="#5E7F00" text-anchor="start">ACCOUNT</text>
+  <line x1="24" y1="570" x2="351" y2="570" stroke="#E2E5E8"/>
+  <text x="24" y="594" font-size="15" font-weight="400" fill="#14202B" text-anchor="start">Manage account</text>
+  <line x1="24" y1="604" x2="351" y2="604" stroke="#E2E5E8"/>
+  <text x="24" y="628" font-size="15" font-weight="400" fill="#14202B" text-anchor="start">Sign out</text>
+  <circle cx="340" cy="84" r="11" fill="#1F5FAD"/>
+  <text x="340" y="88.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+  <circle cx="340" cy="360" r="11" fill="#1F5FAD"/>
+  <text x="340" y="364.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+  <text x="16" y="720" font-size="12" font-weight="700" fill="#1F5FAD" text-anchor="start">Annotations</text>
+  <text x="16" y="742" font-size="11" font-weight="400" fill="#14202B" text-anchor="start">1 Header switches tiers full → compact → menu</text>
+  <text x="16" y="760" font-size="11" font-weight="400" fill="#14202B" text-anchor="start">   by available width (useHeaderLayout).</text>
+  <text x="16" y="778" font-size="11" font-weight="400" fill="#14202B" text-anchor="start">2 Admin: Submit data, Submission history, Review,</text>
+  <text x="16" y="796" font-size="11" font-weight="400" fill="#14202B" text-anchor="start">   then an Administration section.</text>
+</svg>

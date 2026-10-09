@@ -19,6 +19,13 @@ work with dataset outputs.
 | Inspect weather integration           | [Weather API](api/weather.md)                                              | [Security overview](security/overview.md)                                         |
 | Trace accepted data and revisions     | [Provenance and audit API](api/provenance.md)                              | [Database architecture guide](database/guide.md)                                  |
 
+## Final product design
+
+The [final design: information architecture, journeys and wireframes](design/information-architecture-and-wireframes.md)
+shows every implemented screen, the navigation and role-specific areas, and how the design evolved
+from Sprint 1. Brand and component conventions sit behind it in the
+[brand guidelines](design/brand-guidelines.md) and [frontend component baseline](design/frontend-component-baseline.md).
+
 ## Public API path
 
 For a new API consumer, the recommended order is:
@@ -75,3 +82,5 @@ navigation:
 
 The product/API documentation hub and progressive-disclosure structure were planned and drafted with
 the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The final-design entry point was added with the assistance of Claude-Web[Claude Opus 5.5] under
+issue #894.

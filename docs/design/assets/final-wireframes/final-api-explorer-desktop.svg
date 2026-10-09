@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 900" width="1280" height="900" role="img" aria-labelledby="final-api-explorer-desktop-title final-api-explorer-desktop-desc" font-family="Helvetica, Arial, sans-serif">
+  <title id="final-api-explorer-desktop-title">Final wireframe: API Explorer (desktop)</title>
+  <desc id="final-api-explorer-desktop-desc">Implemented /api page: supported major version, supporting resources, how to access the API (public, identified consumer, application and admin), implementation status and the interactive OpenAPI explorer.</desc>
+  <rect x="0" y="0" width="1280" height="900" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="2"/>
+  <rect x="0" y="0" width="1280" height="64" fill="#14202B"/>
+  <text x="32" y="40" font-size="20" font-weight="700" fill="#FFFFFF" text-anchor="start">Stat&#x27;sTheGame</text>
+  <text x="220" y="39" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="start">Explore Data ▾</text>
+  <text x="370.4" y="39" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="start">Downloads</text>
+  <text x="474.2" y="39" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="start">API</text>
+  <rect x="474.2" y="46" width="23" height="3" fill="#B5E61D"/>
+  <text x="1078" y="39" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="start">Sign in</text>
+  <rect x="1176" y="18" width="72" height="28" rx="14" fill="#22313E" stroke="#4A5866" stroke-width="1.5"/>
+  <text x="1212" y="37" font-size="12" font-weight="400" fill="#FFFFFF" text-anchor="middle">Theme</text>
+  <text x="48" y="100" font-size="11" font-weight="700" fill="#5E7F00" text-anchor="start">PUBLIC DEVELOPER INTERFACE</text>
+  <text x="48" y="134" font-size="30" font-weight="700" fill="#14202B" text-anchor="start">API Explorer</text>
+  <text x="48" y="158" font-size="14" font-weight="400" fill="#5B6772" text-anchor="start">Public T20 cricket data API, documented from the OpenAPI contract.</text>
+  <rect x="48" y="184" width="1184" height="52" rx="8" fill="#F1F0EB" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="68" y="216" font-size="15" font-weight="700" fill="#14202B" text-anchor="start">Supported API major version: v1</text>
+  <text x="760" y="216" font-size="13" font-weight="400" fill="#5B6772" text-anchor="start">API documentation   ·   Dataset downloads   ·   Access and authentication</text>
+  <text x="48" y="276" font-size="18" font-weight="700" fill="#14202B" text-anchor="start">How to access the API</text>
+  <rect x="48" y="292" width="376" height="96" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="66" y="322" font-size="15" font-weight="700" fill="#14202B" text-anchor="start">Public API</text>
+  <text x="66" y="346" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">No key. Read published records.</text>
+  <rect x="448" y="292" width="376" height="96" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="466" y="322" font-size="15" font-weight="700" fill="#14202B" text-anchor="start">Identified consumer access</text>
+  <text x="466" y="346" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Request a key in Account → API access.</text>
+  <rect x="848" y="292" width="376" height="96" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="866" y="322" font-size="15" font-weight="700" fill="#14202B" text-anchor="start">Application and admin API</text>
+  <text x="866" y="346" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Signed-in session; role checked by backend.</text>
+  <circle cx="36" cy="304" r="11" fill="#1F5FAD"/>
+  <text x="36" y="308.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+  <rect x="48" y="408" width="1184" height="52" rx="8" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="68" y="440" font-size="13" font-weight="400" fill="#5B6772" text-anchor="start">Implementation status  ·  Contract roadmap: planned operations are labelled as planned</text>
+  <text x="48" y="500" font-size="18" font-weight="700" fill="#14202B" text-anchor="start">Interactive explorer</text>
+  <rect x="48" y="516" width="1184" height="44" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <rect x="60" y="526" width="56" height="24" rx="4" fill="#EEF4D9" stroke="#5E7F00" stroke-width="1.5"/>
+  <text x="88" y="543" font-size="12" font-weight="700" fill="#14202B" text-anchor="middle">GET</text>
+  <text x="132" y="544" font-size="13" font-weight="400" fill="#14202B" text-anchor="start" font-family="Consolas, Menlo, monospace">/api/v1/fixtures</text>
+  <text x="1210" y="544" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">Try it out ▸</text>
+  <rect x="48" y="568" width="1184" height="44" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <rect x="60" y="578" width="56" height="24" rx="4" fill="#EEF4D9" stroke="#5E7F00" stroke-width="1.5"/>
+  <text x="88" y="595" font-size="12" font-weight="700" fill="#14202B" text-anchor="middle">GET</text>
+  <text x="132" y="596" font-size="13" font-weight="400" fill="#14202B" text-anchor="start" font-family="Consolas, Menlo, monospace">/api/v1/fixtures/{fixtureId}/statistics</text>
+  <text x="1210" y="596" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">Try it out ▸</text>
+  <rect x="48" y="620" width="1184" height="44" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <rect x="60" y="630" width="56" height="24" rx="4" fill="#EEF4D9" stroke="#5E7F00" stroke-width="1.5"/>
+  <text x="88" y="647" font-size="12" font-weight="700" fill="#14202B" text-anchor="middle">GET</text>
+  <text x="132" y="648" font-size="13" font-weight="400" fill="#14202B" text-anchor="start" font-family="Consolas, Menlo, monospace">/api/v1/statistics/leaderboards</text>
+  <text x="1210" y="648" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">Try it out ▸</text>
+  <rect x="48" y="672" width="1184" height="44" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <rect x="60" y="682" width="56" height="24" rx="4" fill="#EEF4D9" stroke="#5E7F00" stroke-width="1.5"/>
+  <text x="88" y="699" font-size="12" font-weight="700" fill="#14202B" text-anchor="middle">GET</text>
+  <text x="132" y="700" font-size="13" font-weight="400" fill="#14202B" text-anchor="start" font-family="Consolas, Menlo, monospace">/api/v1/dataset-releases</text>
+  <text x="1210" y="700" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">Try it out ▸</text>
+  <rect x="48" y="724" width="1184" height="44" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <rect x="60" y="734" width="56" height="24" rx="4" fill="#E7F0FB" stroke="#1F5FAD" stroke-width="1.5"/>
+  <text x="88" y="751" font-size="12" font-weight="700" fill="#14202B" text-anchor="middle">POST</text>
+  <text x="132" y="752" font-size="13" font-weight="400" fill="#14202B" text-anchor="start" font-family="Consolas, Menlo, monospace">/api/v1/natural-language-queries</text>
+  <text x="1210" y="752" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">Try it out ▸</text>
+  <circle cx="36" cy="528" r="11" fill="#1F5FAD"/>
+  <text x="36" y="532.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+  <rect x="24" y="800" width="1232" height="74" rx="8" fill="#E7F0FB" stroke="#1F5FAD" stroke-width="1.5"/>
+  <text x="40" y="822" font-size="13" font-weight="700" fill="#1F5FAD" text-anchor="start">Annotations</text>
+  <text x="40" y="844" font-size="12" font-weight="400" fill="#14202B" text-anchor="start">1. Consumer onboarding hierarchy (#783); rate-limit and retry headers visible (#743).</text>
+  <text x="40" y="864" font-size="12" font-weight="400" fill="#14202B" text-anchor="start">2. Swagger UI is lazy-loaded inside the shell route frame with an accessible loading state (#660, #661, #889).</text>
+</svg>

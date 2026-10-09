@@ -46,7 +46,12 @@ supporting references and historical evidence.
 
 - [Brand guidelines](../design/brand-guidelines.md)
 - [Frontend component baseline](../design/frontend-component-baseline.md)
-- [Information architecture and wireframes](../design/information-architecture-and-wireframes.md)
+- [Final frontend UX audit](../design/final-frontend-ux-audit.md)
+
+The current, final design lives in the primary path as
+[Final Design & Wireframes](../design/information-architecture-and-wireframes.md). The superseded
+Sprint 1 wireframes are historical evidence only, kept in the
+[legacy wireframe archive](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/design/legacy-wireframes/README.md){ target="_blank" rel="noopener" }.
 
 ## Deployment and operations reference
 
@@ -100,3 +105,5 @@ those records into this appendix.
 
 The reference and historical-record index was planned and drafted with the assistance of
 ChatGPT-Web[GPT-5.6 Sol].
+The final-design and legacy-wireframe separation was added with the assistance of
+Claude-Web[Claude Opus 5.5] under issue #894.

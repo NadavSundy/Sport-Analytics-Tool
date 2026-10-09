@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 1060" width="1280" height="1060" role="img" aria-labelledby="final-submission-desktop-title final-submission-desktop-desc" font-family="Helvetica, Arial, sans-serif">
+  <title id="final-submission-desktop-title">Final wireframe: Submit data (desktop)</title>
+  <desc id="final-submission-desktop-desc">Implemented /submissions/new page: guided Single fixture, Season and Back catalogue packages, a separate Advanced technical JSON mode, upload guidance, new-fixture proposal and durable receipt.</desc>
+  <rect x="0" y="0" width="1280" height="1060" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="2"/>
+  <rect x="0" y="0" width="1280" height="64" fill="#14202B"/>
+  <text x="32" y="40" font-size="20" font-weight="700" fill="#FFFFFF" text-anchor="start">Stat&#x27;sTheGame</text>
+  <text x="220" y="39" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="start">Explore Data ▾</text>
+  <text x="370.4" y="39" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="start">Pinned ▾</text>
+  <text x="471.59999999999997" y="39" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="start">Downloads</text>
+  <text x="575.4" y="39" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="start">API</text>
+  <text x="1022" y="39" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="start">Manage account</text>
+  <text x="844" y="39" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="start">Manage Submission ▾</text>
+  <rect x="1176" y="18" width="72" height="28" rx="14" fill="#22313E" stroke="#4A5866" stroke-width="1.5"/>
+  <text x="1212" y="37" font-size="12" font-weight="400" fill="#FFFFFF" text-anchor="middle">Theme</text>
+  <text x="48" y="100" font-size="11" font-weight="700" fill="#5E7F00" text-anchor="start">MANAGE SUBMISSION</text>
+  <text x="48" y="134" font-size="30" font-weight="700" fill="#14202B" text-anchor="start">Submit data</text>
+  <text x="48" y="158" font-size="14" font-weight="400" fill="#5B6772" text-anchor="start">Only competitions in your approved scope are offered.</text>
+  <text x="48" y="200" font-size="16" font-weight="700" fill="#14202B" text-anchor="start">What are you submitting?</text>
+  <rect x="48" y="214" width="280" height="72" rx="6" fill="#EEF4D9" stroke="#5E7F00" stroke-width="1.5"/>
+  <circle cx="70" cy="238" r="7" fill="#FFFFFF" stroke="#5E7F00" stroke-width="2"/>
+  <circle cx="70" cy="238" r="3.5" fill="#5E7F00"/>
+  <text x="86" y="243" font-size="14" font-weight="700" fill="#14202B" text-anchor="start">Single fixture</text>
+  <text x="86" y="266" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">One match only.</text>
+  <rect x="348" y="214" width="280" height="72" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <circle cx="370" cy="238" r="7" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="2"/>
+  <text x="386" y="243" font-size="14" font-weight="700" fill="#14202B" text-anchor="start">Season</text>
+  <text x="386" y="266" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Several fixtures from one season.</text>
+  <rect x="648" y="214" width="280" height="72" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <circle cx="670" cy="238" r="7" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="2"/>
+  <text x="686" y="243" font-size="14" font-weight="700" fill="#14202B" text-anchor="start">Back catalogue</text>
+  <text x="686" y="266" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Historical fixtures, multiple seasons.</text>
+  <rect x="960" y="214" width="272" height="72" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <text x="978" y="243" font-size="14" font-weight="700" fill="#14202B" text-anchor="start">Advanced technical JSON</text>
+  <text x="978" y="266" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Application identifiers required</text>
+  <circle cx="36" cy="226" r="11" fill="#1F5FAD"/>
+  <text x="36" y="230.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+  <circle cx="948" cy="226" r="11" fill="#1F5FAD"/>
+  <text x="948" y="230.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+  <rect x="48" y="306" width="760" height="360" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="68" y="338" font-size="16" font-weight="700" fill="#14202B" text-anchor="start">Fixture package</text>
+  <text x="68" y="370" font-size="12" font-weight="700" fill="#14202B" text-anchor="start">Competition</text>
+  <rect x="68" y="378" width="340" height="36" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="80" y="401" font-size="13" font-weight="400" fill="#5B6772" text-anchor="start">Search competition… ▾</text>
+  <text x="428" y="370" font-size="12" font-weight="700" fill="#14202B" text-anchor="start">Fixture</text>
+  <rect x="428" y="378" width="360" height="36" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="440" y="401" font-size="13" font-weight="400" fill="#5B6772" text-anchor="start">12 Aug 2026 · Team A vs Team B · T20 ▾</text>
+  <circle cx="56" cy="390" r="11" fill="#1F5FAD"/>
+  <text x="56" y="394.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+  <rect x="68" y="430" width="186" height="32" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="161.0" y="451" font-size="13" font-weight="600" fill="#14202B" text-anchor="middle">Propose a new fixture</text>
+  <text x="260" y="451" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Separate action; admin decides canonical creation in review (#571, #583).</text>
+  <rect x="68" y="480" width="720" height="92" rx="6" fill="#F1F0EB" stroke="#9AA4AD" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <text x="428" y="520" font-size="14" font-weight="600" fill="#14202B" text-anchor="middle">Choose JSON or CSV file</text>
+  <text x="428" y="544" font-size="12" font-weight="400" fill="#5B6772" text-anchor="middle">Season / Back catalogue also accept NDJSON</text>
+  <rect x="68" y="600" width="133" height="32" rx="6" fill="#5E7F00" stroke="#5E7F00" stroke-width="1.5"/>
+  <text x="134.5" y="621" font-size="13" font-weight="600" fill="#FFFFFF" text-anchor="middle">Upload package</text>
+  <rect x="830" y="306" width="402" height="200" rx="6" fill="#F1F0EB" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="850" y="338" font-size="15" font-weight="700" fill="#14202B" text-anchor="start">Before you upload</text>
+  <text x="856" y="368" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">• Supported formats and templates</text>
+  <text x="856" y="394" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">• Limit: 50 MB and 50,000 events</text>
+  <text x="856" y="420" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">• Required readable fields</text>
+  <text x="856" y="446" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">• Validation explained in plain language</text>
+  <rect x="830" y="526" width="402" height="140" rx="6" fill="#EEF4D9" stroke="#5E7F00" stroke-width="1.5"/>
+  <text x="850" y="558" font-size="15" font-weight="700" fill="#14202B" text-anchor="start">Submission receipt</text>
+  <text x="850" y="584" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start" font-family="Consolas, Menlo, monospace">Submission reference  BATCH-…</text>
+  <text x="850" y="610" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Processing continues if you leave this page.</text>
+  <rect x="850" y="622" width="193" height="32" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="946.5" y="643" font-size="13" font-weight="600" fill="#14202B" text-anchor="middle">View in My submissions</text>
+  <circle cx="818" cy="538" r="11" fill="#1F5FAD"/>
+  <text x="818" y="542.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+  <rect x="48" y="690" width="1184" height="150" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <text x="68" y="722" font-size="16" font-weight="700" fill="#14202B" text-anchor="start">My submissions  (/submissions/batches)</text>
+  <rect x="68" y="736" width="1144" height="84" rx="6" fill="#FFFFFF" stroke="#9AA4AD" stroke-width="1.5"/>
+  <rect x="68" y="736" width="1144" height="28" rx="6" fill="#F1F0EB"/>
+  <text x="78.0" y="755" font-size="12" font-weight="700" fill="#14202B" text-anchor="start">Submission</text>
+  <text x="364.0" y="755" font-size="12" font-weight="700" fill="#14202B" text-anchor="start">Scope</text>
+  <text x="650.0" y="755" font-size="12" font-weight="700" fill="#14202B" text-anchor="start">Status</text>
+  <text x="936.0" y="755" font-size="12" font-weight="700" fill="#14202B" text-anchor="start">Updated</text>
+  <line x1="68" y1="764" x2="1212" y2="764" stroke="#E2E5E8"/>
+  <text x="78" y="783" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Batch 1</text>
+  <text x="630.0" y="783" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="916.0" y="783" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="1202.0" y="783" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <line x1="68" y1="792" x2="1212" y2="792" stroke="#E2E5E8"/>
+  <text x="78" y="811" font-size="12" font-weight="400" fill="#5B6772" text-anchor="start">Batch 2</text>
+  <text x="630.0" y="811" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="916.0" y="811" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <text x="1202.0" y="811" font-size="12" font-weight="400" fill="#5B6772" text-anchor="end">–</text>
+  <circle cx="56" cy="702" r="11" fill="#1F5FAD"/>
+  <text x="56" y="706.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+  <rect x="24" y="860" width="1232" height="134" rx="8" fill="#E7F0FB" stroke="#1F5FAD" stroke-width="1.5"/>
+  <text x="40" y="882" font-size="13" font-weight="700" fill="#1F5FAD" text-anchor="start">Annotations</text>
+  <text x="40" y="904" font-size="12" font-weight="400" fill="#14202B" text-anchor="start">1. Guided packages share one durable receipt, worker processing and report (#266, #361, #435, #437).</text>
+  <text x="40" y="924" font-size="12" font-weight="400" fill="#14202B" text-anchor="start">2. Set apart so it is not mistaken for a guided upload (#500).</text>
+  <text x="40" y="944" font-size="12" font-weight="400" fill="#14202B" text-anchor="start">3. Readable, searchable selectors instead of database IDs (#703).</text>
+  <text x="40" y="964" font-size="12" font-weight="400" fill="#14202B" text-anchor="start">4. Receipt links to /submissions/batches/:batchReference: plain-language report, reference mapping.</text>
+  <text x="40" y="984" font-size="12" font-weight="400" fill="#14202B" text-anchor="start">5. Returned-for-correction batches offer a replacement upload that keeps original → replacement history (#539).</text>
+</svg>
