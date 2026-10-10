@@ -289,3 +289,12 @@ test('issue 877 records every automated quality-gate outcome explicitly', () => 
     /no passwords, bearer tokens, OAuth credentials, API keys or service secrets/i,
   );
 });
+
+test('issue 877 scopes local audit evidence separately from outstanding release checks', () => {
+  assert.match(issue877Evidence, /Tested candidate commit\/tag\s*\|\s*`26fc2857b`/);
+  assert.match(issue877Evidence, /Pre-remediation baseline\s*\|\s*`ab216b987`/);
+  assert.match(issue877Evidence, /CI-TECH-02\s*\|\s*BLOCKED\s*\|/);
+  assert.match(issue877Evidence, /DEP-TECH-03\s*\|\s*BLOCKED\s*\|/);
+  assert.match(bank, /LOCAL PASS; RELEASE CHECKS BLOCKED/);
+  assert.match(bank, /#810 owns final deployment and production smoke testing/i);
+});
