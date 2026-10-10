@@ -118,6 +118,18 @@ async function loadTeamOptions(
   }));
 }
 
+async function resolveTeamOption(
+  competitorId: string,
+  signal: AbortSignal,
+): Promise<NameComboboxOption | null> {
+  try {
+    const response = await publicReadApi.getCompetitor(competitorId, signal);
+    return { label: response.data.name, value: response.data.competitorId };
+  } catch {
+    return null;
+  }
+}
+
 async function loadTeamNameOptions(
   filters: URLSearchParams,
   query: string,
@@ -193,6 +205,7 @@ const fixtureFilters: FilterField[] = [
     loadOptions: loadTeamOptions,
     name: 'competitorId',
     placeholder: 'Type a team name',
+    resolveSelectedOption: resolveTeamOption,
     routeValue: 'reference',
   },
   {
@@ -262,6 +275,7 @@ const participantFilters: FilterField[] = [
     loadOptions: loadTeamOptions,
     name: 'competitorId',
     placeholder: 'Type a team name',
+    resolveSelectedOption: resolveTeamOption,
     routeValue: 'reference',
   },
   {
