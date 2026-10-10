@@ -370,13 +370,16 @@ rule. See [Participant aggregate calculations](../statistics/participant-aggrega
 above. It requires no authentication, computes nothing of its own, and returns the published
 leaderboard or participant-aggregate resource unchanged, together with the endpoint and statistic
 identifiers the answer came from. A name that matches nothing or more than one entity is reported as
-an outcome rather than an error.
+an outcome rather than an error. It is anonymous but not unmetered: since issue #924 it carries the
+same per-source and global minute bounds as the canonical reads, because it resolves names and reads
+published statistics on every request.
 
 `POST /api/v1/natural-language-queries` answers the same questions written in words. It translates
 the question into a definition with a server-side language-model adapter, evaluates that definition
 through the operation above, and returns what was interpreted alongside the answer. It is anonymous
-too, and is protected instead by a durable per-client rate limit and daily quota, a global daily cap
-and a 300-character question bound.
+too, and carries its own protections because it spends money on every admitted request: a durable
+per-client rate limit and daily quota, a global daily cap, a 300-character question bound and a
+five-turn bound on the conversation a follow-up may send.
 
 See [Analytics query](analytics-query.md) for the outcomes, the name-resolution rules, the limits and
 the recorded limitations.
@@ -393,6 +396,8 @@ See [Dataset exports](../data/dataset-exports.md).
 Administrators can issue, rotate and revoke consumer API keys. Keyed consumer requests are protected
 by configurable per-minute rate limits and durable UTC daily quotas. Anonymous canonical reads use
 lower per-source and global durable minute limits, so omitting a key is not unrestricted fallback.
+The same bounds cover `POST /api/v1/query-definitions/evaluate`, which is a read expressed as a POST:
+it computes nothing and stores nothing, but it does query the published statistics.
 
 See [Consumer API keys, rate limits and quotas](consumer-keys.md).
 
@@ -431,6 +436,8 @@ assistance of ChatGPT-Web[GPT-5.6 Sol].
 The issue #635 public leaderboard endpoint and qualification summary were documented with the
 assistance of Codex[GPT-5].
 The Issue #660 public API Explorer workflow was reviewed and documented with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The issue #886 review corrected the analytics-query and consumer-protection wording against the
+implementation with the assistance of Claude-Code[Claude Opus 5 (1M context)].
 The Issue #661 public API Explorer discoverability and production UX guidance was reviewed and documented with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The Issue #726 API Explorer loading-feedback guidance was updated with the assistance of Codex[GPT-5].
 The documentation reading-path links were added with the assistance of ChatGPT-Web[GPT-5.6 Sol].

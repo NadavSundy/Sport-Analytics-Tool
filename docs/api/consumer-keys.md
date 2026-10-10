@@ -164,7 +164,9 @@ printf '%s' "$API_KEY" | clip.exe
 ## Policy and response metadata
 
 Anonymous canonical reads use durable PostgreSQL fixed-minute counters: **30 requests per source
-per minute** by default and a shared **600 requests per minute** platform budget. The source is a
+per minute** by default and a shared **600 requests per minute** platform budget. Since issue #924
+the same counters also cover `POST /api/v1/query-definitions/evaluate`: it is a read expressed as a
+POST, and it was the one public operation with no bound at all. The source is a
 server-side HMAC of the trusted client address, never the raw address. Only explicitly configured
 trusted-proxy hops may influence that address. Anonymous limiting fails closed with
 `503 RATE_LIMIT_UNAVAILABLE`; an exceeded source or platform allowance returns `429
@@ -193,6 +195,7 @@ The preceding consumer-key documentation was generated and edited with the assis
 The issue #609 consumer filter and limit-header details were added with the assistance of Claude-Code[Claude Opus 5].
 The issue #594 consumer-surface classification and protected aliases were added with the assistance of Codex[GPT-5].
 The issue #595 shared rate-limit counter and failure-mode documentation was added with the assistance of Codex[GPT-5].
+The issue #886 review recorded the issue #924 definition-evaluation endpoint against the same anonymous counters, with the assistance of Claude-Code[Claude Opus 5 (1M context)].
 The issue #743 browser-client authentication and CORS response-header clarification was added with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The issue #610 consumer usage documentation was added with the assistance of Codex[GPT-5].
 The issue #775 administrator frontend workflow and current usage boundary were documented with the
