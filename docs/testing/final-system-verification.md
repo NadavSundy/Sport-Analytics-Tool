@@ -954,8 +954,8 @@ From outside the local development environment:
 - Deployed endpoints are externally reachable.
 - OpenAPI document is served successfully and anonymously where documented.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#874 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-874-external-api-contracts-integrations.md){ target="_blank" rel="noopener" }; health `200` with `API-Version: v1` and `/openapi.yaml` `200` as `application/yaml`, both anonymous; first request paid a 32.5 s scale-to-zero cold start.
 
 ### API-TECH-02 — Public API Explorer against deployed contract
 
@@ -971,8 +971,8 @@ Open the final `/api` explorer and execute at least one implemented public opera
 - Operation executes against the intended deployed backend.
 - Planned/non-implemented operations are not misleadingly executable.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#874 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-874-external-api-contracts-integrations.md){ target="_blank" rel="noopener" }; the explorer loaded at `sport-analytics-tool-web.pages.dev/api` and issued `GET /api/v1/competitions?limit=2` to the deployed host, returning `200` with two competitions and a `nextCursor`; performed in a browser by Ben Swartz on 2026-10-10 and recorded with its status, body, headers and duration (no screenshot retained).
 
 ### API-TECH-03 — Contract matches implementation
 
@@ -986,8 +986,8 @@ Run the API contract suite and manually spot-check representative success/valida
 
 - Implemented method/path/status/shape agrees with the published contract.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `FAIL`
+**Evidence / defect / retest:** [#874 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-874-external-api-contracts-integrations.md){ target="_blank" rel="noopener" }; six of seven representative deployed responses validated against the deployed specification; `GET /api/v1/participants` returns an undocumented `totalRecords` on every item (finding F1, not submission-blocking, code left unchanged).
 
 ### API-TECH-04 — HTTP design and non-redundant endpoint behaviour
 
@@ -1002,8 +1002,8 @@ Review/exercise representative create/read/update-style operations and nested re
 - HTTP methods/status codes match operation semantics.
 - No final consumer workflow requires redundant duplicate endpoints for the same operation without documented reason.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#874 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-874-external-api-contracts-integrations.md){ target="_blank" rel="noopener" }; `404 NOT_FOUND`, and `400 VALIDATION_FAILED` with a field-naming `details[]` for a bad `limit` and for a missing required identifier; envelope matches the documented shape.
 
 ### API-TECH-05 — Filtering, pagination and stable identifiers
 
@@ -1019,8 +1019,8 @@ Exercise representative list/filter/pagination operations across at least two pa
 - Pagination does not silently duplicate/skip stable records under the tested stable dataset.
 - Stable identifiers remain consistent between related responses.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#874 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-874-external-api-contracts-integrations.md){ target="_blank" rel="noopener" }; cursor pagination followed to a second page with no overlap, `totalPages` present where documented, and opaque immutable identifiers throughout.
 
 ### API-TECH-06 — Consumer key authentication
 
@@ -1039,8 +1039,8 @@ Using a disposable/test key supplied outside Git:
 - Missing/invalid credential is rejected distinctly.
 - Secret key is absent from retained screenshots/logs.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#874 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-874-external-api-contracts-integrations.md){ target="_blank" rel="noopener" }; key lifecycle and the `401` on a missing, invalid or revoked key covered by `test:api` and `test:api-contract`; `WWW-Authenticate: ApiKey` observed live, and the anonymous allowance observed being metered live — see API-TECH-07.
 
 ### API-TECH-07 — Quota/rate-limit enforcement
 
@@ -1056,8 +1056,8 @@ Exercise the documented test-safe quota/rate-limit boundary.
 - Response status/headers/body expose only documented safe guidance.
 - Retry/reset state is coherent.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#874 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-874-external-api-contracts-integrations.md){ target="_blank" rel="noopener" }; per-minute limit, UTC daily quota, the header split and the fail-closed `503` asserted by the contract suite; the documented 30-per-source-per-minute anonymous allowance was additionally observed live during the manual step (`ratelimit-limit: 30`, `ratelimit-remaining: 29`, `ratelimit-reset: 22`), so the limiter is confirmed active in the deployed environment. Enforcement was not flooded against the live API by design.
 
 ### API-TECH-08 — Aggregate API capability
 
@@ -1071,8 +1071,8 @@ Run a representative aggregate query and compare the result with #873's underlyi
 
 - Aggregate response scope/units/values are correct.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#874 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-874-external-api-contracts-integrations.md){ target="_blank" rel="noopener" }; competition-scoped leaderboard returned ranked entries with tie-breakers and validated against the deployed schema; a missing scope identifier returned `400`.
 
 ### API-TECH-09 — Deprecation/versioning behaviour
 
@@ -1088,8 +1088,8 @@ For any final deprecated operation/version, inspect documentation/OpenAPI/respon
 - Replacement/lifecycle guidance is accurate.
 - If no operation is deprecated in the final release, mark `N/A` with reason rather than fabricating a deprecation.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#874 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-874-external-api-contracts-integrations.md){ target="_blank" rel="noopener" }; `deprecation: ?1` and `link: rel="successor-version"` observed on the deprecated consumer alias, with no `Sunset`.
 
 ### API-TECH-10 — Per-consumer usage visibility
 
@@ -1104,8 +1104,8 @@ Where implemented, use an authorised admin/reviewer path to inspect a test consu
 - Usage counts/time window/operations agree with controlled requests.
 - Secret key material is not displayed.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#874 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-874-external-api-contracts-integrations.md){ target="_blank" rel="noopener" }; usage views covered by `test:api`; the live route refused an anonymous request with `401`, and reading usage needs a key.
 
 ### API-TECH-11 — Natural-language analytics query
 
@@ -1125,8 +1125,8 @@ Where implemented, use an authorised admin/reviewer path to inspect a test consu
 
 **Repository command:** `npm run evaluate:natural-language-queries`
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#874 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-874-external-api-contracts-integrations.md){ target="_blank" rel="noopener" }; no call made; cited the #940 70/70 evaluation run, the #940 live verification including a follow-up question, and the three #868 runs.
 
 ### INT-TECH-01 — External weather integration success
 
@@ -1139,8 +1139,8 @@ Exercise the documented weather/external integration through the final deployed 
 - External result is integrated into the intended application/API behaviour.
 - Application does not expose provider credentials.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#874 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-874-external-api-contracts-integrations.md){ target="_blank" rel="noopener" }; deployed weather read returned live Open-Meteo values for a real coordinate and date.
 
 ### INT-TECH-02 — External integration failure handling
 
@@ -1154,8 +1154,8 @@ Use a deterministic test/mocked/failure-safe path to exercise provider failure/t
 - Core application does not crash.
 - Secret/provider internals are not returned to public consumers.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#874 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-874-external-api-contracts-integrations.md){ target="_blank" rel="noopener" }; out-of-range coordinates returned `400` with a safe message and no provider detail; timeout and upstream-error paths covered by `test:api` with a stubbed provider.
 
 ### SEC-TECH-01 — Public-response secret/privilege leakage check
 
@@ -1168,8 +1168,8 @@ Inspect representative public API/application responses and built frontend asset
 - Server credentials, service credentials and secret consumer keys are absent.
 - Privileged-only data is not exposed through public endpoints.
 
-**Status:** `NOT RUN`
-**Evidence / defect / retest:** —
+**Status:** `PASS`
+**Evidence / defect / retest:** [#874 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-874-external-api-contracts-integrations.md){ target="_blank" rel="noopener" }; eight public responses scanned for private-looking keys and address-shaped strings with zero hits; five protected routes each returned `401` with a non-disclosing message.
 
 ---
 
@@ -1692,7 +1692,7 @@ Do not complete this table while #870 is only establishing the bank. #871–#877
 | Frontend/auth/roles                     | #871  | `PASS`                               | `955f30105ed02858e42ccf9f3605d48d136c0717` | [#871 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-871-frontend-auth-roles.md){ target="_blank" rel="noopener" }                  | None observed                                                                                                                                                                                                                                   |
 | Submission/review/batch/corrections     | #872  | `PASS`                               | `9b1dbf5fbaa933f682f24f08bed1edf32507a01a` | [#872 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-872-ingestion-review-corrections.md){ target="_blank" rel="noopener" }         | None observed                                                                                                                                                                                                                                   |
 | Statistics/data/provenance/releases     | #873  | `PASS`                               | `d963e138d`                                | [#873 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-873-statistics-data-releases.md){ target="_blank" rel="noopener" }             | None observed                                                                                                                                                                                                                                   |
-| API/contracts/consumer/integration      | #874  | `NOT RUN`                            | —                                          | —                                                                                                                                                                                                                                       | —                                                                                                                                                                                                                                               |
+| API/contracts/consumer/integration      | #874  | `PASS WITH ONE FAIL`                 | `74cf6827`                                 | [#874 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-874-external-api-contracts-integrations.md){ target="_blank" rel="noopener" }  | —                                                                                                                                                                                                                                               |
 | Database/worker/reliability             | #875  | `PASS`                               | `ed28ee025`                                | [#875 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-875-database-worker.md){ target="_blank" rel="noopener" }                      | None blocking; retained logs did not expose the second probe receipt.                                                                                                                                                                           |
 | Performance/accessibility/responsive    | #876  | `BLOCKED`                            | `83d02d5803cba7ecefd074cbb0a89dd5eb02c130` | [#876 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-876-performance-accessibility-responsive.md){ target="_blank" rel="noopener" } | Performance/hosted checks require an approved environment.                                                                                                                                                                                      |
 | Automated suites/coverage/CI/deployment | #877  | `LOCAL PASS; RELEASE CHECKS BLOCKED` | `26fc2857b`                                | [#877 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-877-automated-quality-audit.md){ target="_blank" rel="noopener" }              | Local audited candidate; pre-remediation baseline `ab216b987`; later documentation/evidence preservation `4a676b554` is not a new test run. CI-TECH-02 and DEP-TECH-03 remain BLOCKED; #810 owns final deployment and production smoke testing. |
