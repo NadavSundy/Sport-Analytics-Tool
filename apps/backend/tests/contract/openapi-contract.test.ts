@@ -69,7 +69,11 @@ describe('OpenAPI contract checker', () => {
     const violation = violationOf(() => contract.expectResponse(response));
 
     expect(violation.problems).toEqual([
-      'status 500 is not documented; documented statuses: 200, 400',
+      // The canonical reads gained 401, 429 and 503 under issue #886, when the
+      // review found the shared limiter's responses undocumented on all 22 of
+      // them. The list is kept exact rather than loosened to a substring: it is
+      // a useful canary for an operation quietly losing a documented status.
+      'status 500 is not documented; documented statuses: 200, 400, 401, 429, 503',
     ]);
   });
 
