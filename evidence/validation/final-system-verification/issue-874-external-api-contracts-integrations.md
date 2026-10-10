@@ -9,7 +9,7 @@
 | Date/time               | 2026-10-10, Africa/Johannesburg                                                                                       |
 | Candidate commit/tag    | `74cf6827`                                                                                                            |
 | Environment             | Deployed development API and deployed frontend; local suites for the checks that must not be run against the live API |
-| Frontend URL            | `https://sport-analytics-tool-web.pages.dev` (see F2 on the second documented host)                                   |
+| Frontend URL            | `https://sport-analytics-tool-web.pages.dev` (the application; the documentation site is a separate deployment)       |
 | API URL                 | `https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io`                             |
 | Worker/release context  | Not exercised; this lane is the API surface, contracts, consumer controls and external integration                    |
 | Test role(s)            | Anonymous public reader only; no credential was used and no authenticated session was established                     |
@@ -150,21 +150,54 @@ consumer field is missing. It is a contract-accuracy defect.
 **Retest.** Re-run the Ajv validation of `GET /api/v1/participants?limit=5` against the deployed
 specification, and add a contract test for the collection so the gap cannot reopen.
 
-### F2 — Two frontend hosts are documented and they behave differently · finding, not a failure
+### F2 — WITHDRAWN · two "frontend hosts" were one frontend and one documentation site
 
-`sport-analytics-tool-web.pages.dev` serves deep links correctly (`/api` → `200`), because the build
-ships `public/_redirects` with `/*  /index.html  200`. `sports-analytics-tool.pages.dev` returns
-`404` for `/api` and `/fixtures` while still serving the application shell, which is what a Pages
-project without that fallback does.
+**This finding was wrong and is withdrawn.** It is kept rather than deleted so the record shows what
+was claimed and why it did not hold.
 
-Both are documented: the current deployment pages (`docs/deployment/frontend-cloudflare-pages.md`,
-`docs/deployment/overview.md`, `docs/api/final-audit.md`) name the `-web` host, while
-`docs/final-submission.md`, `README.md` and `docs/deployment/cloudflare_pages.md` name the other.
+**What was claimed.** That two frontend hosts are documented and behave differently:
+`sport-analytics-tool-web.pages.dev/api` returned `200` while `sports-analytics-tool.pages.dev/api`
+returned `404`, which was read as a Cloudflare Pages project missing the `_redirects` SPA fallback,
+with `README.md` and `docs/final-submission.md` pointing readers at the broken one.
 
-**Nothing was changed.** Whether the fix is to redeploy the older project or to re-document the
-canonical URL is a decision for the team, and editing the submission URL is not a documentation
-tidy-up — a marker following `docs/final-submission.md` today reaches a host whose deep links
-`404`. Raised for disposition before submission.
+**Why it does not hold.** The two hosts are two different deployments of two different things, and
+the repository says so unambiguously:
+
+- `.gitea/workflows/deploy-frontend.yml` and `ci.yml` set
+  `FRONTEND_URL: https://sport-analytics-tool-web.pages.dev` — the application.
+- `.gitea/workflows/deploy-docs.yml` and `ci.yml` set
+  `DOCS_URL: https://sports-analytics-tool.pages.dev` — the MkDocs documentation site.
+
+A `404` for `/api` on the documentation site is correct. MkDocs builds `docs/api/*.md` into
+`/api/overview/`, `/api/openapi/` and so on, and there is no `docs/api/index.md`, so the bare
+directory has no page. Confirmed by request: the documentation site returns `200` for `/` and for
+`/api/overview/`, and `404` for `/api` and `/api/`. `/fixtures` `404`s there because the
+documentation site has no such page at all — only the application does.
+
+**Every label checked is correct.** No document calls the documentation site the application:
+
+| Location                                                      | Label                                                                  |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `README.md` line 5                                            | "**Public documentation:** sports-analytics-tool.pages.dev"            |
+| `README.md` line 6                                            | "**Web application:** sport-analytics-tool-web.pages.dev"              |
+| `README.md` line 204 (Frontend)                               | `sport-analytics-tool-web.pages.dev`                                   |
+| `README.md` line 242                                          | "The public documentation site is sports-analytics-tool.pages.dev"     |
+| `docs/final-submission.md` line 16                            | "**Web application:** sport-analytics-tool-web.pages.dev"              |
+| `docs/final-submission.md` line 17                            | "**Interactive API Explorer:** sport-analytics-tool-web.pages.dev/api" |
+| `docs/final-submission.md` line 19                            | "**Public documentation:** sports-analytics-tool.pages.dev"            |
+| `docs/deployment/cloudflare_pages.md` line 61                 | "Public documentation URL:"                                            |
+| `docs/planning/sprint-1-requirements-traceability.md` line 47 | "Public documentation website ... MkDocs documentation"                |
+
+**No documentation fix is required and none was made.** A marker following
+`docs/final-submission.md` reaches the application at the `-web` host and the documentation site at
+the other, each correctly labelled.
+
+**How the mistake was made,** since it bears on how the rest of this record should be read: the
+check grepped for occurrences of each host and compared the `/api` status of both, without reading
+the labels beside the occurrences or establishing what each host serves. Two sites were treated as
+two deployments of one site. Nothing else in this record depends on that confusion — the API checks
+were all against the backend host, and the explorer route check was against the application host,
+which is the correct one.
 
 ### F3 — First deployed request took 32.5 seconds · observation
 
@@ -207,6 +240,8 @@ Recorded rather than pursued, within this lane's time box:
 This execution record was prepared with the assistance of Claude-Code[Claude Opus 5 (1M context)]
 under issue #874. The deployed requests were free `GET`s issued during the execution and their
 responses are quoted as received; the schema validation was run with Ajv against the specification
-the deployed API itself serves, which is how F1 was found. No `.env` file was read, no
-`LLM_API_KEY` was used and no natural-language or other paid provider call was made. No application
-source code was changed.
+the deployed API itself serves, which is how F1 was found. Finding F2 as first recorded was wrong:
+the tool compared a documentation site against the application without establishing what each host
+serves, and the finding is withdrawn above with the evidence that disproves it rather than deleted.
+No `.env` file was read, no `LLM_API_KEY` was used and no natural-language or other paid provider
+call was made. No application source code was changed.

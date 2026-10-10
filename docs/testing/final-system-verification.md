@@ -972,7 +972,7 @@ Open the final `/api` explorer and execute at least one implemented public opera
 - Planned/non-implemented operations are not misleadingly executable.
 
 **Status:** `PARTIAL`
-**Evidence / defect / retest:** [#874 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-874-external-api-contracts-integrations.md){ target="_blank" rel="noopener" }; the explorer route is served (`200`); rendering and issuing a request need a browser, and one manual step with a result placeholder is retained in the record.
+**Evidence / defect / retest:** [#874 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-874-external-api-contracts-integrations.md){ target="_blank" rel="noopener" }; the explorer route is served on the application host `sport-analytics-tool-web.pages.dev` (`200`); rendering and issuing a request need a browser, and one manual step with a result placeholder is retained in the record.
 
 ### API-TECH-03 — Contract matches implementation
 
