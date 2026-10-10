@@ -3,7 +3,7 @@
 | Document information     | Details                                                                                                                                                                                                         |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Related issues           | #809 (original matrix); #884 (final feature/requirement/implementation verification)                                                                                                                            |
-| Evidence cut-off         | 8 October 2026                                                                                                                                                                                                  |
+| Evidence cut-off         | 10 October 2026 — #810 release-readiness update; historical #809 baseline retained                                                                                                                              |
 | Scope                    | Course-wide requirements; Sport Analytics Basic, Intermediate and applicable Advanced requirements; Milestone 4 rubric                                                                                          |
 | Evidence policy          | The matrix links retained implementation, test/validation and documentation evidence. It does not treat an issue, branch or closed Pull Request as proof on its own.                                            |
 | Final-submission refresh | **Required before #810 release/tagging.** Re-check the deployed revision, current CI, final user-testing disposition and every `Partial`/`Not implemented` row; update this page with the release SHA and date. |
@@ -191,6 +191,16 @@ This audit found no new untracked material gap. The following are deliberately *
 - [ ] Reconcile final structured user-testing findings and dispositions without converting an unresolved finding into a pass.
 - [ ] Re-check every **Partial**, **Not implemented** and **Not applicable** row.
 - [ ] Obtain peer review, then record the final release/tag state.
+
+## #810 final release-readiness reconciliation — 10 October 2026
+
+The original #809 requirements map and its seven aggregate categories are retained; #808 added the separately linked **20 weighted Milestone 4 rubric criteria** above. The 10 October release-owner update is documented in the [#810 release-readiness ledger](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-810-release-readiness-2026-10-10.md){ target="_blank" rel="noopener" }. It records observed Gitea `main`/GitHub parity at `6338bd46`, successful change-aware Gitea quality/coverage/docs deployment and real public/API/DB reads, plus live Healthy Azure backend/worker images built at `98bb853f`.
+
+**Acceptance boundary:** #874 API-TECH-03 remains `FAIL` (participant-item `totalRecords` not described by the strict public schema); #876's four performance/hosted checks remain `BLOCKED`, including response-time targets and unapproved representative workload; #797's strict all-page Lighthouse >=90 has not been universally demonstrated; #877's specialist candidate lacks its own exact-SHA hosted/deployed acceptance despite later #810 baseline CI. These are documented, reviewable limitations and **not** evidence that the rubric row has passed every strict acceptance check. The shipped product still does not implement analyst-defined Advanced statistics, general live feeds or bitemporal/as-of querying. The two approved real human sessions, their outstanding retests and local participant-data limits remain stated in the human-testing record.
+
+The final submitted source is identified by the future annotated `final-submission` tag created **from approved `main` after the closing #810 documentation PR merges**. At this 10 October evidence cut the tag does not yet exist; it is therefore not represented as a completed release result. The backend and worker currently use healthy tested images from `98bb853f`; a documentation-only merge does not require those images to have the documentation commit SHA. The **current exact Cloudflare production source revision** was not independently available to the release owner, although Wrangler deployments, their smoke checks and public site availability were observed. The reviewer should use the linked #810 evidence for this qualification rather than infer full release acceptance from `Implemented` in the high-level matrix.
+
+**AI declaration:** This #810 current-evidence reconciliation was researched, drafted and reviewed with assistance from ChatGPT-Web[GPT-6]. It preserves existing requirement classifications and labels no unobserved technical test as a pass.
 
 ## AI Declaration
 
