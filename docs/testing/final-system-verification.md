@@ -971,8 +971,8 @@ Open the final `/api` explorer and execute at least one implemented public opera
 - Operation executes against the intended deployed backend.
 - Planned/non-implemented operations are not misleadingly executable.
 
-**Status:** `PARTIAL`
-**Evidence / defect / retest:** [#874 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-874-external-api-contracts-integrations.md){ target="_blank" rel="noopener" }; the explorer route is served on the application host `sport-analytics-tool-web.pages.dev` (`200`); rendering and issuing a request need a browser, and one manual step with a result placeholder is retained in the record.
+**Status:** `PASS`
+**Evidence / defect / retest:** [#874 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-874-external-api-contracts-integrations.md){ target="_blank" rel="noopener" }; the explorer loaded at `sport-analytics-tool-web.pages.dev/api` and issued `GET /api/v1/competitions?limit=2` to the deployed host, returning `200` with two competitions and a `nextCursor`; performed in a browser by Ben Swartz on 2026-10-10 and recorded with its status, body, headers and duration (no screenshot retained).
 
 ### API-TECH-03 — Contract matches implementation
 
@@ -1040,7 +1040,7 @@ Using a disposable/test key supplied outside Git:
 - Secret key is absent from retained screenshots/logs.
 
 **Status:** `PASS`
-**Evidence / defect / retest:** [#874 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-874-external-api-contracts-integrations.md){ target="_blank" rel="noopener" }; key lifecycle and the `401` on a missing, invalid or revoked key covered by `test:api` and `test:api-contract`; `WWW-Authenticate: ApiKey` observed live.
+**Evidence / defect / retest:** [#874 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-874-external-api-contracts-integrations.md){ target="_blank" rel="noopener" }; key lifecycle and the `401` on a missing, invalid or revoked key covered by `test:api` and `test:api-contract`; `WWW-Authenticate: ApiKey` observed live, and the anonymous allowance observed being metered live — see API-TECH-07.
 
 ### API-TECH-07 — Quota/rate-limit enforcement
 
@@ -1057,7 +1057,7 @@ Exercise the documented test-safe quota/rate-limit boundary.
 - Retry/reset state is coherent.
 
 **Status:** `PASS`
-**Evidence / defect / retest:** [#874 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-874-external-api-contracts-integrations.md){ target="_blank" rel="noopener" }; per-minute limit, UTC daily quota, the header split and the fail-closed `503` asserted by the contract suite; not flooded against the live API by design.
+**Evidence / defect / retest:** [#874 execution record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-874-external-api-contracts-integrations.md){ target="_blank" rel="noopener" }; per-minute limit, UTC daily quota, the header split and the fail-closed `503` asserted by the contract suite; the documented 30-per-source-per-minute anonymous allowance was additionally observed live during the manual step (`ratelimit-limit: 30`, `ratelimit-remaining: 29`, `ratelimit-reset: 22`), so the limiter is confirmed active in the deployed environment. Enforcement was not flooded against the live API by design.
 
 ### API-TECH-08 — Aggregate API capability
 

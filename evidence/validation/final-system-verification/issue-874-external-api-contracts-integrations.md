@@ -24,22 +24,22 @@ issue requires.
 
 ## Results
 
-| Verification ID | Result (`PASS` / `FAIL` / `BLOCKED` / `N/A`) | Evidence / observation                                                                                                                                                                                                                                                                                    | Linked bug / blocker | Retest                   |
-| --------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------------------------ |
-| API-TECH-01     | PASS                                         | `GET /api/v1/health` → `200`, `application/json`, `{"status":"ok","service":"sport-analytics-api"}`, header `API-Version: v1`. `GET /openapi.yaml` → `200`, `application/yaml; charset=utf-8`, 298,970 bytes, served anonymously. First request took 32.5 s (scale-to-zero cold start); see F3.           | —                    | Not needed               |
-| API-TECH-02     | PARTIAL — see manual step                    | The deployed frontend serves the explorer route: `GET /api` on `sport-analytics-tool-web.pages.dev` → `200`. Rendering the page and issuing a request from it needs a browser; one manual step is listed below with a placeholder for the result.                                                         | —                    | Manual step pending      |
-| API-TECH-03     | **FAIL**                                     | Seven representative deployed responses validated against the schemas in the **deployed** `openapi.yaml`: six passed, one failed. `GET /api/v1/participants` returns `totalRecords` on every item; `Participant` is `additionalProperties: false` and does not document it. See F1.                       | F1                   | Retest after F1 is fixed |
-| API-TECH-04     | PASS                                         | `404` → `{"error":{"code":"NOT_FOUND","message":"Competition not found."}}`. `?limit=0` → `400 VALIDATION_FAILED` with a `details[]` entry naming `limit`. Missing required `competitionId` → `400 VALIDATION_FAILED` naming the field. Envelope matches `ApiErrorResponse` and `docs/api/contracts.md`.  | —                    | Not needed               |
-| API-TECH-05     | PASS                                         | `GET /api/v1/competitions?limit=2` returned 2 records and a `nextCursor`; following that cursor returned the next 2 in name order with no overlap and a fresh cursor. `participants` carried `totalPages: 6760`. Identifiers were opaque immutable strings throughout.                                    | —                    | Not needed               |
-| API-TECH-06     | PASS (by suite)                              | Consumer-key issue, rotate and revoke, and the `401` on a missing/invalid/revoked key, are covered by `test:api` (298) and `test:api-contract` (93), including `ApiKeyUnauthorized` with `WWW-Authenticate: ApiKey`. Observed live on the deprecated alias: `401` with `www-authenticate: ApiKey`.        | —                    | Not needed               |
-| API-TECH-07     | PASS (by suite)                              | Per-minute limit, UTC daily quota, the `RateLimit-*`/`X-Quota-*`/`Retry-After` split and fail-closed `503 RATE_LIMIT_UNAVAILABLE` are asserted in `corrected-contract.contract.test.ts`. Shared/distributed behaviour is the durable PostgreSQL counter, asserted by the same suite plus `test:unit`.     | —                    | Not needed               |
-| API-TECH-08     | PASS                                         | `GET /api/v1/statistics/leaderboards?scope=competition&competitionId=4&metric=most_runs&limit=3` → `200`, ranked entries with `tieBreakers` and `qualification`, validated against the deployed schema. `scope` without its identifier → `400`.                                                           | —                    | Not needed               |
-| API-TECH-09     | PASS                                         | `GET /api/v1/consumer/competitions` returned `deprecation: ?1` and `link: </api/v1/competitions>; rel="successor-version"`, with no `Sunset`. Matches `api-deprecation.ts` and `docs/api/versioning.md`. See F4 on the wording.                                                                           | —                    | Not needed               |
-| API-TECH-10     | PASS (by suite)                              | `GET /api/v1/consumer/usage` and the administrator usage view are covered by `test:api`; the live route correctly refused an anonymous request with `401`. Not exercised live because reading usage needs a key.                                                                                          | —                    | Not needed               |
-| API-TECH-11     | PASS (by existing evidence)                  | No call made, per the issue. Cited: the #868 runs (55/63 → 62/64 → 62/64), the #940 run of **70/70** (`issue-940-natural-language-evaluation-2026-10-09.md`), and the #940 live verification (`issue-940-live-verification-2026-10-10.md`) covering casual phrasing, a named competition and a follow-up. | —                    | Not needed               |
-| INT-TECH-01     | PASS                                         | `GET /api/v1/weather?latitude=-26.2&longitude=28.04&date=2026-10-01` → `200` with live Open-Meteo values (`temperatureMax: 15.7`, `temperatureMin: 5.2`, `precipitationSum: 0`, `windSpeedMax: 13`).                                                                                                      | —                    | Not needed               |
-| INT-TECH-02     | PASS (mixed)                                 | Live: out-of-range latitude → `400 VALIDATION_FAILED` with a safe message and no provider detail. Timeout and upstream-error handling (`WeatherTimeoutError`, `WeatherUpstreamError`, geocoding equivalents) are covered by `test:api`, which exercises each failure path with a stubbed provider.        | —                    | Not needed               |
-| SEC-TECH-01     | PASS                                         | Eight public collection and aggregate responses scanned for private-looking keys and address-shaped strings: 0 hits. Five protected routes (`auth/me`, `admin/users`, `batches`, `account/api-access`, `provenance/submissions`) each returned `401 UNAUTHORIZED` with a safe non-disclosing message.     | —                    | Not needed               |
+| Verification ID | Result (`PASS` / `FAIL` / `BLOCKED` / `N/A`) | Evidence / observation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Linked bug / blocker | Retest                   |
+| --------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------------------------ |
+| API-TECH-01     | PASS                                         | `GET /api/v1/health` → `200`, `application/json`, `{"status":"ok","service":"sport-analytics-api"}`, header `API-Version: v1`. `GET /openapi.yaml` → `200`, `application/yaml; charset=utf-8`, 298,970 bytes, served anonymously. First request took 32.5 s (scale-to-zero cold start); see F3.                                                                                                                                                                                                                  | —                    | Not needed               |
+| API-TECH-02     | PASS                                         | The explorer loads at `sport-analytics-tool-web.pages.dev/api` and issued `GET /api/v1/competitions?limit=2` to the deployed Container Apps host: `200`, two competitions and a `nextCursor`. Performed in a browser by Ben Swartz on 2026-10-10; details under "Manual step" below.                                                                                                                                                                                                                             | —                    | Not needed               |
+| API-TECH-03     | **FAIL**                                     | Seven representative deployed responses validated against the schemas in the **deployed** `openapi.yaml`: six passed, one failed. `GET /api/v1/participants` returns `totalRecords` on every item; `Participant` is `additionalProperties: false` and does not document it. See F1.                                                                                                                                                                                                                              | F1                   | Retest after F1 is fixed |
+| API-TECH-04     | PASS                                         | `404` → `{"error":{"code":"NOT_FOUND","message":"Competition not found."}}`. `?limit=0` → `400 VALIDATION_FAILED` with a `details[]` entry naming `limit`. Missing required `competitionId` → `400 VALIDATION_FAILED` naming the field. Envelope matches `ApiErrorResponse` and `docs/api/contracts.md`.                                                                                                                                                                                                         | —                    | Not needed               |
+| API-TECH-05     | PASS                                         | `GET /api/v1/competitions?limit=2` returned 2 records and a `nextCursor`; following that cursor returned the next 2 in name order with no overlap and a fresh cursor. `participants` carried `totalPages: 6760`. Identifiers were opaque immutable strings throughout.                                                                                                                                                                                                                                           | —                    | Not needed               |
+| API-TECH-06     | PASS (suite + live headers)                  | Consumer-key issue, rotate and revoke, and the `401` on a missing/invalid/revoked key, are covered by `test:api` (298) and `test:api-contract` (93), including `ApiKeyUnauthorized` with `WWW-Authenticate: ApiKey`. Observed live on the deprecated alias: `401` with `www-authenticate: ApiKey`. The manual step additionally observed the anonymous allowance being metered live — see API-TECH-07.                                                                                                           | —                    | Not needed               |
+| API-TECH-07     | PASS (suite + live headers)                  | Per-minute limit, UTC daily quota, the `RateLimit-*`/`X-Quota-*`/`Retry-After` split and fail-closed `503 RATE_LIMIT_UNAVAILABLE` are asserted in `corrected-contract.contract.test.ts`. **Confirmed live** by the manual step: `ratelimit-limit: 30`, `ratelimit-remaining: 29`, `ratelimit-reset: 22` on an anonymous canonical read — the documented 30-per-source-per-minute default, deployed and decrementing. Shared/distributed behaviour remains the durable PostgreSQL counter asserted by the suites. | —                    | Not needed               |
+| API-TECH-08     | PASS                                         | `GET /api/v1/statistics/leaderboards?scope=competition&competitionId=4&metric=most_runs&limit=3` → `200`, ranked entries with `tieBreakers` and `qualification`, validated against the deployed schema. `scope` without its identifier → `400`.                                                                                                                                                                                                                                                                  | —                    | Not needed               |
+| API-TECH-09     | PASS                                         | `GET /api/v1/consumer/competitions` returned `deprecation: ?1` and `link: </api/v1/competitions>; rel="successor-version"`, with no `Sunset`. Matches `api-deprecation.ts` and `docs/api/versioning.md`. See F4 on the wording.                                                                                                                                                                                                                                                                                  | —                    | Not needed               |
+| API-TECH-10     | PASS (by suite)                              | `GET /api/v1/consumer/usage` and the administrator usage view are covered by `test:api`; the live route correctly refused an anonymous request with `401`. Not exercised live because reading usage needs a key.                                                                                                                                                                                                                                                                                                 | —                    | Not needed               |
+| API-TECH-11     | PASS (by existing evidence)                  | No call made, per the issue. Cited: the #868 runs (55/63 → 62/64 → 62/64), the #940 run of **70/70** (`issue-940-natural-language-evaluation-2026-10-09.md`), and the #940 live verification (`issue-940-live-verification-2026-10-10.md`) covering casual phrasing, a named competition and a follow-up.                                                                                                                                                                                                        | —                    | Not needed               |
+| INT-TECH-01     | PASS                                         | `GET /api/v1/weather?latitude=-26.2&longitude=28.04&date=2026-10-01` → `200` with live Open-Meteo values (`temperatureMax: 15.7`, `temperatureMin: 5.2`, `precipitationSum: 0`, `windSpeedMax: 13`).                                                                                                                                                                                                                                                                                                             | —                    | Not needed               |
+| INT-TECH-02     | PASS (mixed)                                 | Live: out-of-range latitude → `400 VALIDATION_FAILED` with a safe message and no provider detail. Timeout and upstream-error handling (`WeatherTimeoutError`, `WeatherUpstreamError`, geocoding equivalents) are covered by `test:api`, which exercises each failure path with a stubbed provider.                                                                                                                                                                                                               | —                    | Not needed               |
+| SEC-TECH-01     | PASS                                         | Eight public collection and aggregate responses scanned for private-looking keys and address-shaped strings: 0 hits. Five protected routes (`auth/me`, `admin/users`, `batches`, `account/api-access`, `provenance/submissions`) each returned `401 UNAUTHORIZED` with a safe non-disclosing message.                                                                                                                                                                                                            | —                    | Not needed               |
 
 ## Commands / deterministic steps
 
@@ -100,7 +100,9 @@ npm run test:deployment     # 105 tests
   `evidence/validation/issue-940-live-verification-2026-10-10.md` (three live checks including a
   follow-up), and the three #868 runs summarised in
   `docs/validation/issue-817-natural-language-query-evidence.md`.
-- Screenshot: **pending** — the manual API Explorer step below.
+- API Explorer response text: the manual step below. No screenshot was retained; the response
+  status, body identifiers, rate-limit headers and duration were recorded instead, and they
+  corroborate the `curl` capture of the same operation earlier in this execution.
 
 ## Manual step for the tester
 
@@ -111,14 +113,34 @@ One step, to complete API-TECH-02. Perform it and paste the result into the plac
 3. Confirm a `200` response with two competitions and a `nextCursor`.
 4. Screenshot the response panel showing the `200` and the body, and save it beside this record.
 
-| Field                  | Value                              |
-| ---------------------- | ---------------------------------- |
-| Performed by           | _pending_                          |
-| Date/time              | _pending_                          |
-| Operation exercised    | `GET /api/v1/competitions?limit=2` |
-| Observed status        | _pending_                          |
-| Result (`PASS`/`FAIL`) | _pending_                          |
-| Screenshot             | _pending_                          |
+| Field                  | Value                                                                                                                   |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Performed by           | Ben Swartz, in a browser                                                                                                |
+| Date/time              | 2026-10-10                                                                                                              |
+| Explorer URL           | `https://sport-analytics-tool-web.pages.dev/api`                                                                        |
+| Operation exercised    | `GET /api/v1/competitions?limit=2`                                                                                      |
+| Request target         | The deployed Container Apps host, confirmed by the tester                                                               |
+| Observed status        | `200`                                                                                                                   |
+| Observed body          | Two competitions — `5` "ACC Eastern Region T20" and `20` "ACC Men's Premier Cup" — with `pagination.nextCursor` present |
+| Observed headers       | `ratelimit-limit: 30`, `ratelimit-remaining: 29`, `ratelimit-reset: 22`                                                 |
+| Request duration       | 3,248 ms                                                                                                                |
+| Result (`PASS`/`FAIL`) | **PASS**                                                                                                                |
+| Screenshot             | None retained; the response status, body, headers and duration above are the recorded evidence                          |
+
+Two things this step established beyond the explorer rendering and working.
+
+**It corroborates the earlier capture.** The same two competitions, with the same identifiers and
+names, were returned to `curl` earlier in this execution. Two independent clients reaching the same
+deployed data is stronger than either alone, and it confirms the explorer is calling the deployed
+backend rather than a mock or a cached fixture.
+
+**It is the first live observation of the anonymous allowance.** `ratelimit-limit: 30` is the
+documented `ANONYMOUS_RATE_LIMIT_PER_MINUTE` default, and `ratelimit-remaining: 29` shows it
+decrementing for the request just made, with `ratelimit-reset: 22` seconds left in the minute
+window. API-TECH-06 and API-TECH-07 had rested on the suites, because confirming a limit live
+otherwise means spending the allowance; this observed one request's worth of it as a side effect of
+a check that had to be made anyway. It also confirms the limiter is active on the canonical reads in
+the deployed environment, not only in process.
 
 ## Failures and disposition
 
@@ -202,7 +224,8 @@ which is the correct one.
 ### F3 — First deployed request took 32.5 seconds · observation
 
 The container scales to zero, so the first request after idle pays a cold start. Documented
-behaviour rather than a defect, and subsequent requests in this execution were fast. Recorded
+behaviour rather than a defect, and subsequent requests in this execution were faster — the manual
+step's request, made from a browser against a warm container, took 3,248 ms. Recorded
 because a marker's first click will see it, and because #876 owns deployed response-time
 acceptance.
 
@@ -218,11 +241,11 @@ free of unrelated documentation changes.
 
 Recorded rather than pursued, within this lane's time box:
 
-- **API Explorer interaction (API-TECH-02).** The route is served; rendering and issuing a request
-  need a browser. One manual step is specified above with a placeholder.
-- **Rate limits, quotas and usage reporting live.** Deliberately not exercised against the deployed
-  API: confirming them live means spending the allowance or issuing a key. Covered by
-  `test:api-contract` and `test:api` instead, as the issue directs.
+- **Limit and quota _enforcement_ live.** The anonymous allowance was observed being metered by
+  the manual step (`ratelimit-limit: 30`, remaining `29`), but reaching `429`, exhausting a daily
+  quota and reading consumer usage were not exercised against the deployed API: that means spending
+  the allowance or issuing a key. Enforcement is covered by `test:api-contract` and `test:api`
+  instead, as the issue directs.
 - **Consumer key issue/revoke live.** Needs an administrator credential; covered by the suites.
 - **Shared/distributed limiter across replicas.** The durable PostgreSQL counter is asserted by the
   suites; observing two replicas sharing one counter needs a deployed scale-out and is not reachable
