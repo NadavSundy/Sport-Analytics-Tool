@@ -1617,6 +1617,9 @@ paths:
                 $ref: '#/components/schemas/CompetitionCollectionResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/CanonicalReadLimitExceeded' }
+        '503': { $ref: '#/components/responses/CanonicalReadLimitUnavailable' }
 
   /api/v1/competitions/{competitionId}:
     get:
@@ -1637,6 +1640,9 @@ paths:
                 $ref: '#/components/schemas/CompetitionResponse'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/CanonicalReadLimitExceeded' }
+        '503': { $ref: '#/components/responses/CanonicalReadLimitUnavailable' }
 
   /api/v1/seasons:
     get:
@@ -1669,6 +1675,9 @@ paths:
                 $ref: '#/components/schemas/SeasonCollectionResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/CanonicalReadLimitExceeded' }
+        '503': { $ref: '#/components/responses/CanonicalReadLimitUnavailable' }
 
   /api/v1/seasons/{seasonId}:
     get:
@@ -1689,6 +1698,9 @@ paths:
                 $ref: '#/components/schemas/SeasonResponse'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/CanonicalReadLimitExceeded' }
+        '503': { $ref: '#/components/responses/CanonicalReadLimitUnavailable' }
 
   /api/v1/fixtures:
     get:
@@ -1746,6 +1758,9 @@ paths:
                 $ref: '#/components/schemas/FixtureCollectionResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/CanonicalReadLimitExceeded' }
+        '503': { $ref: '#/components/responses/CanonicalReadLimitUnavailable' }
 
   /api/v1/fixtures/{fixtureId}:
     get:
@@ -1766,6 +1781,9 @@ paths:
                 $ref: '#/components/schemas/FixtureResponse'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/CanonicalReadLimitExceeded' }
+        '503': { $ref: '#/components/responses/CanonicalReadLimitUnavailable' }
 
   /api/v1/fixtures/{fixtureId}/events:
     get:
@@ -1824,6 +1842,9 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/CanonicalReadLimitExceeded' }
+        '503': { $ref: '#/components/responses/CanonicalReadLimitUnavailable' }
 
   /api/v1/fixtures/{fixtureId}/events/{eventId}:
     get:
@@ -1845,6 +1866,9 @@ paths:
                 $ref: '#/components/schemas/PublicEventResponse'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/CanonicalReadLimitExceeded' }
+        '503': { $ref: '#/components/responses/CanonicalReadLimitUnavailable' }
 
   /api/v1/fixtures/{fixtureId}/events/export.json:
     get:
@@ -1909,6 +1933,9 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ExportTooLarge'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/CanonicalReadLimitExceeded' }
+        '503': { $ref: '#/components/responses/CanonicalReadLimitUnavailable' }
 
   /api/v1/fixtures/{fixtureId}/events/export.csv:
     get:
@@ -1972,6 +1999,9 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ExportTooLarge'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/CanonicalReadLimitExceeded' }
+        '503': { $ref: '#/components/responses/CanonicalReadLimitUnavailable' }
 
   /api/v1/fixtures/{fixtureId}/statistics/{statisticId}/events/export.json:
     get:
@@ -2010,6 +2040,9 @@ paths:
           $ref: '#/components/responses/ExportTraceChanged'
         '422':
           $ref: '#/components/responses/ExportTooLarge'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/CanonicalReadLimitExceeded' }
+        '503': { $ref: '#/components/responses/CanonicalReadLimitUnavailable' }
 
   /api/v1/fixtures/{fixtureId}/statistics/{statisticId}/events/export.csv:
     get:
@@ -2048,6 +2081,9 @@ paths:
           $ref: '#/components/responses/ExportTraceChanged'
         '422':
           $ref: '#/components/responses/ExportTooLarge'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/CanonicalReadLimitExceeded' }
+        '503': { $ref: '#/components/responses/CanonicalReadLimitUnavailable' }
 
   /api/v1/fixtures/{fixtureId}/statistics:
     get:
@@ -2075,6 +2111,9 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/CanonicalReadLimitExceeded' }
+        '503': { $ref: '#/components/responses/CanonicalReadLimitUnavailable' }
 
   /api/v1/fixtures/{fixtureId}/statistics/{statisticId}:
     get:
@@ -2102,6 +2141,9 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/CanonicalReadLimitExceeded' }
+        '503': { $ref: '#/components/responses/CanonicalReadLimitUnavailable' }
 
   /api/v1/weather:
     get:
@@ -2253,6 +2295,9 @@ paths:
                 $ref: '#/components/schemas/CompetitorCollectionResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/CanonicalReadLimitExceeded' }
+        '503': { $ref: '#/components/responses/CanonicalReadLimitUnavailable' }
 
   /api/v1/competitors/{competitorId}:
     get:
@@ -2273,6 +2318,9 @@ paths:
                 $ref: '#/components/schemas/CompetitorResponse'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/CanonicalReadLimitExceeded' }
+        '503': { $ref: '#/components/responses/CanonicalReadLimitUnavailable' }
 
   /api/v1/participants:
     get:
@@ -2311,6 +2359,9 @@ paths:
                 $ref: '#/components/schemas/ParticipantCollectionResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/CanonicalReadLimitExceeded' }
+        '503': { $ref: '#/components/responses/CanonicalReadLimitUnavailable' }
 
   /api/v1/participants/{participantId}:
     get:
@@ -2331,6 +2382,9 @@ paths:
                 $ref: '#/components/schemas/ParticipantResponse'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/CanonicalReadLimitExceeded' }
+        '503': { $ref: '#/components/responses/CanonicalReadLimitUnavailable' }
 
   /api/v1/participants/{participantId}/fixtures:
     get:
@@ -2364,6 +2418,9 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/CanonicalReadLimitExceeded' }
+        '503': { $ref: '#/components/responses/CanonicalReadLimitUnavailable' }
 
   /api/v1/participants/{participantId}/statistics:
     get:
@@ -2400,6 +2457,9 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/CanonicalReadLimitExceeded' }
+        '503': { $ref: '#/components/responses/CanonicalReadLimitUnavailable' }
 
   /api/v1/participants/{participantId}/statistics/{statisticId}:
     get:
@@ -2424,6 +2484,9 @@ paths:
                 $ref: '#/components/schemas/ParticipantAggregateResponse'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/CanonicalReadLimitExceeded' }
+        '503': { $ref: '#/components/responses/CanonicalReadLimitUnavailable' }
 
   /api/v1/statistics/leaderboards:
     get:
@@ -2483,6 +2546,9 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/CanonicalReadLimitExceeded' }
+        '503': { $ref: '#/components/responses/CanonicalReadLimitUnavailable' }
 
   /api/v1/query-definitions/evaluate:
     post:
@@ -2515,7 +2581,10 @@ paths:
         error, and that is `422`.
       operationId: evaluateQueryDefinition
       x-implementation-status: implemented
-      security: []
+      # Anonymous, or identified by an optional consumer key: issue #924 put this
+      # operation under the same middleware as the canonical reads, so a key is
+      # honoured here and an invalid one is rejected rather than ignored.
+      security: [{}, { apiKeyAuth: [] }]
       requestBody:
         required: true
         content:
@@ -2542,7 +2611,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
-        '429': { $ref: '#/components/responses/AnonymousReadLimitExceeded' }
+        '429': { $ref: '#/components/responses/CanonicalReadLimitExceeded' }
         '503':
           description: >-
             A database statement exceeded its bound
@@ -2553,6 +2622,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
 
   /api/v1/natural-language-queries:
     post:
@@ -3762,20 +3832,41 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiErrorResponse' }
 
-    AnonymousReadLimitExceeded:
+    CanonicalReadLimitExceeded:
       description: >-
-        The anonymous per-source or global per-minute bound was reached
-        (`RATE_LIMIT_EXCEEDED`). A source is identified by an HMAC digest of its
-        address, never by the address, and the window is the calendar minute. The
-        bound is shared with the canonical cricket reads, because it meters a
-        client rather than an operation.
+        A limit was reached. Which one depends on whether a key was sent: an
+        anonymous request is bounded per source and platform-wide per minute
+        (`RATE_LIMIT_EXCEEDED`), and a keyed request by the consumer's own
+        per-minute limit (`RATE_LIMIT_EXCEEDED`) or UTC daily quota
+        (`QUOTA_EXCEEDED`). All carry the `RateLimit-*` headers; the per-minute
+        limits also send `Retry-After`, and the daily quota sends `X-Quota-*`
+        instead.
       headers:
         RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
         RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
         RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+        X-Quota-Limit:
+          description: Daily request quota. Sent only when a consumer's daily quota is exhausted.
+          schema: { type: integer, minimum: 0 }
+        X-Quota-Remaining:
+          description: Requests remaining today. Sent only when a consumer's daily quota is exhausted.
+          schema: { type: integer, minimum: 0 }
+        X-Quota-Reset:
+          description: Seconds until the daily quota resets. Sent only when a consumer's daily quota is exhausted.
+          schema: { type: integer, minimum: 0 }
         Retry-After:
-          description: Seconds to wait before retrying.
+          description: Seconds to wait before retrying. Sent for a per-minute limit, not for a daily quota.
           schema: { type: integer, minimum: 1 }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiErrorResponse' }
+
+    CanonicalReadLimitUnavailable:
+      description: >-
+        The rate-limit counter could not be read, so the request was refused
+        rather than admitted unmetered (`RATE_LIMIT_UNAVAILABLE`). Both the
+        anonymous and the consumer limiter fail closed this way. The condition is
+        temporary and the request may be retried with bounded backoff.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiErrorResponse' }

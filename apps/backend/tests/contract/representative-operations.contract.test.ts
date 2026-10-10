@@ -279,13 +279,21 @@ describe('analytics query operations', () => {
 
   // The operation is offered to anonymous visitors, so it must not be documented
   // as requiring a credential.
-  test('POST /query-definitions/evaluate is documented as a public operation', () => {
+  // Anonymous, or optionally identified by a consumer key. It was documented as
+  // `security: []` until issue #886 found that understated it: issue #924 put the
+  // operation under the canonical-read middleware, which honours `X-API-Key` here
+  // and rejects an invalid one rather than ignoring it. The shape is now the one
+  // the canonical reads carry.
+  test('POST /query-definitions/evaluate is documented as anonymous or key-identified', () => {
     const paths = contract.document.paths as Record<
       string,
       { post?: { security?: unknown[] } } | undefined
     >;
 
-    expect(paths['/api/v1/query-definitions/evaluate']?.post?.security).toEqual([]);
+    expect(paths['/api/v1/query-definitions/evaluate']?.post?.security).toEqual([
+      {},
+      { apiKeyAuth: [] },
+    ]);
   });
 });
 
