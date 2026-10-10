@@ -2,13 +2,15 @@
 
 ## Metadata
 
-| Field                | Value                                                                         |
-| -------------------- | ----------------------------------------------------------------------------- |
-| Execution issue      | #877                                                                          |
-| Tester               | Dean Feldman with Codex assistance                                            |
-| Date/time            | 2026-10-07, Africa/Johannesburg                                               |
-| Candidate commit/tag | `ab216b987`                                                                   |
-| Environment          | Clean local `npm ci` on Windows; Node 24.13.0; no deployment credentials used |
+| Field                                            | Value                                                                                                                |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| Execution issue                                  | #877                                                                                                                 |
+| Tester                                           | Dean Feldman with Codex assistance                                                                                   |
+| Date/time                                        | 2026-10-07, Africa/Johannesburg                                                                                      |
+| Pre-remediation baseline                         | `ab216b987`; verified ancestor of the tested candidate.                                                              |
+| Tested candidate commit/tag                      | `26fc2857b`; local PASS evidence applies to this candidate, including the two-worker configuration and lockfile fix. |
+| Later documentation/evidence preservation commit | `4a676b554`; documentation/test-only preservation update, not a new audit candidate or a new test run.               |
+| Environment                                      | Clean local `npm ci` on Windows; Node 24.13.0; no deployment credentials used                                        |
 
 > No passwords, bearer tokens, OAuth credentials, API keys or service secrets are recorded.
 
@@ -75,7 +77,8 @@ npm offers only a forced breaking change, which this audit did not apply.
 - The local release-candidate matrix is complete and passed. Coverage is intentionally informational;
   no threshold was added or lowered.
 - Hosted CI and final deployed smoke have no exact pushed/deployed #877 candidate. Hosted proof must
-  not be inferred from prior branches; #810 owns release sign-off.
+  not be inferred from the local PASS or a later documentation/evidence update; #810 owns final
+  deployment and production smoke testing.
 
 ## AI Declaration
 

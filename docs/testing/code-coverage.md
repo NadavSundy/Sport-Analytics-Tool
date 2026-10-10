@@ -101,12 +101,13 @@ The frontend coverage script remains `vitest run --coverage`. Coverage-specific 
 
 ## Latest retained final-system coverage evidence
 
-The final automated-quality record for candidate `26fc2857b` reports **80.77% lines**, **79.49%
-statements**, **84.92% functions**, and **72.27% branches**. These are counter-aggregated local
-results, not a claim of hosted CI, deployed coverage, or a new passing threshold. Thresholds remained
-informational for that run. The record also preserves the remaining frontend regressions, incomplete
-suite matrix and production-dependency findings rather than treating the percentages as a release
-decision: [Issue #877 automated quality audit](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-877-automated-quality-audit.md){ target="_blank" rel="noopener" }.
+The final automated-quality record for tested candidate `26fc2857b` reports **80.77% lines**,
+**79.49% statements**, **84.92% functions**, and **72.27% branches**. The pre-remediation baseline
+was `ab216b987`; later documentation/evidence preservation (`4a676b554`) is not another test run.
+These are counter-aggregated local results, not a claim of hosted CI, deployed coverage, or a new
+passing threshold. Thresholds remained informational for that run. The record also preserves the
+remaining frontend regressions, incomplete suite matrix and production-dependency findings rather
+than treating the percentages as a release decision: [Issue #877 automated quality audit](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/final-system-verification/issue-877-automated-quality-audit.md){ target="_blank" rel="noopener" }.
 
 ## Verification
 
