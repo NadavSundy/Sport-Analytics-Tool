@@ -85,6 +85,8 @@ an additional formal Sprint.
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 30 Sep 2026 | Final Submission planning and scope - [Source record](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/final-submission/2026-09-30-planning.md){ target="_blank" rel="noopener" } |
 
+**6 Oct 2026 — Stakeholder demonstration:** [Natural-language-query feedback and disposition](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/stakeholder-meetings/2026-10-06-natural-language-query-demonstration.md){ target="_blank" rel="noopener" }. The original record identifies recollection-based feedback; no meeting recording or contemporaneous attendance was retained.
+
 Current Final Submission evidence index:
 [Final Submission Evidence Index](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/final-submission/README.md){ target="_blank" rel="noopener" }
 

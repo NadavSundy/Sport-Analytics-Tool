@@ -24,19 +24,20 @@ reviewer URL. Its verified deployment revision and health evidence belong to #81
 
 ## Final review path
 
-| Review area                                 | Primary reference                                                                                |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Product capabilities and public API         | [Product & API](product-and-api.md)                                                              |
-| Architecture, database and security         | [Architecture, Data & Security](architecture-and-data.md)                                        |
-| Final database implementation state         | [Final Database Audit](database/final-audit.md)                                                  |
-| Final API implementation state              | [Final API Audit](api/final-audit.md)                                                            |
-| Automated testing, coverage and performance | [Testing & Quality](testing/index.md)                                                            |
-| Final technical verification procedures     | [Final System Verification Bank](testing/final-system-verification.md)                           |
-| Deployment and CI/CD                        | [Deployment & CI/CD](deployment/overview.md)                                                     |
-| Project and Git methodology                 | [Methodology](process/methodology-overview.md)                                                   |
-| Formal user-testing outcomes                | [User Testing Overview](testing/user-testing-overview.md)                                        |
-| Requirements and rubric traceability        | [Final Requirements and Rubric Traceability](planning/final-requirements-rubric-traceability.md) |
-| Project records and retained evidence       | [Project Records & Evidence](process/index.md)                                                   |
+| Review area                                    | Primary reference                                                                                                                                                                                                        |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Product capabilities and public API            | [Product & API](product-and-api.md)                                                                                                                                                                                      |
+| Architecture, database and security            | [Architecture, Data & Security](architecture-and-data.md)                                                                                                                                                                |
+| Final database implementation state            | [Final Database Audit](database/final-audit.md)                                                                                                                                                                          |
+| Final API implementation state                 | [Final API Audit](api/final-audit.md)                                                                                                                                                                                    |
+| Automated testing, coverage and performance    | [Testing & Quality](testing/index.md)                                                                                                                                                                                    |
+| Final technical verification procedures        | [Final System Verification Bank](testing/final-system-verification.md)                                                                                                                                                   |
+| Deployment and CI/CD                           | [Deployment & CI/CD](deployment/overview.md)                                                                                                                                                                             |
+| Project and Git methodology                    | [Methodology](process/methodology-overview.md)                                                                                                                                                                           |
+| Formal user-testing outcomes                   | [User Testing Overview](testing/user-testing-overview.md)                                                                                                                                                                |
+| Requirements and rubric traceability           | [Final Requirements and Rubric Traceability](planning/final-requirements-rubric-traceability.md)                                                                                                                         |
+| Project records and retained evidence          | [Project Records & Evidence](process/index.md)                                                                                                                                                                           |
+| Independent final submission evidence re-audit | [Issue #808 final findings and handoff](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-808-independent-re-audit-2026-10-09.md){ target="_blank" rel="noopener" } |
 
 For the recorded final-test **results**, use the
 [Final Execution Summary](testing/final-system-verification.md#6-final-execution-summary)
