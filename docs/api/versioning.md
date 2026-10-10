@@ -81,10 +81,12 @@ fully available for existing keyed clients. Their successors are the correspondi
 `/api/v1/*` paths, which accept either bounded anonymous access or a valid `X-API-Key` under that
 consumer's policy.
 
-Each successful deprecated response includes `Deprecation: ?1`, the RFC 9745
-Structured Field value for a deprecated resource, and an RFC 8288 `Link` header
-whose `successor-version` relation contains the concrete replacement URL and
-preserves the request query string. For example:
+For deprecated aliases, the middleware sets `Deprecation: ?1` (the RFC 9745
+Structured Field value) and an RFC 8288 `Link` header with a concrete
+`successor-version` URL preserving the request query string. These headers can
+also accompany an authentication rejection (for example, `401`), because the
+metadata is set before authentication; they are not limited to successful
+responses. For example, a successful keyed request may return:
 
 ```http
 GET /api/v1/consumer/fixtures/100/events/export.json?overNumber=3
@@ -145,3 +147,4 @@ The issue #820 current/future deprecation boundary was documented with the assis
 Codex[GPT-5].
 The issue #821 consumer-alias deprecation direction was documented with the assistance of
 Codex[GPT-5].
+The #808 independent final audit clarified deprecated-alias error response headers with the assistance of ChatGPT-Web[GPT-6].
