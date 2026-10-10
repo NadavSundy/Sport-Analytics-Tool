@@ -125,6 +125,19 @@ none to two.
 That is the clearest evidence for the limitation that suggestion generation varies between runs, and
 it is why a client must render a refusal that carries nothing to ask instead.
 
+## Live verification on the deployed site
+
+The runs above are the repeatable evidence for the translation step. Separately, the issue #940
+behaviour was checked by hand against the deployed site through the chat assistant on 10 October
+2026 and recorded in
+[`evidence/validation/issue-940-live-verification-2026-10-10.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-940-live-verification-2026-10-10.md){ target="_blank" rel="noopener" }.
+Three checks, all passing: an unfamiliar named competition answered rather than refused or answered
+against the default, a match-result question refused with wording that points at the fixtures pages,
+and a follow-up resolving its competition and season from the earlier turn.
+
+That record is a single hand-performed pass against a paid provider, so it confirms the behaviour
+reaches a reader rather than guaranteeing every phrasing behaves the same way.
+
 ## Standing failure
 
 The delimiter-escape injection case has failed in all five runs. The attempt is **refused in every
@@ -233,7 +246,7 @@ issue #817. The run figures and per-run findings were read from the five evaluat
 `evidence/validation/` rather than restated from memory, and the run 2 against run 3 suggestion
 comparison was taken by diffing those two records. The evaluation runs themselves were performed by
 Ben Swartz, and the 6 October demonstration feedback is his own record of that session rather than
-anything the tool observed. The deferred-work reasons were recorded with the same assistance under
+anything the tool observed. The issue #940 live verification linked above was performed by him against the deployed site and written up under issue #886. The deferred-work reasons were recorded with the same assistance under
 issue #817; each was checked against the repository rather than taken on trust, which is how the
 unlimited definition-evaluation path was confirmed. That entry was updated to record the limit as
 delivered with the assistance of Claude-Code[Claude Opus 5 (1M context)] under issue #924.
