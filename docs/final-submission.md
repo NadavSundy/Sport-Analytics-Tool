@@ -57,6 +57,12 @@ instead of presenting an intended or historical result as current verification.
 The detailed verification bank is intentionally retained as a complete execution reference. This page
 is the shorter entry point for reviewers who need to understand where the relevant evidence is located.
 
+## Final Milestone 4 release-readiness record
+
+The [#810 release-readiness ledger](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-810-release-readiness-2026-10-10.md){ target="_blank" rel="noopener" } is the release-owner's dated record of the **13 final-issue acceptance criteria**, independent #808 audit integration, actual Gitea quality and coverage jobs, live Azure backend/worker revisions, Cloudflare deployment/public smoke and retained known limitations. The final submission tag is named **`final-submission`** by the repository's Git methodology and is created from `main` _after_ the closing documentation PR merges; this page does not claim it already exists. This record supplements, rather than replaces, the specialist test and human-testing evidence above.
+
+**AI declaration:** The #810 release-readiness navigation and final tag boundary were drafted with assistance from ChatGPT-Web[GPT-6].
+
 ## Known limitations and final-release checks
 
 The authoritative final status of partial, non-implemented and out-of-scope capabilities is maintained

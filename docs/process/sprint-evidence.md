@@ -94,6 +94,8 @@ The planning record captures the refined Final Submission backlog, early complet
 sequencing, scope decisions, known risks and the relationship between the original roadmap and the
 current Gitea milestone.
 
+**10 Oct 2026 — Milestone close-out reflection:** [Final Submission release-owner close-out](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/final-submission/2026-10-10-release-owner-close-out.md){ target="_blank" rel="noopener" }. This is an evidence-based owner reflection, **not** a held fourth Sprint retrospective or team meeting transcript.
+
 Current issue status and formal dependencies remain authoritative in Gitea.
 
 The Issue #799 Final Submission planning navigation update was planned, generated and edited with
@@ -121,3 +123,4 @@ The Issue #613 Sprint 3 close-out navigation update was reviewed and edited with
 
 The Issue #881 methodology-in-practice review, formal Sprint terminology clarification and evidence
 index cleanup were reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The Issue #810 final submission close-out evidence link was drafted with the assistance of ChatGPT-Web[GPT-6].

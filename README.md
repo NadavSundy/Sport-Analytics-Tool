@@ -8,7 +8,13 @@ Event-driven T20 cricket analytics platform providing validated submissions, der
 
 [![Repository coverage](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/raw/branch/coverage-badge/badge.svg)](https://sports-analytics-tool.pages.dev/testing/code-coverage/)
 
-> **Current status:** The Express API validates Supabase identities, synchronizes provider-neutral application accounts, exposes the current user profile, and enforces `viewer`, `submitter`, and `admin` roles with competition-scoped submissions. Administrators can review users and manage submitter access. Approved submitters use the staged batch workflow for season and back-catalogue packages, with asynchronous validation, reference resolution, reviewer decisions, correction resubmission, and publication; administrators retain privileged direct/import routes. Public competition, season, fixture, event, competitor, participant, derived fixture-statistics, and participant season/competition/career aggregate reads are available without authentication. Filtered fixture-event and calculation-trace exports are available as JSON and CSV, and immutable versioned dataset releases can be generated and downloaded by the separately deployed asynchronous worker. External consumers can use administrator-issued API keys with per-minute rate limits and UTC daily quotas. Readers can ask bounded natural-language questions through `POST /api/v1/natural-language-queries`, which translates a question into a closed query definition answered only from the already published statistics (`POST /api/v1/query-definitions/evaluate` accepts such a definition directly). The backend also provides the required runtime external API integration through Open-Meteo via `GET /api/v1/weather`. Advanced analyst-defined statistics, live-feed and bitemporal processing, change feeds, and other Advanced-tier functionality remain future work.
+## Current status — Milestone 4 submission preparation
+
+The agreed core **Stat'sTheGame** product is implemented and has retained automated, specialist and deployment evidence. The public React application and API Explorer, handwritten versioned Express API, Supabase Auth roles/scopes, PostgreSQL-backed statistics, asynchronous batch review/publication and immutable dataset exports are available through the documented environments. Public competitions, fixtures, events, competitors, participants, statistics and export queries can be browsed without an account; authorised submitters and administrators have separate protected workflows.
+
+Additional delivered capabilities include public API-key consumers with limits and quotas, a bounded natural-language question interface backed by published statistics, and the Open-Meteo weather integration. The backend and batch worker are independently deployed Azure Container Apps; the application and documentation are hosted on separate Cloudflare Pages projects. See the [final submission review guide](docs/final-submission.md) and [release-readiness record](evidence/validation/issue-810-release-readiness-2026-10-10.md) for evidence and deployment details.
+
+**What “complete” means here:** the planned submission implementation and independent evidence re-audit (#808) are integrated; the final #810 release approval/tag is **still in progress** as of 10 October 2026. The deployed services were observed operational, but a public HTTP `200` alone is not exact frontend-build attribution. Retained limitations remain visible rather than being reclassified as passes: #874 found one public response/OpenAPI contract mismatch (`totalRecords` on participant items); #876 left four performance checks blocked; the strict all-route Lighthouse Performance >=90 goal is not universally verified; and Advanced analyst-defined statistics, live feeds and general bitemporal querying remain outside the shipped scope. The team-approved final human-testing scope comprised two real sessions, with its recorded limitations. Consult [rubric traceability](docs/planning/final-requirements-rubric-traceability.md), the [final execution summary](docs/testing/final-system-verification.md#6-final-execution-summary) and the [Milestone 4 close-out reflection](evidence/sprints/final-submission/2026-10-10-release-owner-close-out.md) rather than treating this summary as blanket release acceptance.
 
 ## Repository structure
 
@@ -184,7 +190,7 @@ validate them with `python -m mkdocs build --strict`.
 
 ## Deployment
 
-The Sport Analytics Tool uses Microsoft Azure for hosting.
+The application is delivered across **Cloudflare Pages** (the static frontend and separate MkDocs documentation site), **Azure Container Apps** (handwritten backend API and internal batch worker) and **Supabase** (PostgreSQL and managed authentication). The historical Azure App Service resources are not the supported frontend or backend deployment targets. The currently documented live URLs are development-named endpoints; release-specific revision verification belongs to [#810 evidence](evidence/validation/issue-810-release-readiness-2026-10-10.md).
 
 ### Backend
 
@@ -204,9 +210,9 @@ API base URL: https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.
 URL: https://sport-analytics-tool-web.pages.dev/
 
 - Platform: Cloudflare Pages
-- Runtime: Node.js 22 LTS
+- Build toolchain: Node.js 22 LTS; the deployed frontend is static HTML/CSS/JavaScript
 - Environment: Development
-- Deployment: Gitea Actions with Wrangler
+- Deployment: Gitea Actions with Wrangler (automatic for frontend-affecting merged changes)
 - Built using Vite.
 
 ### Asynchronous ingestion worker
@@ -215,26 +221,23 @@ URL: https://sport-analytics-tool-web.pages.dev/
 - Runtime: Node.js 22 LTS container
 - Job delivery: Azure Service Bus Standard with peek-lock and bounded KEDA scaling
 - Data access: Supabase PostgreSQL and private Azure Blob Storage
-- Deployment: manual reviewed Gitea workflow using Bicep and immutable ACR images
+- Deployment: automatic on worker-affecting merges through Gitea Actions, Bicep and immutable ACR images; manual recovery workflow retained
 
 ### CI/CD
 
 Deployment automation is configured using Gitea Actions.
 
-The deployment workflow will:
+Gitea Actions runs change-aware validation on Pull Requests, with a required `quality` status and peer review before merging. After a reviewed change reaches `main`, the push workflow deploys **only affected components**: Cloudflare Pages for the frontend/documentation, immutable Azure Container Registry images and Azure Container Apps revisions for backend/worker. Deployment jobs check availability and, where applicable, database compatibility and active healthy container revisions. Documentation-only changes are not evidence that the frontend, backend or worker was rebuilt.
 
-1. install root workspace dependencies from `package-lock.json`;
-2. lint, type-check and test the affected workspace and shared contracts;
-3. build the frontend bundle or the backend production container from the root workspace;
-4. deploy the frontend to Cloudflare Pages and the backend immutable container image to Azure Container Apps; and
-5. retry content-aware health and database smoke checks against the deployed backend service.
+The repository-wide coverage job runs late as **non-blocking evidence**; its thresholds are informational rather than enforced release thresholds. See [CI/CD](docs/development/ci-cd.md) and the [final release-readiness record](evidence/validation/issue-810-release-readiness-2026-10-10.md) for the exact observed runs, limitations and verification boundary.
 
 Deployment credentials are stored securely using repository Action Secrets.
 
 No deployment credentials are committed to source control.
 
 See [Cloudflare Pages frontend deployment](docs/deployment/frontend-cloudflare-pages.md) and
-[Azure backend deployment](docs/deployment/azure-backend.md) for workflow triggers, required Gitea
+[Azure backend deployment](docs/deployment/azure-backend.md) and
+[Azure worker deployment](docs/deployment/azure-worker.md) for workflow triggers, required Gitea
 secrets, artifact contents and failure behaviour.
 
 ## Documentation
@@ -315,3 +318,5 @@ the assistance of that same tool and model, after reconciling the natural-langua
 register rows against this list.
 The Issue #879 documentation review (overview, repository structure, worker quick start, documentation
 paths and tooling summary) was carried out with the assistance of Claude-Web[Claude Opus 5.5].
+The Issue #810 current product-status, hosting/deployment and release-boundary reconciliation was
+reviewed and drafted with the assistance of ChatGPT-Web[GPT-6].
